@@ -317,7 +317,10 @@ export async function upsertAnimalSnapshot(payload) {
     
     //Normalize data
     const id = String(payload.ID ?? payload.id ?? payload.Id ?? '').trim()
-    const name = String(payload.NAME ?? payload.name ?? payload.Name ?? `Animal ${id}`).trim()
+    // The LoRa gateway never sends NAME, so only a name that arrives explicitly may
+    // overwrite the one the user set through /api/animals/rename.
+    const payloadName = String(payload.NAME ?? payload.name ?? payload.Name ?? '').trim()
+    const name = payloadName || `Animal ${id}`
     const lat = Number(payload.LAT ?? payload.lat ?? payload.latitude ?? payload.Latitude)
     const lng = Number(payload.LONG ?? payload.long ?? payload.longitude ?? payload.Longitude)
     const temp = Number(payload.TEMP ?? payload.temp ?? payload.temperature ?? payload.Temperature ?? 0)
@@ -377,8 +380,10 @@ export async function upsertAnimalSnapshot(payload) {
       )
     }
 
-    //Update the animal's name in the animals table if it has changed
-    await client.query('UPDATE animals SET name = $1 WHERE id = $2', [name, animalId])
+    //Update the animal's name only when the payload explicitly carries one
+    if (payloadName) {
+      await client.query('UPDATE animals SET name = $1 WHERE id = $2', [payloadName, animalId])
+    }
 
     // Insert the latest GPS position into the gps_positions table using a PostGIS POINT
     await client.query(
