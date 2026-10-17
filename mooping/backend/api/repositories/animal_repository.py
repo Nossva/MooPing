@@ -2,6 +2,7 @@ from django.conf import settings
 
 from api.entities import Animal, AnimalDevice
 from api.repositories.db import fetch_all, fetch_one, fetch_value
+from api.repositories.records import AnimalRecord, ReportingDayRecord, TrackPointRecord
 
 # One row per animal with its active collar, last position and geofence state.
 _ANIMAL_ROWS = """
@@ -48,11 +49,11 @@ def list_rows(organization_id, search=None, yard_id=None, geofence=None, status=
         params += [f'%{search}%'] * 5
     sql += ' ORDER BY q.name LIMIT %s'
     params.append(limit)
-    return fetch_all(sql, params)
+    return fetch_all(sql, params, AnimalRecord)
 
 
 def get_row(organization_id, animal_id):
-    return fetch_one('SELECT * FROM (' + _ANIMAL_ROWS + ') q WHERE q.id = %s', [organization_id, animal_id])
+    return fetch_one('SELECT * FROM (' + _ANIMAL_ROWS + ') q WHERE q.id = %s', [organization_id, animal_id], AnimalRecord)
 
 
 def get(organization_id, animal_id):
@@ -109,6 +110,7 @@ def track(organization_id, animal_id, hours):
              AND t.recorded_at >= now() - make_interval(hours => %s)
            ORDER BY t.recorded_at""",
         [organization_id, animal_id, hours],
+        TrackPointRecord,
     )
 
 
@@ -128,7 +130,7 @@ def count_reporting(organization_id, minutes):
 
 
 def reporting_series(organization_id, days):
-    """[{date, reporting}] distinct animals with at least one reading per local day."""
+    """Distinct animals with at least one reading per local day."""
     return fetch_all(
         """SELECT d::date AS date,
                   (SELECT count(DISTINCT t.animal_id)
@@ -140,4 +142,5 @@ def reporting_series(organization_id, days):
                                 (now() AT TIME ZONE %s)::date, interval '1 day') AS d
            ORDER BY d""",
         [organization_id, settings.TIME_ZONE, settings.TIME_ZONE, settings.TIME_ZONE, days, settings.TIME_ZONE],
+        ReportingDayRecord,
     )

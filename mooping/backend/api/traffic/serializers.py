@@ -1,12 +1,6 @@
-"""Input validation for request bodies and query params. Responses are plain
-dicts built by the services."""
+"""Input validation for request bodies and query params. The validated data
+becomes a request DTO (see api/dto and traffic/http.request_dto)."""
 from rest_framework import serializers
-
-
-def validated(serializer_class, data, partial=False):
-    serializer = serializer_class(data=data, partial=partial)
-    serializer.is_valid(raise_exception=True)
-    return serializer.validated_data
 
 
 class LoginSerializer(serializers.Serializer):
@@ -40,6 +34,11 @@ class YardSerializer(serializers.Serializer):
 
 class YardQuery(serializers.Serializer):
     yard_id = serializers.IntegerField(required=False)
+
+
+class PositionsQuery(serializers.Serializer):
+    yard_id = serializers.IntegerField(required=False)
+    geofence = serializers.ChoiceField(['inside', 'outside'], required=False)
 
 
 class AnimalListQuery(serializers.Serializer):

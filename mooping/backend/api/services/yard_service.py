@@ -1,5 +1,6 @@
 from django.db import IntegrityError, transaction
 
+from api.dto.response.yard_response import YardResponse
 from api.repositories import yard_repository
 from api.services.errors import Conflict, InvalidInput, NotFound
 
@@ -13,35 +14,37 @@ def _validate_polygon(boundary):
 
 
 def list_yards(organization_id):
-    return yard_repository.list_by_org(organization_id)
+    return [YardResponse.from_record(r) for r in yard_repository.list_by_org(organization_id)]
 
 
 def get_yard(organization_id, yard_id):
-    yard = yard_repository.get(organization_id, yard_id)
-    if yard is None:
+    record = yard_repository.get(organization_id, yard_id)
+    if record is None:
         raise NotFound('Potrero no encontrado.')
-    return yard
+    return YardResponse.from_record(record)
 
 
-def create_yard(organization_id, name, boundary):
-    _validate_polygon(boundary)
+def create_yard(organization_id, request):
+    """request: YardCreateRequest -> YardResponse"""
+    _validate_polygon(request.boundary)
     try:
         with transaction.atomic():
-            yard_id = yard_repository.create(organization_id, name, boundary)
+            yard_id = yard_repository.create(organization_id, request.name, request.boundary)
     except IntegrityError:
-        raise Conflict(f'Ya existe un potrero llamado "{name}".')
+        raise Conflict(f'Ya existe un potrero llamado "{request.name}".')
     return get_yard(organization_id, yard_id)
 
 
-def update_yard(organization_id, yard_id, name=None, boundary=None):
+def update_yard(organization_id, yard_id, request):
+    """request: YardUpdateRequest -> YardResponse"""
     get_yard(organization_id, yard_id)
-    if boundary is not None:
-        _validate_polygon(boundary)
+    if request.boundary is not None:
+        _validate_polygon(request.boundary)
     try:
         with transaction.atomic():
-            yard_repository.update(organization_id, yard_id, name=name, boundary_geojson=boundary)
+            yard_repository.update(organization_id, yard_id, name=request.name, boundary_geojson=request.boundary)
     except IntegrityError:
-        raise Conflict(f'Ya existe un potrero llamado "{name}".')
+        raise Conflict(f'Ya existe un potrero llamado "{request.name}".')
     return get_yard(organization_id, yard_id)
 
 

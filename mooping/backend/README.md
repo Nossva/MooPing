@@ -33,11 +33,13 @@ Probar: http://localhost:8000/api/health/ → `{"status": "ok", "database": "ok"
 backend/
 ├── config/              configuración del proyecto (settings, urls)
 ├── api/
-│   ├── urls.py          rutas -> traffic
-│   ├── traffic/         capa de tráfico: views + serializers (HTTP)
+│   ├── traffic/         capa de tráfico (HTTP): urls.py (rutas), *_views.py, serializers
+│   ├── dto/
+│   │   ├── request/     <recurso>_request.py: lo que reciben los services
+│   │   └── response/    <recurso>_response.py: lo que devuelve la API
 │   ├── services/        capa de servicio: reglas de negocio
-│   ├── repositories/    capa de repositorio: acceso a la base
-│   └── entities/        entidades: modelos Django de las tablas
+│   ├── repositories/    capa de repositorio: acceso a la base (devuelve records tipados)
+│   └── entities/        entidades: modelos Django de las tablas + reglas de dominio
 ├── manage.py
 └── requirements.txt
 ```
@@ -45,21 +47,33 @@ backend/
 ## Capas
 
 ```
-request -> traffic -> services -> repositories -> base de datos
-                                       ↕
-                                   entities
+HTTP ─► traffic ──RequestDTO──► services ──► repositories ──► base de datos
+   ◄──── JSON ◄──ResponseDTO───┘      ▲            │
+                                      └── records / entities
 ```
 
 | Capa | Hace | No hace |
 |---|---|---|
-| `traffic/` | Recibe el request, valida con serializers, llama a **un** service y arma el `Response` | Lógica de negocio, consultas a la base |
-| `services/` | Reglas de negocio; combina repositorios | Tocar `request`/`Response`, consultar la base directamente |
-| `repositories/` | Todas las consultas (ORM o SQL) | Reglas de negocio, HTTP |
-| `entities/` | Modelos Django de las tablas de `db/schema.sql` | Lógica |
+| `traffic/` | Valida con serializers, arma el **RequestDTO**, llama a **un** service y convierte el **ResponseDTO** en JSON (`traffic/http.py`) | Lógica de negocio, consultas a la base |
+| `dto/` | Define cada request y response. Los responses se arman con `from_record` / `from_entity` / `build`, y ahí vive la presentación (km/h, "Este 94°", edad en meses) | Lógica de negocio, consultas |
+| `services/` | Reciben RequestDTO, aplican las reglas de negocio y devuelven ResponseDTO | Tocar `request`/`Response`, consultar la base directamente |
+| `repositories/` | Todas las consultas (ORM o SQL). Devuelven entities o records tipados (`repositories/records.py`) | Reglas de negocio, HTTP, DTOs |
+| `entities/` | Modelos Django de las tablas de `db/schema.sql` y reglas de dominio puras (`rules.py`: categoría de alerta, días de batería, estado del collar) | I/O |
 
-Cada capa solo llama a la de abajo. Un archivo por recurso en cada capa
-(`animal_views.py`, `animal_service.py`, `animal_repository.py`, `animal.py`).
-`health` es el ejemplo de referencia.
+Dependencias permitidas (de arriba hacia abajo):
+`traffic → dto, services` · `services → dto, repositories, entities` ·
+`dto → entities` · `repositories → entities`.
+
+Un archivo por recurso en cada capa: `animal_views.py`,
+`dto/request/animal_request.py`, `dto/response/animal_response.py`,
+`animal_service.py`, `animal_repository.py` y `animal.py`. Lo compartido de
+cada lado está en `dto/request/base.py` (`UNSET`, `PatchRequest`) y en
+`dto/response/base.py` (`to_json`, `Ref` y los helpers de presentación). `health` es el
+ejemplo más simple.
+
+**Records tipados:** cada `SELECT` de un repository tiene que devolver
+exactamente los campos de su record. Si una columna se renombra o falta,
+`from_row` falla en el momento con un error que dice qué falta y qué sobra.
 
 Las tablas de MooPing las define `db/schema.sql`. Las entidades van con
 `managed = False`, así `migrate` nunca las modifica.

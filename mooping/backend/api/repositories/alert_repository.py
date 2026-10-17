@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from api.entities import CATEGORY_BY_TYPE, Alert, AlertNote
 from api.repositories.db import fetch_all, fetch_one
+from api.repositories.records import AlertRecord
 
 # One row per alert with the animal, collar, potrero, assignee and last position.
 _ALERT_ROWS = """
@@ -63,11 +64,11 @@ def list_rows(organization_id, status=None, category=None, resolved_today=False,
         sql += ' ORDER BY q.triggered_at DESC'
     sql += ' LIMIT %s'
     params.append(limit)
-    return fetch_all(sql, params)
+    return fetch_all(sql, params, AlertRecord)
 
 
 def get_row(organization_id, alert_id):
-    return fetch_one('SELECT * FROM (' + _ALERT_ROWS + ') q WHERE q.id = %s', [organization_id, alert_id])
+    return fetch_one('SELECT * FROM (' + _ALERT_ROWS + ') q WHERE q.id = %s', [organization_id, alert_id], AlertRecord)
 
 
 def get(organization_id, alert_id):

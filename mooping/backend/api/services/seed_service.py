@@ -9,6 +9,10 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from api.dto.request.alert_request import AlertUpdateRequest, NoteCreateRequest
+from api.dto.request.animal_request import AnimalCreateRequest
+from api.dto.request.device_request import AssignRequest, DevicePairRequest
+from api.dto.request.telemetry_request import TelemetryReadingRequest
 from api.repositories import (
     alert_repository,
     device_repository,
@@ -157,15 +161,17 @@ def seed(reset=False):
 
     animal_ids = {}
     for name, tag, breed, sex, months, lot, yard, uid, label, _, _ in ANIMALS:
-        animal = animal_service.create_animal(org.id, name=name, tag_number=tag, breed=breed, sex=sex,
-                                              birth_date=_birth_date(months), lot=lot, yard_id=yards[yard])
-        device = device_service.pair_device(org.id, uid, label=label, firmware_version='v2.4.1',
-                                            hardware_version='AgroNeck r2', battery_model='ER34615 (3.6V D)')
-        device_service.assign_device(org.id, device['id'], animal['id'])
-        animal_ids[name] = animal['id']
+        animal = animal_service.create_animal(org.id, AnimalCreateRequest(
+            name=name, tag_number=tag, breed=breed, sex=sex, birth_date=_birth_date(months), lot=lot,
+            yard_id=yards[yard]))
+        device = device_service.pair_device(org.id, DevicePairRequest(
+            uid, label=label, firmware_version='v2.4.1', hardware_version='AgroNeck r2',
+            battery_model='ER34615 (3.6V D)'))
+        device_service.assign_device(org.id, device.id, AssignRequest(animal.id))
+        animal_ids[name] = animal.id
     for uid, label in STOCK_COLLARS:
-        device_service.pair_device(org.id, uid, label=label, firmware_version='v2.4.1',
-                                   storage_location='Stock en galpón de herramientas')
+        device_service.pair_device(org.id, DevicePairRequest(
+            uid, label=label, firmware_version='v2.4.1', storage_location='Stock en galpón de herramientas'))
     device_repository.update(device_repository.get_by_uid('COLLAR-205'), battery_pct=100)
     device_repository.update(device_repository.get_by_uid('COLLAR-114'), tx_interval_s=120)
 
@@ -176,16 +182,16 @@ def seed(reset=False):
         key=lambda r: r['TS'],
     )
     for raw in readings:
-        telemetry_service.ingest(raw)
+        telemetry_service.ingest(TelemetryReadingRequest.from_payload(raw))
     alert_service.check_no_signal()
 
     # Workflow state shown in the Figma cards.
     fever = alert_repository.find_open('fever', animal_id=animal_ids['Vaca #215'])
-    alert_service.update_alert(org.id, fever.id, juan, status='in_progress', assigned_to=juan.id)
-    alert_service.add_note(org.id, fever.id, juan, 'Casi no rumia. Revisar en la manga a la tarde.')
+    alert_service.update_alert(org.id, fever.id, juan, AlertUpdateRequest(status='in_progress', assigned_to=juan.id))
+    alert_service.add_note(org.id, fever.id, juan, NoteCreateRequest('Casi no rumia. Revisar en la manga a la tarde.'))
     returned = alert_repository.list_rows(org.id, status='resolved', animal_id=animal_ids['Vaca #103'])
-    for row in returned:
-        alert_repository.update(alert_repository.get(org.id, row['id']), resolved_by_id=juan.id)
+    for record in returned:
+        alert_repository.update(alert_repository.get(org.id, record.id), resolved_by_id=juan.id)
 
     return {
         'organization_id': org.id,

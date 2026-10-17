@@ -1,0 +1,86 @@
+from dataclasses import dataclass
+from datetime import datetime, timezone as dt_timezone
+
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+
+from api.dto.request.base import DtoValidationError
+
+# Accepted spellings for each field; today the Pi sends ID, LAT, LONG, TEMP.
+_ALIASES = {
+    'device_uid': ('ID', 'id', 'Id', 'device_uid'),
+    'lat': ('LAT', 'lat', 'latitude', 'Lat', 'Latitude'),
+    'lng': ('LONG', 'long', 'lng', 'lon', 'longitude', 'Long', 'Longitude'),
+    'temp_body_c': ('TEMP', 'temp', 'temperature', 'temp_body_c'),
+    'battery_pct': ('BAT', 'battery', 'battery_pct'),
+    'rssi_dbm': ('RSSI', 'rssi', 'rssi_dbm'),
+    'snr_db': ('SNR', 'snr', 'snr_db'),
+    'activity': ('ACT', 'activity'),
+    'rumination_min': ('RUM', 'rumination', 'rumination_min'),
+    'speed_mps': ('SPEED', 'speed_mps'),
+    'heading_deg': ('HEADING', 'heading', 'heading_deg'),
+    'recorded_at': ('TS', 'ts', 'recorded_at'),
+    'gateway_uid': ('GW', 'gateway', 'gateway_uid'),
+}
+_NUMERIC = ('lat', 'lng', 'temp_body_c', 'battery_pct', 'rssi_dbm', 'snr_db', 'activity',
+            'rumination_min', 'speed_mps', 'heading_deg')
+
+
+def _pick(raw, name):
+    for key in _ALIASES[name]:
+        if key in raw and raw[key] not in (None, ''):
+            return raw[key]
+    return None
+
+
+def _parse_time(value):
+    if value is None:
+        return timezone.now()
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, tz=dt_timezone.utc)
+    parsed = parse_datetime(str(value))
+    if parsed is None:
+        raise DtoValidationError(f'recorded_at inválido: {value}')
+    return parsed if parsed.tzinfo else timezone.make_aware(parsed)
+
+
+@dataclass
+class TelemetryReadingRequest:
+    """One reading from a collar, already normalized."""
+    device_uid: str
+    recorded_at: datetime
+    lat: float | None = None
+    lng: float | None = None
+    temp_body_c: float | None = None
+    battery_pct: float | None = None
+    rssi_dbm: float | None = None
+    snr_db: float | None = None
+    activity: float | None = None
+    rumination_min: float | None = None
+    speed_mps: float | None = None
+    heading_deg: float | None = None
+    gateway_uid: str | None = None
+
+    @classmethod
+    def from_payload(cls, raw, gateway_uid=None):
+        """JSON object from the Pi -> request. Raises DtoValidationError."""
+        if not isinstance(raw, dict):
+            raise DtoValidationError('Cada lectura debe ser un objeto JSON.')
+        values = {name: _pick(raw, name) for name in _ALIASES}
+        if not values['device_uid']:
+            raise DtoValidationError('Falta el ID del collar.')
+        values['device_uid'] = str(values['device_uid']).strip()
+        for name in _NUMERIC:
+            if values[name] is not None:
+                try:
+                    values[name] = float(values[name])
+                except (TypeError, ValueError):
+                    raise DtoValidationError(f'{name} no es numérico: {values[name]}')
+        # NEO-6M reports 0,0 while it has no fix.
+        if values['lat'] in (None, 0.0) or values['lng'] in (None, 0.0):
+            values['lat'] = values['lng'] = None
+        elif not (-90 <= values['lat'] <= 90 and -180 <= values['lng'] <= 180):
+            raise DtoValidationError('Coordenadas fuera de rango.')
+        values['recorded_at'] = _parse_time(values['recorded_at'])
+        values['gateway_uid'] = values['gateway_uid'] or gateway_uid
+        return cls(**values)

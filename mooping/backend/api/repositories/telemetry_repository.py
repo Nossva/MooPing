@@ -1,4 +1,5 @@
 from api.repositories.db import execute, fetch_one, fetch_value
+from api.repositories.records import MotionRecord
 
 
 def motion_since_last(device_id, lng, lat, recorded_at):
@@ -12,6 +13,7 @@ def motion_since_last(device_id, lng, lat, recorded_at):
            WHERE device_id = %s AND location IS NOT NULL AND recorded_at < %s
            ORDER BY recorded_at DESC LIMIT 1""",
         [lng, lat, recorded_at, lng, lat, device_id, recorded_at],
+        MotionRecord,
     )
 
 

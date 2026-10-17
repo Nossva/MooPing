@@ -7,7 +7,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import close_old_connections
 
-from api.services import alert_service, telemetry_service
+from api.services import alert_service
+from api.traffic.telemetry_views import ingest_payload
 
 NO_SIGNAL_CHECK_SECONDS = 60
 
@@ -65,12 +66,12 @@ class TelemetryServer(socketserver.ThreadingTCPServer):
     def process(self, payload, peer):
         close_old_connections()
         try:
-            for result in telemetry_service.ingest_many(json.loads(payload)):
-                if result['ok']:
-                    alerts = f", alertas nuevas {result['alerts_created']}" if result['alerts_created'] else ''
-                    self.log(f"[{peer}] lectura {result['reading_id']} collar {result['device_id']}{alerts}")
+            for result in ingest_payload(json.loads(payload)):
+                if result.ok:
+                    alerts = f', alertas nuevas {result.alerts_created}' if result.alerts_created else ''
+                    self.log(f'[{peer}] lectura {result.reading_id} collar {result.device_id}{alerts}')
                 else:
-                    self.log(f"[{peer}] descartada: {result['error']} <- {payload}")
+                    self.log(f'[{peer}] descartada: {result.error} <- {payload}')
         except json.JSONDecodeError:
             self.log(f'[{peer}] JSON inválido: {payload}')
         except Exception as error:  # keep the listener alive

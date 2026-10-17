@@ -1,16 +1,20 @@
 """Small helpers for raw SQL (PostGIS queries the ORM cannot express)."""
 from django.db import connection
 
+from api.repositories.records import from_row
 
-def fetch_all(sql, params=None):
+
+def fetch_all(sql, params=None, record=None):
+    """Rows as dicts, or as `record` dataclasses when given."""
     with connection.cursor() as cursor:
         cursor.execute(sql, params or [])
         columns = [col.name for col in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    return [from_row(record, r) for r in rows] if record else rows
 
 
-def fetch_one(sql, params=None):
-    rows = fetch_all(sql, params)
+def fetch_one(sql, params=None, record=None):
+    rows = fetch_all(sql, params, record)
     return rows[0] if rows else None
 
 

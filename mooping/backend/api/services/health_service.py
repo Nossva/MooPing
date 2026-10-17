@@ -1,3 +1,4 @@
+from api.dto.response.health_response import HealthResponse
 from api.repositories import health_repository
 
 
@@ -7,4 +8,4 @@ def get_health():
         database = 'ok'
     except Exception as error:
         database = f'error: {error}'
-    return {'status': 'ok', 'database': database}
+    return HealthResponse(status='ok', database=database)

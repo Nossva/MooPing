@@ -2,6 +2,7 @@ from django.utils import timezone
 
 from api.entities import Gateway
 from api.repositories.db import fetch_all
+from api.repositories.records import GatewayRecord
 
 ONLINE_MINUTES = 10
 
@@ -16,7 +17,7 @@ _SELECT = """
 
 def list_by_org(organization_id):
     return fetch_all(_SELECT + ' WHERE g.organization_id = %s ORDER BY g.kind, g.name',
-                     [ONLINE_MINUTES, organization_id])
+                     [ONLINE_MINUTES, organization_id], GatewayRecord)
 
 
 def get_by_uid(gateway_uid):

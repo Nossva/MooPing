@@ -1,15 +1,6 @@
 from django.db import models
 from django.utils import timezone
 
-# type -> category shown in the app chips (Criticas / Sanitarias / Equipos).
-CATEGORY_BY_TYPE = {
-    'geofence_exit': 'critical',
-    'fever': 'sanitary',
-    'low_activity': 'sanitary',
-    'low_battery': 'equipment',
-    'no_signal': 'equipment',
-}
-
 
 class Alert(models.Model):
     organization = models.ForeignKey('api.Organization', on_delete=models.CASCADE)

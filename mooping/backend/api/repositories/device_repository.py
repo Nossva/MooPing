@@ -2,6 +2,7 @@ from django.utils import timezone
 
 from api.entities import AnimalDevice, Device, DeviceCommand, MaintenanceTask
 from api.repositories.db import fetch_all, fetch_one
+from api.repositories.records import DeviceRecord, LocationRecord, OfflineDeviceRecord
 
 # One row per collar with the animal it is on and its open alerts.
 _DEVICE_ROWS = """
@@ -40,11 +41,11 @@ def list_rows(organization_id, search=None, limit=1000):
         params += [f'%{search}%'] * 4
     sql += ' ORDER BY q.label NULLS LAST, q.device_uid LIMIT %s'
     params.append(limit)
-    return fetch_all(sql, params)
+    return fetch_all(sql, params, DeviceRecord)
 
 
 def get_row(organization_id, device_id):
-    return fetch_one('SELECT * FROM (' + _DEVICE_ROWS + ') q WHERE q.id = %s', [organization_id, device_id])
+    return fetch_one('SELECT * FROM (' + _DEVICE_ROWS + ') q WHERE q.id = %s', [organization_id, device_id], DeviceRecord)
 
 
 def get(organization_id, device_id):
@@ -116,15 +117,17 @@ def offline_assigned_devices():
            JOIN organizations o ON o.id = d.organization_id
            JOIN animal_devices ad ON ad.device_id = d.id AND ad.unassigned_at IS NULL
            JOIN animals a ON a.id = ad.animal_id
-           WHERE d.last_seen_at < now() - make_interval(mins => o.no_signal_minutes)"""
+           WHERE d.last_seen_at < now() - make_interval(mins => o.no_signal_minutes)""",
+        record=OfflineDeviceRecord,
     )
 
 
 def last_location(device_id):
-    """{lat, lng, recorded_at} of the collar's last reading with a position."""
+    """Position of the collar's last reading with a position."""
     return fetch_one(
         """SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng, recorded_at
            FROM telemetry_readings WHERE device_id = %s AND location IS NOT NULL
            ORDER BY recorded_at DESC LIMIT 1""",
         [device_id],
+        LocationRecord,
     )

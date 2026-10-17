@@ -1,6 +1,7 @@
 import json
 
 from api.repositories.db import execute, fetch_all, fetch_one, fetch_value
+from api.repositories.records import PointStatusRecord, YardRecord
 
 _SELECT = """
     SELECT y.id, y.name,
@@ -13,11 +14,11 @@ _SELECT = """
 
 
 def list_by_org(organization_id):
-    return fetch_all(_SELECT + ' WHERE y.organization_id = %s ORDER BY y.name', [organization_id])
+    return fetch_all(_SELECT + ' WHERE y.organization_id = %s ORDER BY y.name', [organization_id], YardRecord)
 
 
 def get(organization_id, yard_id):
-    return fetch_one(_SELECT + ' WHERE y.organization_id = %s AND y.id = %s', [organization_id, yard_id])
+    return fetch_one(_SELECT + ' WHERE y.organization_id = %s AND y.id = %s', [organization_id, yard_id], YardRecord)
 
 
 def create(organization_id, name, boundary_geojson):
@@ -47,12 +48,13 @@ def delete(organization_id, yard_id):
 
 
 def point_status(yard_id, lng, lat):
-    """{inside: bool, distance_m: meters outside the boundary (0 if inside)}."""
+    """distance_m: meters outside the boundary (0 if inside)."""
     return fetch_one(
         """SELECT ST_Covers(boundary, ST_MakePoint(%s, %s)::geography) AS inside,
                   ROUND(ST_Distance(boundary, ST_MakePoint(%s, %s)::geography)::numeric)::float AS distance_m
            FROM yards WHERE id = %s""",
         [lng, lat, lng, lat, yard_id],
+        PointStatusRecord,
     )
 
 

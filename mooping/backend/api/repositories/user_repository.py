@@ -1,6 +1,7 @@
 from django.utils import timezone
 
 from api.entities import ApiToken, Membership, User
+from api.repositories.records import MembershipRecord
 
 
 def get_by_email(email):
@@ -21,9 +22,9 @@ def delete_by_emails(emails):
 
 
 def list_memberships(user_id):
-    """[{organization_id, organization_name, role}] ordered by organization id."""
+    """Ordered by organization id."""
     return [
-        {'organization_id': m.organization_id, 'organization_name': m.organization.name, 'role': m.role}
+        MembershipRecord(m.organization_id, m.organization.name, m.role)
         for m in Membership.objects.filter(user_id=user_id).select_related('organization').order_by('organization_id')
     ]
 
@@ -34,12 +35,6 @@ def get_membership(user_id, organization_id):
 
 def add_membership(organization_id, user_id, role):
     Membership.objects.get_or_create(organization_id=organization_id, user_id=user_id, defaults={'role': role})
-
-
-def list_org_users(organization_id):
-    return list(
-        User.objects.filter(membership__organization_id=organization_id).order_by('name').values('id', 'name', 'email')
-    )
 
 
 def create_token(user_id, token_hash):
