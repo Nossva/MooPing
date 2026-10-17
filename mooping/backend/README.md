@@ -2,24 +2,28 @@
 
 Django + Django REST framework sobre la base PostgreSQL/PostGIS de [../db](../db).
 
-## Instalación
+## Correr con Docker (recomendado)
+
+Desde `mooping/`: `docker compose up -d --build`. Levanta la base y el backend,
+corre `migrate` y queda en http://localhost:8000. Ver [../README.md](../README.md).
+
+## Correr sin Docker para el backend (opcional)
+
+Útil para depurar desde VS Code. Requiere Python 3.12+ y la base levantada
+(`docker compose up -d db` desde `mooping/`). Si el contenedor `mooping-backend`
+está corriendo, apagalo antes (`docker compose stop backend`) porque usa el puerto 8000.
 
 ```bash
 cd mooping/backend
-python -m venv .venv
-.venv\Scripts\activate          # Windows  (Linux/Mac: source .venv/bin/activate)
-pip install -r requirements.txt
-copy .env.example .env          # Linux/Mac: cp .env.example .env
-```
-
-## Correr
-
-Con la base levantada (`docker compose up -d` en `mooping/db`):
-
-```bash
 python manage.py migrate        # crea solo las tablas internas de Django (auth, sesiones, admin)
 python manage.py runserver
 ```
+
+No hace falta crear el venv ni el `.env` a mano: la primera vez que se ejecuta
+`manage.py` crea `.venv/`, instala `requirements.txt` (y lo reinstala si cambia)
+y genera `.env` (plantilla `ENV_TEMPLATE` en `config/settings.py`) con una
+`DJANGO_SECRET_KEY` aleatoria.
+Después se relanza solo con el Python del venv, así que tampoco hace falta activarlo.
 
 Probar: http://localhost:8000/api/health/ → `{"status": "ok", "database": "ok"}`
 

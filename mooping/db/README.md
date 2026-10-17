@@ -4,14 +4,9 @@ PostgreSQL 16 + PostGIS. El esquema está en [schema.sql](schema.sql).
 
 ## Levantar la base
 
-Requiere Docker Desktop abierto.
-
-```bash
-cd mooping/db
-docker compose up -d
-```
-
-La primera vez, el contenedor ejecuta `schema.sql` automáticamente.
+Se levanta junto con el backend desde [mooping/docker-compose.yml](../docker-compose.yml)
+(ver [../README.md](../README.md)). La primera vez, el contenedor ejecuta `schema.sql`
+automáticamente.
 
 Conexión:
 
@@ -19,11 +14,10 @@ Conexión:
 postgres://mooping:mooping@localhost:5432/mooping
 ```
 
-> Si la base del AgroBot ya usa el puerto 5432, cambiá `"5432:5432"` por `"5433:5432"` en `docker-compose.yml`.
-
 ## Volver a crear la base desde cero
 
-`schema.sql` solo se ejecuta cuando el volumen está vacío. Después de cambiar el esquema:
+`schema.sql` solo se ejecuta cuando el volumen está vacío. Después de cambiar el esquema
+(desde `mooping/`):
 
 ```bash
 docker compose down -v   # borra todos los datos

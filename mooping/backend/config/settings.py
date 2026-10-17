@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import secrets
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -18,6 +19,33 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+ENV_TEMPLATE = """\
+DJANGO_SECRET_KEY={secret_key}
+DJANGO_DEBUG=true
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+
+# mooping/db (docker compose)
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=mooping
+PGUSER=mooping
+PGPASSWORD=mooping
+"""
+
+
+def _ensure_env_file():
+    """First run: create .env from ENV_TEMPLATE with a fresh secret key."""
+    env_file = BASE_DIR / '.env'
+    if env_file.exists():
+        return
+    env_file.write_text(ENV_TEMPLATE.format(secret_key=secrets.token_urlsafe(50)), encoding='utf-8')
+    print(f'Created {env_file}')
+
+
+_ensure_env_file()
+# Real environment variables (e.g. from docker-compose) win over .env values.
 load_dotenv(BASE_DIR / '.env')
 
 

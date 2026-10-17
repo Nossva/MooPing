@@ -1,0 +1,51 @@
+# MooPing - entorno completo: base de datos + backend.
+#   docker compose up -d --build
+# La primera vez crea la base con db/schema.sql y corre las migraciones de Django.
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: mooping-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mooping
+      POSTGRES_USER: mooping
+      POSTGRES_PASSWORD: mooping
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - mooping-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mooping -d mooping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    container_name: mooping-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: mooping
+      PGUSER: mooping
+      PGPASSWORD: mooping
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app        # cambios en el código se recargan solos
+      - /app/.venv            # no pisar con el .venv de Windows
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+
+volumes:
+  mooping-data:
