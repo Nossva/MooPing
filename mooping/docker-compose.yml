@@ -1,4 +1,4 @@
-# MooPing - entorno completo: base de datos + backend.
+# MooPing - entorno completo: base de datos + backend + frontend.
 #   docker compose up -d --build
 # La primera vez crea la base con db/schema.sql y corre las migraciones de Django.
 
@@ -69,6 +69,23 @@ services:
       - ./backend:/app
       - /app/.venv
     command: python manage.py telemetry_tcp
+
+  # Frontend React (Vite). /api se proxyea al servicio backend.
+  frontend:
+    image: node:22-alpine
+    container_name: mooping-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    working_dir: /app
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app       # cambios en el código se recargan solos
+      - /app/node_modules     # no pisar con el node_modules de Windows
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
 
 volumes:
   mooping-data:

@@ -2,16 +2,18 @@
 
 ```
 mooping/
-├── docker-compose.yml   levanta todo: base de datos + backend + receptor de la Pi
+├── docker-compose.yml   levanta todo: base de datos + backend + receptor de la Pi + frontend
 ├── db/                  schema.sql (PostgreSQL + PostGIS)
-└── backend/             Django + DRF (traffic / services / repositories / entities)
-                         endpoints: backend/ENDPOINTS.md
+├── backend/             Django + DRF (traffic / services / repositories / entities)
+│                        endpoints: backend/ENDPOINTS.md
+└── frontend/            React + Vite (diseño de Figma), ver frontend/README.md
 ```
 
 | Servicio | Puerto | Qué hace |
 |---|---|---|
 | `db` | 5432 | PostgreSQL + PostGIS |
 | `backend` | 8000 | API REST (`/api/...`) |
+| `frontend` | 5173 | App web: http://localhost:5173 (login demo con "Probar con Establecimiento Demo") |
 | `telemetry` | 4001 | Recibe por TCP los JSON de la Raspberry Pi (`lora_receiver.c`) y revisa cada minuto los collares sin señal |
 
 ## Primera vez (y siempre)

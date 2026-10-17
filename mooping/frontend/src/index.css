@@ -1,0 +1,55 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "leaflet/dist/leaflet.css";
+
+/* Tokens sacados del archivo de Figma "MooPing" */
+@theme {
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans Variable', 'Inter Variable', sans-serif;
+
+  --color-brand: #670626;
+  --color-brand-dark: #420014;
+  --color-brand-soft: #ffd9dd;
+
+  --color-ink: #111c2d;
+  --color-muted: #564244;
+  --color-outline: #897174;
+
+  --color-surface: #f9f9ff;
+  --color-surface-low: #f0f3ff;
+  --color-surface-mid: #e7eeff;
+  --color-surface-high: #dee8ff;
+  --color-parchment: #fff8f6;
+
+  --color-field: #4d6631;
+  --color-field-soft: #cce9a8;
+
+  --color-warn: #f59e0b;
+  --color-warn-soft: #fef3c7;
+  --color-warn-ink: #92400e;
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.leaflet-container {
+  font-family: var(--font-sans);
+}
+
+@keyframes ping-soft {
+  0% { transform: scale(1); opacity: .6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.animate-ping-soft {
+  animation: ping-soft 1.6s ease-out infinite;
+}
