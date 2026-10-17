@@ -25,7 +25,7 @@ cd mooping
 docker compose up -d --build
 ```
 
-O, si tenés Python: `python start.py` hace lo mismo, espera a que la API responda y abre el navegador.
+O, si tenés Python: `python start.py` hace lo mismo, espera a que respondan la API y el frontend y abre la app (http://localhost:5173).
 
 La primera vez:
 1. Descarga las imágenes y construye el backend (tarda unos minutos).

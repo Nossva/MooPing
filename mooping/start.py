@@ -1,9 +1,9 @@
-"""Levanta MooPing (base + backend) y abre /api/health/ en el navegador.
+"""Levanta MooPing (base + backend + frontend) y abre la app en el navegador.
 
     python start.py
 
 Solo necesita Docker Desktop abierto. Equivale a `docker compose up -d --build`
-más esperar a que la API responda.
+más esperar a que respondan la API y el frontend.
 """
 import os
 import subprocess
@@ -30,8 +30,11 @@ def read_env_file():
     return values
 
 
-PORT = os.environ.get('BACKEND_PORT') or read_env_file().get('BACKEND_PORT', '8000')
+ENV = read_env_file()
+PORT = os.environ.get('BACKEND_PORT') or ENV.get('BACKEND_PORT', '8000')
 URL = f'http://localhost:{PORT}/api/health/'
+FRONTEND_PORT = os.environ.get('FRONTEND_PORT') or ENV.get('FRONTEND_PORT', '5173')
+FRONTEND_URL = f'http://localhost:{FRONTEND_PORT}/'
 
 
 def check_docker():
@@ -44,7 +47,7 @@ def check_docker():
 
 
 def compose_up():
-    print('Levantando base y backend (la primera vez tarda unos minutos)...')
+    print('Levantando base, backend y frontend (la primera vez tarda unos minutos)...')
     if subprocess.call(['docker', 'compose', 'up', '-d', '--build'], cwd=ROOT) != 0:
         sys.exit('Falló `docker compose up`. Revisá el error de arriba.')
 
@@ -72,13 +75,35 @@ def wait_for_api():
     sys.exit(1)
 
 
+def wait_for_frontend():
+    """Polls the Vite server; the first start runs `npm ci` inside the container."""
+    print(f'Esperando a que responda {FRONTEND_URL} ...')
+    deadline = time.monotonic() + TIMEOUT_S
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(FRONTEND_URL, timeout=3) as response:
+                if response.status == 200:
+                    return
+        except OSError:
+            pass  # npm ci / vite still starting
+        time.sleep(2)
+
+    print(f'\nEl frontend no respondió en {TIMEOUT_S} s.', file=sys.stderr)
+    print('Últimas líneas del frontend:\n', file=sys.stderr)
+    subprocess.call(['docker', 'compose', 'logs', '--tail', '40', 'frontend'], cwd=ROOT)
+    sys.exit(1)
+
+
 def main():
     check_docker()
     compose_up()
     wait_for_api()
-    print(f'\nMooPing está andando: {URL}')
-    print('Logs: docker compose logs -f backend   |   Apagar: docker compose down')
-    webbrowser.open(URL)
+    wait_for_frontend()
+    print(f'\nMooPing está andando: {FRONTEND_URL}  (API: {URL})')
+    print('Entrá con "Probar con Establecimiento Demo".'
+          ' Si no hay datos: docker compose exec backend python manage.py seed_demo')
+    print('Logs: docker compose logs -f backend frontend   |   Apagar: docker compose down')
+    webbrowser.open(FRONTEND_URL)
 
 
 if __name__ == '__main__':
