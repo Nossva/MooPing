@@ -165,7 +165,21 @@ STATIC_URL = 'static/'
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['api.traffic.authentication.BearerTokenAuthentication'],
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
+    'EXCEPTION_HANDLER': 'api.traffic.exception_handler.exception_handler',
+    'UNAUTHENTICATED_USER': None,
 }
+
+
+# MooPing
+
+# If set, POST /api/telemetry/ requires the header X-Api-Key with this value
+# (needed when the Pi reaches the server over the internet).
+TELEMETRY_API_KEY = os.environ.get('TELEMETRY_API_KEY', '')
+# TCP port where `manage.py telemetry_tcp` listens for the Pi (lora_receiver.c).
+TELEMETRY_TCP_PORT = int(os.environ.get('TELEMETRY_TCP_PORT', '4001'))
+MOOPING_SERVER_NAME = os.environ.get('MOOPING_SERVER_NAME', 'AgroServer #AS-01')
 
 
 # CORS (web frontend origins)

@@ -2,10 +2,17 @@
 
 ```
 mooping/
-├── docker-compose.yml   levanta todo: base de datos + backend
+├── docker-compose.yml   levanta todo: base de datos + backend + receptor de la Pi
 ├── db/                  schema.sql (PostgreSQL + PostGIS)
 └── backend/             Django + DRF (traffic / services / repositories / entities)
+                         endpoints: backend/ENDPOINTS.md
 ```
+
+| Servicio | Puerto | Qué hace |
+|---|---|---|
+| `db` | 5432 | PostgreSQL + PostGIS |
+| `backend` | 8000 | API REST (`/api/...`) |
+| `telemetry` | 4001 | Recibe por TCP los JSON de la Raspberry Pi (`lora_receiver.c`) y revisa cada minuto los collares sin señal |
 
 ## Primera vez (y siempre)
 
@@ -23,6 +30,30 @@ La primera vez:
 
 Probar: http://localhost:8000/api/health/ → `{"status":"ok","database":"ok"}`
 
+## Datos de demo
+
+```bash
+docker compose exec backend python manage.py seed_demo          # primera vez
+docker compose exec backend python manage.py seed_demo --reset  # volver a dejarla como nueva
+```
+
+Crea el establecimiento "El Ombú" con los mismos casos del Figma:
+- 12 animales en 2 potreros, con 7 días de lecturas.
+- Vaca #084 fuera del perímetro.
+- Vaca #215 con fiebre.
+- Collar C-114 con batería baja.
+- Collar C-098 sin señal.
+- 2 collares en stock.
+
+Login: `demo@mooping.app` / `mooping123`.
+
+## Conectar la Raspberry Pi
+
+En `firmware/AgroBot/firmware/lora_receiver.c`, cambiá `BACKEND_IP` por la IP
+de la PC donde corre Docker (`BACKEND_PORT` queda en 4001). Cada paquete LoRa
+queda guardado y genera alertas automáticamente. Para ver lo que llega:
+`docker compose logs -f telemetry`.
+
 ## Comandos útiles
 
 | Qué | Comando |
@@ -38,11 +69,12 @@ Los cambios en el código del backend se recargan solos, sin reiniciar el conten
 
 ## Puertos ocupados
 
-Si ya tenés algo en el 5432 o el 8000, creá un archivo `.env` en `mooping/`:
+Si ya tenés algo en el 5432, el 8000 o el 4001, creá un archivo `.env` en `mooping/`:
 
 ```
 DB_PORT=5433
 BACKEND_PORT=8001
+TELEMETRY_PORT=4002
 ```
 
 Datos de conexión desde tu PC (DBeaver, pgAdmin, etc.):

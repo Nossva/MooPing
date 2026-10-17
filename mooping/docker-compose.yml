@@ -47,5 +47,28 @@ services:
       sh -c "python manage.py migrate --noinput &&
              python manage.py runserver 0.0.0.0:8000"
 
+  # Receives the JSON that the Raspberry Pi (lora_receiver.c) sends over TCP.
+  # On the Pi set BACKEND_IP to this computer's IP and keep BACKEND_PORT 4001.
+  telemetry:
+    build: ./backend
+    container_name: mooping-telemetry
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: mooping
+      PGUSER: mooping
+      PGPASSWORD: mooping
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "${TELEMETRY_PORT:-4001}:4001"
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    command: python manage.py telemetry_tcp
+
 volumes:
   mooping-data:
