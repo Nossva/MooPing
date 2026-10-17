@@ -23,6 +23,8 @@ cd mooping
 docker compose up -d --build
 ```
 
+O, si tenés Python: `python start.py` hace lo mismo, espera a que la API responda y abre el navegador.
+
 La primera vez:
 1. Descarga las imágenes y construye el backend (tarda unos minutos).
 2. Crea la base `mooping` y ejecuta `db/schema.sql`.
