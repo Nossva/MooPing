@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from django.conf import settings
 from django.utils import timezone
 
 from api.entities import ApiToken, Membership, User
@@ -37,13 +40,22 @@ def add_membership(organization_id, user_id, role):
     Membership.objects.get_or_create(organization_id=organization_id, user_id=user_id, defaults={'role': role})
 
 
+def _token_cutoff():
+    """Tokens created before this are expired."""
+    return timezone.now() - timedelta(days=settings.TOKEN_TTL_DAYS)
+
+
 def create_token(user_id, token_hash):
+    ApiToken.objects.filter(created_at__lt=_token_cutoff()).delete()
     ApiToken.objects.create(token_hash=token_hash, user_id=user_id)
 
 
 def get_user_by_token(token_hash):
     token = ApiToken.objects.select_related('user').filter(token_hash=token_hash).first()
     if token is None:
+        return None
+    if token.created_at < _token_cutoff():
+        token.delete()
         return None
     ApiToken.objects.filter(token_hash=token_hash).update(last_used_at=timezone.now())
     return token.user

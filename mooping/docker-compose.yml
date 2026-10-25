@@ -36,7 +36,8 @@ services:
       PGUSER: mooping
       PGPASSWORD: mooping
       DJANGO_DEBUG: "true"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+      # "*" para poder entrar desde el celular por la IP de la red (solo dev)
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-*}
       PYTHONUNBUFFERED: "1"
     ports:
       - "${BACKEND_PORT:-8000}:8000"

@@ -180,6 +180,8 @@ TELEMETRY_API_KEY = os.environ.get('TELEMETRY_API_KEY', '')
 # TCP port where `manage.py telemetry_tcp` listens for the Pi (lora_receiver.c).
 TELEMETRY_TCP_PORT = int(os.environ.get('TELEMETRY_TCP_PORT', '4001'))
 MOOPING_SERVER_NAME = os.environ.get('MOOPING_SERVER_NAME', 'AgroServer #AS-01')
+# API tokens expire this many days after login (using them doesn't extend it).
+TOKEN_TTL_DAYS = int(os.environ.get('TOKEN_TTL_DAYS', '30'))
 
 
 # CORS (web frontend origins)
