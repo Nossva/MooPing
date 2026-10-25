@@ -1,10 +1,11 @@
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from api.dto.request.notification_request import NotificationSettingsUpdateRequest
 from api.services import gateway_service, notification_service, product_service
 from api.traffic.context import organization_id
 from api.traffic.http import request_dto, respond
+from api.traffic.permissions import IsMember
 from api.traffic.serializers import NotificationSettingsSerializer
 
 
@@ -13,7 +14,9 @@ def gateway_list(request):
     return respond(gateway_service.list_gateways(organization_id(request)))
 
 
+# Each member edits their own preferences.
 @api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsAuthenticated, IsMember])
 def notification_settings(request):
     org_id = organization_id(request)
     if request.method in ('PUT', 'PATCH'):

@@ -14,6 +14,23 @@ Demo (`python manage.py seed_demo`): `demo@mooping.app` / `mooping123`.
 Errores: `{"detail": "mensaje"}` con 400, 401, 403, 404 o 409. Los errores de
 validación de campos vienen como `{"campo": ["mensaje"]}`.
 
+## Roles y permisos
+
+Cada usuario tiene un rol por establecimiento (`organizations[].role` en `login` y `me/`):
+
+| Rol | Puede |
+|---|---|
+| `owner` (Dueño) | Todo: alta, edición y baja de potreros, animales, collares y usuarios; configurar el establecimiento; alarma sonora, ping y mantenimiento. |
+| `user` (Usuario) | Ver todo (cualquier `GET`); atender alertas (`PATCH alerts/{id}/`, `POST alerts/{id}/notes/`); editar sus preferencias (`PUT notification-settings/`). |
+
+- Cualquier otra escritura (`POST`/`PUT`/`PATCH`/`DELETE`) de un usuario responde
+  403 `{"detail": "Solo el dueño puede hacer esto."}`. Las escrituras son solo del
+  dueño por defecto, así que los endpoints nuevos quedan protegidos sin hacer nada.
+- Un usuario solo puede asignarse alertas a sí mismo (`assigned_to` = su id). Si no, 403.
+- El establecimiento siempre necesita al menos un dueño: degradar o quitar al último responde 409.
+
+Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con `mooping123`).
+
 ## Endpoints por pantalla
 
 ### Comunes (header, campana, barra verde)
@@ -77,6 +94,16 @@ validación de campos vienen como `{"campo": ["mensaje"]}`.
 | POST | `devices/{id}/assign/` | "Vincular a un animal": `{animal_id}` |
 | POST | `devices/{id}/unassign/` | Desvincular: `{storage_location?}` |
 | GET | `gateways/` | `[{id, gateway_uid, name, kind: gateway\|repeater, power_source, battery_pct, radio, coverage_ha, last_seen_at, lat, lng, online}]` |
+
+### Administración (solo dueño para escribir)
+
+| Método | Ruta | Devuelve |
+|---|---|---|
+| GET · PATCH | `organization/` | `{id, name, vet_phone, fever_threshold_c (37–42), low_battery_pct (5–50), no_signal_minutes (5–1440)}` |
+| GET | `organization/members/` | `[{user_id, name, email, phone, role, created_at}]` (dueños primero) |
+| POST | `organization/members/` | `{name, email, password (mín. 8), role: owner\|user, phone?}` → 201. Si el email ya tiene cuenta, se la suma sin cambiar su contraseña; si ya es miembro, 409. |
+| PATCH | `organization/members/{user_id}/` | `{role}` |
+| DELETE | `organization/members/{user_id}/` | 204. Lo saca del establecimiento; la cuenta queda. |
 
 ### Raspberry Pi
 

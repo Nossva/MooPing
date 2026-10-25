@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import logo from '@/assets/mooping-logo.png'
+import { useAuth } from '@/api/auth'
 import { cx } from '@/lib/cx'
 
 // El PNG del logo (1536×863) trae mucho aire alrededor: el dibujo ocupa
@@ -27,6 +28,12 @@ export function LogoMark({ size = 96 }) {
       />
     </div>
   )
+}
+
+// Acciones de alta, edición y baja: solo el dueño las ve (el backend igual responde 403).
+export function OwnerOnly({ children, fallback = null }) {
+  const { isOwner } = useAuth()
+  return isOwner ? children : fallback
 }
 
 export function Card({ className, children, ...props }) {

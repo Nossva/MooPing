@@ -49,7 +49,11 @@ Crea el establecimiento "El Ombú" con los mismos casos del Figma:
 - Collar C-098 sin señal.
 - 2 collares en stock.
 
-Login: `demo@mooping.app` / `mooping123`.
+Logins (contraseña `mooping123`):
+- `demo@mooping.app`: **Dueño**. Edita todo y ve la sección Administración (usuarios y establecimiento).
+- `maria@mooping.app`: **Usuario**. Ve todo, atiende alertas y recibe las alarmas, pero no edita.
+
+Si tu base es anterior a los roles Dueño/Usuario, actualizala con `docker compose exec -T db psql -U mooping -d mooping < db/upgrade-roles.sql`.
 
 ## Conectar la Raspberry Pi
 

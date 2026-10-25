@@ -112,3 +112,23 @@ class NotificationSettingsSerializer(serializers.Serializer):
     channel_push = serializers.BooleanField(required=False)
     channel_email = serializers.BooleanField(required=False)
     channel_sms = serializers.BooleanField(required=False)
+
+
+class MemberCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200)
+    email = serializers.EmailField()
+    password = serializers.CharField(max_length=200)
+    role = serializers.ChoiceField(['owner', 'user'], default='user')
+    phone = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True)
+
+
+class MemberUpdateSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(['owner', 'user'])
+
+
+class OrganizationUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=200, required=False)
+    vet_phone = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True)
+    fever_threshold_c = serializers.FloatField(required=False)
+    low_battery_pct = serializers.FloatField(required=False)
+    no_signal_minutes = serializers.IntegerField(required=False)

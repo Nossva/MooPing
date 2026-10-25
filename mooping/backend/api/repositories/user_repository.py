@@ -40,6 +40,30 @@ def add_membership(organization_id, user_id, role):
     Membership.objects.get_or_create(organization_id=organization_id, user_id=user_id, defaults={'role': role})
 
 
+def list_members(organization_id):
+    """Memberships with their user, owners first then by name."""
+    return list(
+        Membership.objects.filter(organization_id=organization_id).select_related('user')
+        .order_by('role', 'user__name')  # 'owner' < 'user'
+    )
+
+
+def get_member(organization_id, user_id):
+    return Membership.objects.filter(organization_id=organization_id, user_id=user_id).select_related('user').first()
+
+
+def update_role(organization_id, user_id, role):
+    Membership.objects.filter(organization_id=organization_id, user_id=user_id).update(role=role)
+
+
+def remove_membership(organization_id, user_id):
+    Membership.objects.filter(organization_id=organization_id, user_id=user_id).delete()
+
+
+def count_owners(organization_id):
+    return Membership.objects.filter(organization_id=organization_id, role='owner').count()
+
+
 def _token_cutoff():
     """Tokens created before this are expired."""
     return timezone.now() - timedelta(days=settings.TOKEN_TTL_DAYS)

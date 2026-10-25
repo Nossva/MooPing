@@ -6,6 +6,7 @@ from api.traffic import (
     auth_views,
     device_views,
     health_views,
+    member_views,
     misc_views,
     status_views,
     telemetry_views,
@@ -19,6 +20,11 @@ urlpatterns = [
     path('auth/login/', auth_views.login),
     path('auth/logout/', auth_views.logout),
     path('me/', auth_views.me),
+
+    # Administración: establecimiento y usuarios
+    path('organization/', member_views.organization_detail),
+    path('organization/members/', member_views.member_list),
+    path('organization/members/<int:user_id>/', member_views.member_detail),
 
     # Screen summaries
     path('status/', status_views.status),

@@ -7,7 +7,7 @@ import {
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
 import DeviceAttentionCard from '@/components/DeviceAttentionCard'
-import { Button, Card, Empty, ErrorBox, IconBubble, Loading, Metric, Pill, SectionTitle } from '@/components/ui'
+import { Button, Card, Empty, ErrorBox, IconBubble, Loading, Metric, OwnerOnly, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { num, timeAgo } from '@/lib/format'
 
@@ -87,7 +87,9 @@ export default function Equipos() {
           ))}
 
           <StoreCard />
-          <PairCollar onDone={reload} />
+          <OwnerOnly>
+            <PairCollar onDone={reload} />
+          </OwnerOnly>
         </div>
 
         <div className="space-y-4">
@@ -313,14 +315,18 @@ function CollarCard({ device: d, onChange }) {
           <Button icon={LocateFixed} className="py-2" onClick={() => navigate(`/monitoreo?animal=${d.animal?.id}`)}>
             Localizar
           </Button>
-        ) : d.state === 'stock' ? (
-          <Button variant="outline" icon={Link2} className="py-2" onClick={() => setMode(mode === 'assign' ? null : 'assign')}>
-            Vincular a un animal
-          </Button>
         ) : (
-          <Button variant="outline" className="py-2" onClick={() => setMode(mode === 'config' ? null : 'config')}>
-            {mode === 'config' ? 'Cancelar' : 'Configurar'}
-          </Button>
+          <OwnerOnly>
+            {d.state === 'stock' ? (
+              <Button variant="outline" icon={Link2} className="py-2" onClick={() => setMode(mode === 'assign' ? null : 'assign')}>
+                Vincular a un animal
+              </Button>
+            ) : (
+              <Button variant="outline" className="py-2" onClick={() => setMode(mode === 'config' ? null : 'config')}>
+                {mode === 'config' ? 'Cancelar' : 'Configurar'}
+              </Button>
+            )}
+          </OwnerOnly>
         )}
       </div>
     </Card>

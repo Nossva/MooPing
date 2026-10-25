@@ -166,7 +166,11 @@ STATIC_URL = 'static/'
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
     'DEFAULT_AUTHENTICATION_CLASSES': ['api.traffic.authentication.BearerTokenAuthentication'],
-    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
+    # Writes are owner-only unless a view opts in with IsMember (api/traffic/permissions.py).
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+        'api.traffic.permissions.IsOwnerOrReadOnly',
+    ],
     'EXCEPTION_HANDLER': 'api.traffic.exception_handler.exception_handler',
     'UNAUTHENTICATED_USER': None,
 }

@@ -28,7 +28,7 @@ ORG_NAME = 'El Ombú'
 DEMO_PASSWORD = 'mooping123'
 USERS = [
     ('Juan Pérez', 'demo@mooping.app', '+54 9 2326 555-0101', 'owner'),
-    ('María Gómez', 'maria@mooping.app', '+54 9 2326 555-0102', 'operator'),
+    ('María Gómez', 'maria@mooping.app', '+54 9 2326 555-0102', 'user'),
 ]
 
 POTRERO_SUR = {'type': 'Polygon', 'coordinates': [[

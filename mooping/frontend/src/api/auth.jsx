@@ -38,7 +38,11 @@ export function AuthProvider({ children }) {
     setMe({ user: result.user, organizations: result.organizations })
   }, [])
 
-  return <AuthContext value={{ token, me, login, logout }}>{children}</AuthContext>
+  // Rol en el establecimiento activo: el primero, igual que el backend sin X-Organization-Id.
+  const role = me?.organizations?.[0]?.role ?? null
+  const isOwner = role === 'owner'
+
+  return <AuthContext value={{ token, me, role, isOwner, login, logout }}>{children}</AuthContext>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

@@ -52,3 +52,5 @@ export function isoDate(daysFromToday = 0) {
   d.setDate(d.getDate() + daysFromToday)
   return d.toISOString().slice(0, 10)
 }
+
+export const ROLE_LABEL = { owner: 'Dueño', user: 'Usuario' }

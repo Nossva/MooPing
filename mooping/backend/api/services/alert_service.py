@@ -15,7 +15,7 @@ from api.repositories import (
     user_repository,
     yard_repository,
 )
-from api.services.errors import InvalidInput, NotFound
+from api.services.errors import Forbidden, InvalidInput, NotFound
 
 STATUSES = ('pending', 'assigned', 'in_progress', 'resolved')
 CATEGORIES = ('critical', 'sanitary', 'equipment')
@@ -67,9 +67,10 @@ def summary(organization_id):
 
 # ---------------------------------------------------------------- actions
 
-def update_alert(organization_id, alert_id, user, request):
+def update_alert(organization_id, alert_id, user, request, is_owner=False):
     """request: AlertUpdateRequest. Moves an alert through
-    pendiente -> asignada -> en curso -> resuelta."""
+    pendiente -> asignada -> en curso -> resuelta. Only the owner assigns
+    alerts to someone else."""
     alert = alert_repository.get(organization_id, alert_id)
     if alert is None:
         raise NotFound('Alerta no encontrada.')
@@ -79,6 +80,8 @@ def update_alert(organization_id, alert_id, user, request):
 
     fields = {}
     if assigned_to is not None:
+        if assigned_to != user.id and not is_owner:
+            raise Forbidden('Solo el dueño puede asignar alertas a otra persona.')
         if user_repository.get_membership(assigned_to, organization_id) is None:
             raise InvalidInput('El usuario asignado no pertenece al establecimiento.')
         fields['assigned_to_id'] = assigned_to

@@ -52,8 +52,10 @@ CREATE UNIQUE INDEX users_email_key ON users (lower(email));
 CREATE TABLE memberships (
   organization_id  BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id          BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role             TEXT NOT NULL DEFAULT 'viewer'
-                   CHECK (role IN ('owner', 'admin', 'operator', 'viewer')),
+  -- owner = "Dueño" (CRUD + Administración); user = "Usuario" (ve todo,
+  -- atiende alertas y edita sus notificaciones).
+  role             TEXT NOT NULL DEFAULT 'user'
+                   CHECK (role IN ('owner', 'user')),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (organization_id, user_id)
 );

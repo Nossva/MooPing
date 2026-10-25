@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Compass, LogOut, Radar, Router, TriangleAlert } from 'lucide-react'
+import { Bell, BellRing, Compass, LogOut, Radar, Router, Settings, TriangleAlert, X } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { useApi } from '@/api/useApi'
-import { timeAgo } from '@/lib/format'
+import { useAlertWatcher } from '@/api/useAlertWatcher'
+import { ROLE_LABEL, timeAgo } from '@/lib/format'
 import { Logo } from './ui'
 import { cx } from '@/lib/cx'
 
@@ -12,15 +13,18 @@ const NAV = [
   { to: '/monitoreo', label: 'Monitoreo', icon: Radar },
   { to: '/alertas', label: 'Alertas', icon: TriangleAlert, badge: true },
   { to: '/equipos', label: 'Equipos', icon: Router },
+  { to: '/admin', label: 'Admin', icon: Settings, ownerOnly: true },
 ]
 
 export default function Layout() {
-  const { me, logout } = useAuth()
+  const { me, role, isOwner, logout } = useAuth()
   const { data: status } = useApi('status/', { refreshMs: 15000 })
+  const alarms = useAlertWatcher()
+  const nav = NAV.filter((n) => !n.ownerOnly || isOwner)
   const location = useLocation()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-  const current = NAV.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))
+  const current = nav.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))
   const openAlerts = status?.open_alerts ?? 0
 
   return (
@@ -31,7 +35,7 @@ export default function Layout() {
           <Logo width={140} />
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -53,7 +57,10 @@ export default function Layout() {
         </nav>
         <div className="border-t border-black/5 p-4 text-sm">
           <p className="font-semibold text-ink">{me?.user?.name}</p>
-          <p className="text-xs text-muted">{me?.organizations?.[0]?.name}</p>
+          <p className="text-xs text-muted">
+            {me?.organizations?.[0]?.name}
+            {role && ` · ${ROLE_LABEL[role] ?? role}`}
+          </p>
           <button onClick={logout} className="mt-3 flex items-center gap-2 text-xs font-semibold text-brand">
             <LogOut className="size-4" /> Cerrar sesión
           </button>
@@ -88,6 +95,7 @@ export default function Layout() {
                 <div className="absolute right-0 top-12 w-48 rounded-xl border border-black/5 bg-white p-3 text-sm shadow-lg">
                   <p className="font-semibold">{me?.user?.name}</p>
                   <p className="truncate text-xs text-muted">{me?.user?.email}</p>
+                  {role && <p className="mt-1 text-xs font-semibold text-field">{ROLE_LABEL[role] ?? role}</p>}
                   <button onClick={logout} className="mt-3 flex items-center gap-2 text-xs font-semibold text-brand">
                     <LogOut className="size-4" /> Cerrar sesión
                   </button>
@@ -110,12 +118,27 @@ export default function Layout() {
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 md:pb-10">
+        {alarms.needsActivation && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-brand/20 bg-brand-soft/30 p-3 text-sm">
+            <BellRing className="size-5 shrink-0 text-brand" />
+            <p className="flex-1 text-ink">Activá las alarmas para escuchar y ver las alertas nuevas aunque estés en otra pestaña.</p>
+            <button onClick={alarms.activate} className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white">
+              Activar alarmas
+            </button>
+            <button onClick={alarms.dismiss} className="text-muted" aria-label="Cerrar">
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
         <Outlet context={{ status }} />
       </main>
 
       {/* Nav inferior (mobile) */}
-      <nav className="fixed inset-x-0 bottom-0 z-[1000] grid h-16 grid-cols-4 border-t border-black/5 bg-white md:hidden">
-        {NAV.map((item) => (
+      <nav
+        className="fixed inset-x-0 bottom-0 z-[1000] grid h-16 border-t border-black/5 bg-white md:hidden"
+        style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}
+      >
+        {nav.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

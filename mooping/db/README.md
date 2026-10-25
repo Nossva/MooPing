@@ -24,6 +24,16 @@ docker compose down -v   # borra todos los datos
 docker compose up -d
 ```
 
+Si no querés perder los datos, algunos cambios traen un script de actualización:
+
+| Script | Qué cambia |
+|---|---|
+| [upgrade-roles.sql](upgrade-roles.sql) | Roles `owner`/`admin`/`operator`/`viewer` → `owner` (Dueño) / `user` (Usuario) |
+
+```bash
+docker compose exec -T db psql -U mooping -d mooping < db/upgrade-roles.sql
+```
+
 ## Tablas
 
 | Tabla | Para qué |

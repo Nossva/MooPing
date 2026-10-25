@@ -7,7 +7,7 @@ import {
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
 import HerdMap from '@/components/HerdMap'
-import { Button, Card, ErrorBox, Loading, Pill, SectionTitle } from '@/components/ui'
+import { Button, Card, ErrorBox, Loading, OwnerOnly, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { ALERT_TYPES } from '@/lib/alerts'
 import { dms, num, timeAgo } from '@/lib/format'
@@ -373,21 +373,23 @@ function AnimalPanel({ animalId, onTrack, hasTrack }) {
       <Button icon={History} className="w-full py-3.5 text-base" busy={busy === 'track'} onClick={loadTrack}>
         {hasTrack ? 'Ocultar recorrido' : 'Ver historial de recorrido 24h'}
       </Button>
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="field" icon={Volume2} busy={busy === 'alarm'} disabled={!a.device} onClick={alarm}>
-          Alarma sonora
-        </Button>
-        <Button
-          variant="soft"
-          icon={ClipboardPlus}
-          onClick={() => {
-            setNotes(a.notes ?? '')
-            setEditing((v) => !v)
-          }}
-        >
-          Ficha sanitaria
-        </Button>
-      </div>
+      <OwnerOnly>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="field" icon={Volume2} busy={busy === 'alarm'} disabled={!a.device} onClick={alarm}>
+            Alarma sonora
+          </Button>
+          <Button
+            variant="soft"
+            icon={ClipboardPlus}
+            onClick={() => {
+              setNotes(a.notes ?? '')
+              setEditing((v) => !v)
+            }}
+          >
+            Ficha sanitaria
+          </Button>
+        </div>
+      </OwnerOnly>
     </Card>
   )
 }

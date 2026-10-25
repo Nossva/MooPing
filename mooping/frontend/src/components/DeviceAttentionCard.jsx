@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { BatteryLow, CalendarDays, RadioTower, WifiOff, TriangleAlert, Zap } from 'lucide-react'
 import { api } from '@/api/client'
 import { isoDate, num, timeAgo } from '@/lib/format'
-import { Button, Card, IconBubble } from './ui'
+import { Button, Card, IconBubble, OwnerOnly } from './ui'
 import { cx } from '@/lib/cx'
 
 // Tarjeta de "Equipos: N para revisar" (batería baja / sin señal).
@@ -67,15 +67,17 @@ export default function DeviceAttentionCard({ device, onChange }) {
       {done ? (
         <p className="rounded-lg bg-field-soft/50 px-3 py-2 text-xs font-medium text-field">{done}</p>
       ) : (
-        <Button
-          variant="outline"
-          icon={lowBattery ? CalendarDays : noSignal ? RadioTower : Zap}
-          busy={busy}
-          className="w-full py-2.5"
-          onClick={act}
-        >
-          {lowBattery ? 'Agendar cambio de pila' : 'Enviar ping forzado'}
-        </Button>
+        <OwnerOnly>
+          <Button
+            variant="outline"
+            icon={lowBattery ? CalendarDays : noSignal ? RadioTower : Zap}
+            busy={busy}
+            className="w-full py-2.5"
+            onClick={act}
+          >
+            {lowBattery ? 'Agendar cambio de pila' : 'Enviar ping forzado'}
+          </Button>
+        </OwnerOnly>
       )}
       {error && <p className="text-xs text-brand">{error}</p>}
     </Card>
