@@ -100,9 +100,9 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | Método | Ruta | Devuelve |
 |---|---|---|
 | GET · PATCH | `organization/` | `{id, name, vet_phone, fever_threshold_c (37–42), low_battery_pct (5–50), no_signal_minutes (5–1440)}` |
-| GET | `organization/members/` | `[{user_id, name, email, phone, role, created_at}]` (dueños primero) |
+| GET | `organization/members/` | `[{user_id, name, email, phone, role, active, created_at}]` (dueños primero) |
 | POST | `organization/members/` | `{name, email, password (mín. 8), role: owner\|user, phone?}` → 201. Si el email ya tiene cuenta, se la suma sin cambiar su contraseña; si ya es miembro, 409. |
-| PATCH | `organization/members/{user_id}/` | `{role}` |
+| PATCH | `organization/members/{user_id}/` | `{role?, active?}`. `active: false` suspende el acceso sin sacarlo (su `me/` deja de listar el establecimiento y el resto responde 403); `true` lo reactiva. No podés suspenderte a vos mismo ni dejar el establecimiento sin un dueño activo (409). |
 | DELETE | `organization/members/{user_id}/` | 204. Lo saca del establecimiento; la cuenta queda. |
 
 ### Raspberry Pi

@@ -8,9 +8,10 @@ import Monitoreo from './pages/Monitoreo'
 import Alertas from './pages/Alertas'
 import Equipos from './pages/Equipos'
 import Administracion from './pages/Administracion'
+import SinAcceso from './pages/SinAcceso'
 
 export default function App() {
-  const { token, me, isOwner } = useAuth()
+  const { token, me, isOwner, hasAccess } = useAuth()
 
   if (!token) {
     return (
@@ -19,6 +20,9 @@ export default function App() {
       </Routes>
     )
   }
+
+  if (!hasAccess) return <SinAcceso />
+
 
   return (
     <Routes>

@@ -1,13 +1,29 @@
 import { useState } from 'react'
-import { Building2, Check, Trash2, UserPlus, Users } from 'lucide-react'
+import {
+  Building2,
+  Check,
+  Copy,
+  Crown,
+  Eye,
+  EyeOff,
+  Minus,
+  Search,
+  ShieldCheck,
+  Trash2,
+  User,
+  UserPlus,
+  Users,
+  Wand2,
+  X,
+} from 'lucide-react'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
 import { useAuth } from '@/api/auth'
-import { Button, Card, ErrorBox, Loading, Pill, SectionTitle } from '@/components/ui'
+import { Button, Card, Empty, ErrorBox, Loading, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { ROLE_LABEL } from '@/lib/format'
 
-// Solo la ve el dueño (ver App.jsx). Endpoints: organization/ y organization/members/.
+// Panel del dueño (ver App.jsx). Endpoints: organization/ y organization/members/.
 
 const TABS = [
   { key: 'users', label: 'Usuarios', icon: Users },
@@ -18,9 +34,11 @@ const INPUT = 'mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm
 
 export default function Administracion() {
   const [tab, setTab] = useState('users')
+  const members = useApi('organization/members/')
 
   return (
     <div className="space-y-4">
+      <AdminHeader members={members.data} />
       <div className="flex gap-2">
         {TABS.map((t) => (
           <button
@@ -36,34 +54,127 @@ export default function Administracion() {
           </button>
         ))}
       </div>
-      {tab === 'users' ? <Members /> : <OrganizationForm />}
+      {tab === 'users' ? <Members {...members} /> : <OrganizationForm />}
     </div>
+  )
+}
+
+function AdminHeader({ members }) {
+  const { me } = useAuth()
+  const list = members ?? []
+  const active = list.filter((m) => m.active)
+  const stats = [
+    { label: 'Con acceso', value: active.length },
+    { label: 'Dueños', value: active.filter((m) => m.role === 'owner').length },
+    { label: 'Usuarios', value: active.filter((m) => m.role === 'user').length },
+    { label: 'Suspendidos', value: list.length - active.length },
+  ]
+  return (
+    <section className="space-y-3 rounded-xl bg-brand p-4 text-white shadow-md">
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-white/80">
+        <Crown className="size-4" /> Panel del dueño · {me?.organizations?.[0]?.name}
+      </div>
+      <div>
+        <h2 className="font-display text-2xl font-bold leading-tight">Quién entra y qué puede hacer</h2>
+        <p className="mt-1 text-[13px] text-white/85">
+          Sumá personas, elegí si son dueños o usuarios, y suspendé o devolvé el acceso cuando haga falta.
+        </p>
+      </div>
+      <div className="grid grid-cols-4 gap-2 pt-1">
+        {stats.map((s, i) => (
+          <div
+            key={s.label}
+            className={cx('flex flex-col items-center rounded-lg p-2.5', i === 0 ? 'bg-white text-brand' : 'bg-white/15')}
+          >
+            <span className="font-display text-lg font-bold">{members ? s.value : '·'}</span>
+            <span className={cx('text-center text-[11px]', i === 0 ? 'font-bold' : 'text-white/90')}>{s.label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
 // ------------------------------------------------------------------ usuarios
 
-function Members() {
-  const { data, error, loading, reload } = useApi('organization/members/')
+const FILTERS = [
+  { key: 'all', label: 'Todos' },
+  { key: 'owner', label: 'Dueños' },
+  { key: 'user', label: 'Usuarios' },
+  { key: 'suspended', label: 'Suspendidos' },
+]
 
-  if (loading) return <Loading />
+function matches(m, filter, search) {
+  if (filter === 'suspended' && m.active) return false
+  if ((filter === 'owner' || filter === 'user') && (m.role !== filter || !m.active)) return false
+  const q = search.trim().toLowerCase()
+  return !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+}
+
+function Members({ data, error, loading, reload }) {
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  if (loading && !data) return <Loading />
   if (error) return <ErrorBox error={error} onRetry={reload} />
 
+  const visible = data.filter((m) => matches(m, filter, search))
+
   return (
-    <div className="space-y-3">
-      <SectionTitle icon={Users} aside={`${data.length} en el establecimiento`}>
-        Usuarios
-      </SectionTitle>
-      <p className="text-sm text-muted">
-        El <b>dueño</b> puede dar de alta, editar y borrar potreros, animales, collares y usuarios. El <b>usuario</b> ve
-        todo, atiende alertas y recibe las alarmas.
-      </p>
-      {data.map((m) => (
-        <MemberRow key={m.user_id} member={m} onChange={reload} />
-      ))}
-      <AddMember onDone={reload} />
+    <div className="grid gap-4 lg:grid-cols-[1fr_320px] lg:items-start">
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <label className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nombre o email"
+              className="w-full rounded-lg border border-black/10 bg-white py-2.5 pl-9 pr-3 text-sm text-ink"
+            />
+          </label>
+          <Button icon={UserPlus} className="py-2.5" onClick={() => setAdding(true)}>
+            Nuevo usuario
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={cx(
+                'rounded-full px-3 py-1.5 text-xs font-semibold',
+                filter === f.key ? 'bg-ink text-white' : 'bg-surface-low text-muted',
+              )}
+            >
+              {f.label}
+              <span className="ml-1.5 opacity-70">{data.filter((m) => matches(m, f.key, '')).length}</span>
+            </button>
+          ))}
+        </div>
+
+        {visible.length === 0 ? (
+          <Empty>No hay usuarios con ese filtro.</Empty>
+        ) : (
+          visible.map((m) => <MemberRow key={m.user_id} member={m} onChange={reload} />)
+        )}
+      </div>
+
+      <RolesGuide />
+
+      {adding && <AddMemberDialog onClose={() => setAdding(false)} onDone={reload} />}
     </div>
   )
+}
+
+function initials(name) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase()
 }
 
 function MemberRow({ member: m, onChange }) {
@@ -87,67 +198,176 @@ function MemberRow({ member: m, onChange }) {
     }
   }
 
-  const setRole = (role) =>
-    run('role', () => api(`organization/members/${m.user_id}/`, { method: 'PATCH', body: { role } }))
+  const patch = (which, body) => run(which, () => api(`organization/members/${m.user_id}/`, { method: 'PATCH', body }))
   const remove = () => run('remove', () => api(`organization/members/${m.user_id}/`, { method: 'DELETE' }))
 
   return (
-    <Card className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 font-semibold text-ink">
+    <Card className={cx('space-y-3', !m.active && 'border-dashed bg-surface-low')}>
+      <div className="flex items-start gap-3">
+        <div
+          className={cx(
+            'flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-bold',
+            !m.active ? 'bg-surface-high text-muted' : m.role === 'owner' ? 'bg-brand text-white' : 'bg-field-soft text-field',
+          )}
+        >
+          {initials(m.name)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={cx('flex flex-wrap items-center gap-2 font-semibold', m.active ? 'text-ink' : 'text-muted')}>
             {m.name}
             {isMe && <Pill className="bg-surface-high text-muted">Vos</Pill>}
+            {!m.active && <Pill className="bg-brand-soft text-brand">Suspendido</Pill>}
           </p>
           <p className="truncate text-xs text-muted">
             {m.email}
             {m.phone && ` · ${m.phone}`}
           </p>
+          <p className="text-[11px] text-muted">
+            Desde {new Date(m.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </p>
         </div>
-        <Pill className={m.role === 'owner' ? 'bg-brand-soft text-brand' : 'bg-field-soft text-field'}>
-          {ROLE_LABEL[m.role] ?? m.role}
-        </Pill>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <select
+      <div className="flex flex-wrap items-center gap-3 border-t border-black/5 pt-3">
+        <RoleToggle
           value={m.role}
-          disabled={busy !== null}
-          onChange={(e) => setRole(e.target.value)}
-          className="rounded-lg border border-black/10 px-3 py-2 text-sm text-ink"
-          aria-label={`Rol de ${m.name}`}
-        >
-          <option value="owner">Dueño</option>
-          <option value="user">Usuario</option>
-        </select>
-        {confirming ? (
-          <>
-            <span className="text-xs text-muted">¿Quitar a {m.name} del establecimiento?</span>
-            <Button variant="outline" className="py-2" onClick={() => setConfirming(false)}>
-              Cancelar
-            </Button>
-            <Button icon={Trash2} className="py-2" busy={busy === 'remove'} onClick={remove}>
-              Quitar
-            </Button>
-          </>
-        ) : (
-          <Button variant="outline" icon={Trash2} className="ml-auto py-2" onClick={() => setConfirming(true)}>
-            Quitar
-          </Button>
-        )}
+          disabled={busy !== null || !m.active || isMe}
+          onChange={(role) => patch('role', { role })}
+          label={`Rol de ${m.name}`}
+        />
+        <AccessSwitch
+          active={m.active}
+          disabled={busy !== null || isMe}
+          busy={busy === 'active'}
+          title={isMe ? 'No podés suspender tu propio acceso' : undefined}
+          onChange={(active) => patch('active', { active })}
+        />
+        <div className="ml-auto flex items-center gap-2">
+          {confirming ? (
+            <>
+              <span className="text-xs text-muted">¿Quitarlo del establecimiento?</span>
+              <Button variant="outline" className="py-1.5" onClick={() => setConfirming(false)}>
+                No
+              </Button>
+              <Button icon={Trash2} className="py-1.5" busy={busy === 'remove'} onClick={remove}>
+                Quitar
+              </Button>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              disabled={busy !== null}
+              className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-brand-soft/40 hover:text-brand"
+              aria-label={`Quitar a ${m.name}`}
+              title="Quitar del establecimiento"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          )}
+        </div>
       </div>
       {error && <p className="text-xs text-brand">{error}</p>}
     </Card>
   )
 }
 
+function RoleToggle({ value, onChange, disabled, label }) {
+  const options = [
+    { key: 'owner', label: 'Dueño', icon: Crown },
+    { key: 'user', label: 'Usuario', icon: User },
+  ]
+  return (
+    <div role="radiogroup" aria-label={label} className="flex rounded-lg bg-surface-low p-1">
+      {options.map((o) => (
+        <button
+          key={o.key}
+          role="radio"
+          aria-checked={value === o.key}
+          disabled={disabled}
+          onClick={() => value !== o.key && onChange(o.key)}
+          className={cx(
+            'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed',
+            value === o.key ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink',
+          )}
+        >
+          <o.icon className="size-3.5" />
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function AccessSwitch({ active, onChange, disabled, busy, title }) {
+  return (
+    <div className={cx('flex items-center gap-2 text-xs font-semibold', disabled && 'cursor-not-allowed opacity-60')} title={title}>
+      <button
+        role="switch"
+        aria-checked={active}
+        disabled={disabled}
+        onClick={() => onChange(!active)}
+        className={cx('relative h-6 w-11 rounded-full transition-colors', active ? 'bg-field' : 'bg-outline/40', busy && 'animate-pulse')}
+      >
+        <span className={cx('absolute top-0.5 size-5 rounded-full bg-white shadow transition-all', active ? 'left-5.5' : 'left-0.5')} />
+      </button>
+      <span className={active ? 'text-field' : 'text-muted'}>{active ? 'Acceso activo' : 'Sin acceso'}</span>
+    </div>
+  )
+}
+
+const PERMISSIONS = [
+  ['Ver inicio, mapa, alertas y equipos', true, true],
+  ['Atender alertas y anotar', true, true],
+  ['Recibir alarmas', true, true],
+  ['Asignar alertas a otros', true, false],
+  ['Alta y edición de animales, potreros y collares', true, false],
+  ['Alarma sonora, ping y mantenimiento', true, false],
+  ['Usuarios y configuración del establecimiento', true, false],
+]
+
+function RolesGuide() {
+  return (
+    <Card className="space-y-3 lg:sticky lg:top-28">
+      <SectionTitle icon={ShieldCheck}>Qué puede cada rol</SectionTitle>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-muted">
+            <th className="pb-2 text-left font-medium" />
+            <th className="pb-2 font-semibold text-brand">Dueño</th>
+            <th className="pb-2 font-semibold text-field">Usuario</th>
+          </tr>
+        </thead>
+        <tbody>
+          {PERMISSIONS.map(([label, owner, user]) => (
+            <tr key={label} className="border-t border-black/5">
+              <td className="py-2 pr-2 text-ink">{label}</td>
+              <td className="py-2 text-center">{owner ? <Check className="mx-auto size-4 text-field" /> : <Minus className="mx-auto size-4 text-outline" />}</td>
+              <td className="py-2 text-center">{user ? <Check className="mx-auto size-4 text-field" /> : <Minus className="mx-auto size-4 text-outline" />}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-xs text-muted">
+        <b>Sin acceso</b>: la persona sigue en la lista pero no puede entrar hasta que la reactives.
+      </p>
+    </Card>
+  )
+}
+
 const EMPTY_MEMBER = { name: '', email: '', phone: '', password: '', role: 'user' }
 
-function AddMember({ onDone }) {
-  const [open, setOpen] = useState(false)
+function randomPassword() {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint32Array(10))
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('')
+}
+
+function AddMemberDialog({ onClose, onDone }) {
   const [form, setForm] = useState(EMPTY_MEMBER)
+  const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [created, setCreated] = useState(null)
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
@@ -156,12 +376,11 @@ function AddMember({ onDone }) {
     setBusy(true)
     setError(null)
     try {
-      await api('organization/members/', {
+      const member = await api('organization/members/', {
         method: 'POST',
         body: { ...form, name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() || null },
       })
-      setForm(EMPTY_MEMBER)
-      setOpen(false)
+      setCreated({ ...member, password: form.password })
       onDone()
     } catch (err) {
       setError(err.message)
@@ -170,54 +389,152 @@ function AddMember({ onDone }) {
     }
   }
 
-  if (!open) {
-    return (
-      <Button icon={UserPlus} className="w-full py-4 text-base" onClick={() => setOpen(true)}>
-        Agregar usuario
-      </Button>
-    )
-  }
   return (
-    <Card>
-      <form onSubmit={submit} className="space-y-3">
-        <p className="font-display text-lg font-bold">Agregar usuario</p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-xs text-muted">
-            Nombre
-            <input required value={form.name} onChange={set('name')} className={INPUT} />
-          </label>
-          <label className="text-xs text-muted">
-            Email
-            <input required type="email" value={form.email} onChange={set('email')} className={INPUT} />
-          </label>
-          <label className="text-xs text-muted">
-            Teléfono (opcional)
-            <input value={form.phone} onChange={set('phone')} className={INPUT} />
-          </label>
-          <label className="text-xs text-muted">
-            Contraseña inicial (mín. 8)
-            <input required minLength={8} type="password" value={form.password} onChange={set('password')} className={INPUT} />
-          </label>
-          <label className="text-xs text-muted">
-            Rol
-            <select value={form.role} onChange={set('role')} className={INPUT}>
-              <option value="user">Usuario</option>
-              <option value="owner">Dueño</option>
-            </select>
-          </label>
+    <div className="fixed inset-0 z-[1100] flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Nuevo usuario"
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <p className="font-display text-lg font-bold text-ink">{created ? 'Usuario listo' : 'Nuevo usuario'}</p>
+          <button onClick={onClose} className="text-muted" aria-label="Cerrar">
+            <X className="size-5" />
+          </button>
         </div>
-        <p className="text-xs text-muted">Si el email ya tiene cuenta en MooPing, se suma con su contraseña actual.</p>
-        {error && <p className="text-xs text-brand">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" className="py-2" onClick={() => setOpen(false)}>
-            Cancelar
-          </Button>
-          <Button type="submit" className="py-2" busy={busy}>
-            Agregar
-          </Button>
-        </div>
-      </form>
-    </Card>
+        {created ? <Created member={created} onClose={onClose} /> : (
+          <form onSubmit={submit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <RoleCard
+                selected={form.role === 'user'}
+                onClick={() => setForm((f) => ({ ...f, role: 'user' }))}
+                icon={User}
+                title="Usuario"
+                text="Ve todo, atiende alertas y recibe alarmas."
+              />
+              <RoleCard
+                selected={form.role === 'owner'}
+                onClick={() => setForm((f) => ({ ...f, role: 'owner' }))}
+                icon={Crown}
+                title="Dueño"
+                text="Administra todo, incluidos los usuarios."
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs text-muted">
+                Nombre
+                <input required value={form.name} onChange={set('name')} className={INPUT} />
+              </label>
+              <label className="text-xs text-muted">
+                Email
+                <input required type="email" value={form.email} onChange={set('email')} className={INPUT} />
+              </label>
+              <label className="text-xs text-muted">
+                Teléfono (opcional)
+                <input value={form.phone} onChange={set('phone')} className={INPUT} />
+              </label>
+              <label className="text-xs text-muted">
+                Contraseña inicial (mín. 8)
+                <div className="relative">
+                  <input
+                    required
+                    minLength={8}
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={set('password')}
+                    className={cx(INPUT, 'pr-16')}
+                  />
+                  <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((f) => ({ ...f, password: randomPassword() }))
+                        setShowPassword(true)
+                      }}
+                      className="text-muted hover:text-brand"
+                      title="Generar contraseña"
+                      aria-label="Generar contraseña"
+                    >
+                      <Wand2 className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="text-muted hover:text-brand"
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+              </label>
+            </div>
+            <p className="text-xs text-muted">Si el email ya tiene cuenta en MooPing, se suma con su contraseña actual.</p>
+            {error && <p className="text-xs text-brand">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" className="py-2" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit" icon={UserPlus} className="py-2" busy={busy}>
+                Crear {ROLE_LABEL[form.role].toLowerCase()}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RoleCard({ selected, onClick, icon: Icon, title, text }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cx(
+        'rounded-xl border-2 p-3 text-left transition-colors',
+        selected ? 'border-brand bg-brand-soft/30' : 'border-black/5 hover:border-brand/30',
+      )}
+    >
+      <Icon className={cx('size-5', selected ? 'text-brand' : 'text-muted')} />
+      <p className="mt-1 font-semibold text-ink">{title}</p>
+      <p className="text-xs text-muted">{text}</p>
+    </button>
+  )
+}
+
+function Created({ member, onClose }) {
+  const [copied, setCopied] = useState(false)
+  const text = `MooPing: ${window.location.origin}\nUsuario: ${member.email}\nContraseña: ${member.password}`
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+    } catch {
+      // sin permiso de portapapeles: el texto queda a la vista para copiarlo a mano
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted">
+        <b className="text-ink">{member.name}</b> ya puede entrar como {ROLE_LABEL[member.role].toLowerCase()}. Pasale
+        estos datos (si ya tenía cuenta, usa su contraseña de siempre):
+      </p>
+      <pre className="whitespace-pre-wrap rounded-lg bg-surface-low p-3 text-xs text-ink">{text}</pre>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" icon={copied ? Check : Copy} className="py-2" onClick={copy}>
+          {copied ? 'Copiado' : 'Copiar'}
+        </Button>
+        <Button className="py-2" onClick={onClose}>
+          Listo
+        </Button>
+      </div>
+    </div>
   )
 }
 

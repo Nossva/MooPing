@@ -29,6 +29,7 @@ Si no querés perder los datos, algunos cambios traen un script de actualizació
 | Script | Qué cambia |
 |---|---|
 | [upgrade-roles.sql](upgrade-roles.sql) | Roles `owner`/`admin`/`operator`/`viewer` → `owner` (Dueño) / `user` (Usuario) |
+| [upgrade-member-access.sql](upgrade-member-access.sql) | `memberships.active`: suspender el acceso de un usuario sin sacarlo |
 
 ```bash
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-roles.sql

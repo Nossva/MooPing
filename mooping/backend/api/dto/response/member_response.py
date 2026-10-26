@@ -9,12 +9,14 @@ class MemberResponse:
     email: str
     phone: str | None
     role: str
+    active: bool
     created_at: datetime
 
     @classmethod
     def from_entity(cls, membership):
         user = membership.user
-        return cls(user.id, user.name, user.email, user.phone, membership.role, membership.created_at)
+        return cls(user.id, user.name, user.email, user.phone, membership.role, membership.active,
+                   membership.created_at)
 
 
 @dataclass

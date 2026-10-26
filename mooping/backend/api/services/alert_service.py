@@ -82,7 +82,8 @@ def update_alert(organization_id, alert_id, user, request, is_owner=False):
     if assigned_to is not None:
         if assigned_to != user.id and not is_owner:
             raise Forbidden('Solo el dueño puede asignar alertas a otra persona.')
-        if user_repository.get_membership(assigned_to, organization_id) is None:
+        assignee = user_repository.get_membership(assigned_to, organization_id)
+        if assignee is None or not assignee.active:
             raise InvalidInput('El usuario asignado no pertenece al establecimiento.')
         fields['assigned_to_id'] = assigned_to
         if status is None and alert.status == 'pending':

@@ -40,6 +40,7 @@ class MembershipRecord:
     organization_id: int
     organization_name: str
     role: str
+    active: bool
 
 
 @dataclass

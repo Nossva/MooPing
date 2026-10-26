@@ -123,7 +123,8 @@ class MemberCreateSerializer(serializers.Serializer):
 
 
 class MemberUpdateSerializer(serializers.Serializer):
-    role = serializers.ChoiceField(['owner', 'user'])
+    role = serializers.ChoiceField(['owner', 'user'], required=False)
+    active = serializers.BooleanField(required=False)
 
 
 class OrganizationUpdateSerializer(serializers.Serializer):

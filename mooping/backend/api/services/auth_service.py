@@ -12,6 +12,8 @@ OWNER = 'owner'
 USER = 'user'
 ROLES = (OWNER, USER)
 
+_SUSPENDED = 'Tu acceso al establecimiento está suspendido. Hablá con el dueño.'
+
 
 def _hash_token(token):
     return hashlib.sha256(token.encode()).hexdigest()
@@ -42,9 +44,13 @@ def user_for_token(token):
 
 def resolve_membership(user, requested_id=None):
     """MembershipRecord the request acts on: the requested organization if the
-    user belongs to it, else the user's first one."""
-    memberships = user_repository.list_memberships(user.id)
+    user belongs to it, else the user's first one. Suspended memberships
+    (active=false) don't count."""
+    all_memberships = user_repository.list_memberships(user.id)
+    memberships = [m for m in all_memberships if m.active]
     if not memberships:
+        if all_memberships:
+            raise Forbidden(_SUSPENDED)
         raise Forbidden('El usuario no pertenece a ningún establecimiento.')
     if requested_id is None:
         return memberships[0]
@@ -55,6 +61,8 @@ def resolve_membership(user, requested_id=None):
     for membership in memberships:
         if membership.organization_id == requested_id:
             return membership
+    if any(m.organization_id == requested_id for m in all_memberships):
+        raise Forbidden(_SUSPENDED)
     raise Forbidden('No tenés acceso a ese establecimiento.')
 
 
@@ -63,4 +71,6 @@ def resolve_organization(user, requested_id=None):
 
 
 def get_profile(user):
-    return ProfileResponse.build(user, user_repository.list_memberships(user.id))
+    """Only the establecimientos the user can enter (suspended ones are left out)."""
+    memberships = [m for m in user_repository.list_memberships(user.id) if m.active]
+    return ProfileResponse.build(user, memberships)

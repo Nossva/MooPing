@@ -22,6 +22,7 @@ class Membership(models.Model):
     organization = models.ForeignKey('api.Organization', on_delete=models.CASCADE)
     user = models.ForeignKey('api.User', on_delete=models.CASCADE)
     role = models.TextField(default='user')
+    active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

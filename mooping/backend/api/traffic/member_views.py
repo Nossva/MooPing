@@ -35,5 +35,5 @@ def member_detail(request, user_id):
     if request.method == 'DELETE':
         member_service.remove_member(org_id, user_id)
         return Response(status=204)
-    body = request_dto(MemberUpdateSerializer, MemberUpdateRequest, request.data)
-    return respond(member_service.change_role(org_id, user_id, body))
+    body = request_dto(MemberUpdateSerializer, MemberUpdateRequest, request.data, partial=True)
+    return respond(member_service.update_member(org_id, user_id, request.user, body))

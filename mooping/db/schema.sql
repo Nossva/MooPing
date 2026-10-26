@@ -56,6 +56,8 @@ CREATE TABLE memberships (
   -- atiende alertas y edita sus notificaciones).
   role             TEXT NOT NULL DEFAULT 'user'
                    CHECK (role IN ('owner', 'user')),
+  -- false = acceso suspendido por el dueño (sigue en la lista, no puede entrar)
+  active           BOOLEAN NOT NULL DEFAULT true,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (organization_id, user_id)
 );

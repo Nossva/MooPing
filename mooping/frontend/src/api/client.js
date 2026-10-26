@@ -41,6 +41,12 @@ export function setUnauthorizedHandler(fn) {
   onUnauthorized = fn
 }
 
+// 403: puede ser que el dueño nos haya suspendido el acceso; auth.jsx vuelve a pedir me/.
+let onForbidden = () => {}
+export function setForbiddenHandler(fn) {
+  onForbidden = fn
+}
+
 export async function api(path, { method = 'GET', body, params } = {}) {
   const url = new URL(`${BASE}/${path}`, window.location.origin)
   if (params) {
@@ -62,6 +68,7 @@ export async function api(path, { method = 'GET', body, params } = {}) {
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     if (res.status === 401) onUnauthorized()
+    if (res.status === 403) onForbidden()
     throw new ApiError(res.status, data)
   }
   return data

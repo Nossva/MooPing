@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { api, getToken, setToken, setUnauthorizedHandler } from './client'
+import { api, getToken, setForbiddenHandler, setToken, setUnauthorizedHandler } from './client'
 
 const AuthContext = createContext(null)
 
@@ -26,10 +26,24 @@ export function AuthProvider({ children }) {
     })
   }, [])
 
+  const refreshMe = useCallback(() => api('me/').then(setMe).catch(() => {}), [])
+
   useEffect(() => {
     if (!token) return
-    api('me/').then(setMe).catch(() => {})
-  }, [token])
+    refreshMe()
+  }, [token, refreshMe])
+
+  // Si me/ falló (p. ej. el backend se estaba reiniciando), reintentar: sin `me`
+  // no sabemos el rol y el dueño no vería "Admin".
+  useEffect(() => {
+    if (!token || me) return
+    const id = setInterval(refreshMe, 5000)
+    return () => clearInterval(id)
+  }, [token, me, refreshMe])
+
+  useEffect(() => {
+    setForbiddenHandler(refreshMe)
+  }, [refreshMe])
 
   const login = useCallback(async (email, password) => {
     const result = await api('auth/login/', { method: 'POST', body: { email, password } })
@@ -41,8 +55,12 @@ export function AuthProvider({ children }) {
   // Rol en el establecimiento activo: el primero, igual que el backend sin X-Organization-Id.
   const role = me?.organizations?.[0]?.role ?? null
   const isOwner = role === 'owner'
+  // me/ solo lista los establecimientos con acceso activo: vacío = suspendido o sin establecimiento.
+  const hasAccess = !me || me.organizations.length > 0
 
-  return <AuthContext value={{ token, me, role, isOwner, login, logout }}>{children}</AuthContext>
+  return (
+    <AuthContext value={{ token, me, role, isOwner, hasAccess, login, logout, refreshMe }}>{children}</AuthContext>
+  )
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

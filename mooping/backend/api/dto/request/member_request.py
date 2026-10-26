@@ -13,8 +13,9 @@ class MemberCreateRequest:
 
 
 @dataclass
-class MemberUpdateRequest:
-    role: str
+class MemberUpdateRequest(PatchRequest):
+    role: str = UNSET
+    active: bool = UNSET  # false = acceso suspendido
 
 
 @dataclass

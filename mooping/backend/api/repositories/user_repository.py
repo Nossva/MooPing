@@ -27,7 +27,7 @@ def delete_by_emails(emails):
 def list_memberships(user_id):
     """Ordered by organization id."""
     return [
-        MembershipRecord(m.organization_id, m.organization.name, m.role)
+        MembershipRecord(m.organization_id, m.organization.name, m.role, m.active)
         for m in Membership.objects.filter(user_id=user_id).select_related('organization').order_by('organization_id')
     ]
 
@@ -52,8 +52,9 @@ def get_member(organization_id, user_id):
     return Membership.objects.filter(organization_id=organization_id, user_id=user_id).select_related('user').first()
 
 
-def update_role(organization_id, user_id, role):
-    Membership.objects.filter(organization_id=organization_id, user_id=user_id).update(role=role)
+def update_member(organization_id, user_id, **fields):
+    """fields: role and/or active."""
+    Membership.objects.filter(organization_id=organization_id, user_id=user_id).update(**fields)
 
 
 def remove_membership(organization_id, user_id):
@@ -61,7 +62,8 @@ def remove_membership(organization_id, user_id):
 
 
 def count_owners(organization_id):
-    return Membership.objects.filter(organization_id=organization_id, role='owner').count()
+    """Owners whose access is not suspended."""
+    return Membership.objects.filter(organization_id=organization_id, role='owner', active=True).count()
 
 
 def _token_cutoff():

@@ -41,15 +41,26 @@ def add_member(organization_id, request):
     return MemberResponse.from_entity(_get(organization_id, user.id))
 
 
+def _is_active_owner(member):
+    return member.role == auth_service.OWNER and member.active
+
+
 @transaction.atomic
-def change_role(organization_id, user_id, request):
-    """request: MemberUpdateRequest -> MemberResponse"""
-    _validate_role(request.role)
+def update_member(organization_id, user_id, acting_user, request):
+    """request: MemberUpdateRequest (role and/or active) -> MemberResponse.
+    active=false suspends the user's access without removing them."""
+    changes = request.changes()
+    if 'role' in changes:
+        _validate_role(changes['role'])
     member = _get(organization_id, user_id)
-    if (member.role == auth_service.OWNER and request.role != auth_service.OWNER
+    if changes.get('active') is False and user_id == acting_user.id:
+        raise Conflict('No podés suspender tu propio acceso.')
+    stops_being_owner = changes.get('role', member.role) != auth_service.OWNER or changes.get('active') is False
+    if (_is_active_owner(member) and stops_being_owner
             and user_repository.count_owners(organization_id) <= 1):
         raise Conflict(_LAST_OWNER)
-    user_repository.update_role(organization_id, user_id, request.role)
+    if changes:
+        user_repository.update_member(organization_id, user_id, **changes)
     return MemberResponse.from_entity(_get(organization_id, user_id))
 
 
@@ -57,6 +68,6 @@ def change_role(organization_id, user_id, request):
 def remove_member(organization_id, user_id):
     """Takes the user out of the establecimiento; the account stays."""
     member = _get(organization_id, user_id)
-    if member.role == auth_service.OWNER and user_repository.count_owners(organization_id) <= 1:
+    if _is_active_owner(member) and user_repository.count_owners(organization_id) <= 1:
         raise Conflict(_LAST_OWNER)
     user_repository.remove_membership(organization_id, user_id)

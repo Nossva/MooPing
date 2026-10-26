@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarDays, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Crown, UserCheck } from 'lucide-react'
+import { useAuth } from '@/api/auth'
 import { useApi } from '@/api/useApi'
 import AlertCard from '@/components/AlertCard'
 import DeviceAttentionCard from '@/components/DeviceAttentionCard'
@@ -9,6 +10,7 @@ import { cx } from '@/lib/cx'
 import { num, timeAgo, todayLabel } from '@/lib/format'
 
 export default function Inicio() {
+  const { me, isOwner } = useAuth()
   const summary = useApi('dashboard/summary/', { refreshMs: 30000 })
   const open = useApi('alerts/', { params: { status: 'open', sort: 'urgency' }, refreshMs: 30000 })
   const resolved = useApi('alerts/', { params: { status: 'resolved', since: 'today', sort: 'recent' } })
@@ -25,7 +27,9 @@ export default function Inicio() {
   if (summary.error) return <ErrorBox error={summary.error} onRetry={summary.reload} />
 
   const s = summary.data
-  const toAttend = (open.data ?? []).filter((a) => a.category !== 'equipment')
+  // Usuario: lo que tiene asignado va primero y no se repite abajo.
+  const mine = isOwner ? [] : (open.data ?? []).filter((a) => a.assigned_to?.id === me?.user?.id)
+  const toAttend = (open.data ?? []).filter((a) => a.category !== 'equipment' && !mine.includes(a))
   const deviceItems = devices.data?.items ?? []
 
   return (
@@ -33,7 +37,18 @@ export default function Inicio() {
       <div className="space-y-4">
         <Banner summary={s} />
 
-        <SectionTitle aside="Ordenado por urgencia">Para atender</SectionTitle>
+        {mine.length > 0 && (
+          <>
+            <SectionTitle icon={UserCheck} aside={`${mine.length} a tu cargo`}>
+              Asignadas a vos
+            </SectionTitle>
+            {mine.map((alert) => (
+              <AlertCard key={alert.id} alert={alert} onChange={reloadAll} />
+            ))}
+          </>
+        )}
+
+        <SectionTitle aside="Ordenado por urgencia">{mine.length > 0 ? 'Resto para atender' : 'Para atender'}</SectionTitle>
         {open.loading && !open.data ? (
           <Loading />
         ) : toAttend.length === 0 ? (
@@ -44,6 +59,7 @@ export default function Inicio() {
       </div>
 
       <div className="space-y-4">
+        {isOwner && <TeamCard />}
         <HerdHealth health={s.herd_health} />
 
         <SectionTitle aside={`${deviceItems.length} para revisar`}>Equipos</SectionTitle>
@@ -102,6 +118,35 @@ function Banner({ summary }) {
         ))}
       </div>
     </section>
+  )
+}
+
+// Solo dueño: acceso rápido al panel de usuarios.
+function TeamCard() {
+  const navigate = useNavigate()
+  const { data } = useApi('organization/members/')
+  const members = data ?? []
+  const active = members.filter((m) => m.active)
+  const suspended = members.length - active.length
+  return (
+    <button onClick={() => navigate('/admin')} className="w-full text-left">
+      <Card className="flex items-center gap-3 hover:border-brand/30">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-white">
+          <Crown className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-ink">Tu equipo</p>
+          <p className="text-xs text-muted">
+            {data
+              ? `${active.length} con acceso · ${active.filter((m) => m.role === 'owner').length} dueños${suspended ? ` · ${suspended} sin acceso` : ''}`
+              : 'Cargando…'}
+          </p>
+        </div>
+        <span className="flex items-center text-xs font-semibold text-brand">
+          Gestionar <ChevronRight className="size-4" />
+        </span>
+      </Card>
+    </button>
   )
 }
 
