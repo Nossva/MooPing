@@ -19,6 +19,11 @@ class MemberUpdateRequest(PatchRequest):
 
 
 @dataclass
+class MemberPasswordRequest:
+    new_password: str
+
+
+@dataclass
 class OrganizationUpdateRequest(PatchRequest):
     name: str = UNSET
     vet_phone: str | None = UNSET

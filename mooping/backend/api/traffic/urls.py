@@ -20,11 +20,13 @@ urlpatterns = [
     path('auth/login/', auth_views.login),
     path('auth/logout/', auth_views.logout),
     path('me/', auth_views.me),
+    path('me/password/', auth_views.change_password),
 
     # Administración: establecimiento y usuarios
     path('organization/', member_views.organization_detail),
     path('organization/members/', member_views.member_list),
     path('organization/members/<int:user_id>/', member_views.member_detail),
+    path('organization/members/<int:user_id>/password/', member_views.member_password),
 
     # Screen summaries
     path('status/', status_views.status),

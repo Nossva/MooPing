@@ -12,6 +12,8 @@ OWNER = 'owner'
 USER = 'user'
 ROLES = (OWNER, USER)
 
+MIN_PASSWORD_LENGTH = 8
+
 _SUSPENDED = 'Tu acceso al establecimiento está suspendido. Hablá con el dueño.'
 
 
@@ -21,6 +23,23 @@ def _hash_token(token):
 
 def hash_password(password):
     return make_password(password)
+
+
+def validate_new_password(password):
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise InvalidInput(f'La contraseña necesita al menos {MIN_PASSWORD_LENGTH} caracteres.')
+
+
+def change_password(user, token, request):
+    """request: PasswordChangeRequest. The user changes their own password;
+    their other sessions are closed, this one stays."""
+    if not check_password(request.current_password, user.password_hash):
+        raise InvalidInput('La contraseña actual no es correcta.')
+    validate_new_password(request.new_password)
+    if request.new_password == request.current_password:
+        raise InvalidInput('La contraseña nueva tiene que ser distinta de la actual.')
+    user_repository.set_password(user.id, hash_password(request.new_password))
+    user_repository.delete_user_tokens(user.id, keep_hash=_hash_token(token))
 
 
 def login(request):

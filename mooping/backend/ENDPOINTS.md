@@ -40,6 +40,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | GET | `health/` | `{status, database}` (sin login) |
 | POST | `auth/login/` | `{token, user, organizations}` (sin login) |
 | POST | `auth/logout/` | 204 |
+| POST | `me/password/` | `{current_password, new_password (mín. 8)}` → 204. Cualquier usuario cambia la suya; se cierran sus otras sesiones. |
 | GET | `me/` | `{user: {id, name, email, phone, initials}, organizations: [{id, name, role}]}` |
 | GET | `status/` | `{online, last_packet_at, radio, gateways_online, gateways_total, open_alerts, server_time}` |
 
@@ -103,6 +104,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | GET | `organization/members/` | `[{user_id, name, email, phone, role, active, created_at}]` (dueños primero) |
 | POST | `organization/members/` | `{name, email, password (mín. 8), role: owner\|user, phone?}` → 201. Si el email ya tiene cuenta, se la suma sin cambiar su contraseña; si ya es miembro, 409. |
 | PATCH | `organization/members/{user_id}/` | `{role?, active?}`. `active: false` suspende el acceso sin sacarlo (su `me/` deja de listar el establecimiento y el resto responde 403); `true` lo reactiva. No podés suspenderte a vos mismo ni dejar el establecimiento sin un dueño activo (409). |
+| POST | `organization/members/{user_id}/password/` | `{new_password (mín. 8)}` → 204. Solo dueño: le pone una contraseña nueva y cierra todas sus sesiones. La propia se cambia con `me/password/`. |
 | DELETE | `organization/members/{user_id}/` | 204. Lo saca del establecimiento; la cuenta queda. |
 
 ### Raspberry Pi

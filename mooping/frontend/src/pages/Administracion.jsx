@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Building2,
   Check,
@@ -6,6 +7,7 @@ import {
   Crown,
   Eye,
   EyeOff,
+  KeyRound,
   Minus,
   Search,
   ShieldCheck,
@@ -181,6 +183,7 @@ function MemberRow({ member: m, onChange }) {
   const { me } = useAuth()
   const [busy, setBusy] = useState(null)
   const [confirming, setConfirming] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [error, setError] = useState(null)
   const isMe = me?.user?.id === m.user_id
 
@@ -254,19 +257,42 @@ function MemberRow({ member: m, onChange }) {
               </Button>
             </>
           ) : (
-            <button
-              onClick={() => setConfirming(true)}
-              disabled={busy !== null}
-              className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-brand-soft/40 hover:text-brand"
-              aria-label={`Quitar a ${m.name}`}
-              title="Quitar del establecimiento"
-            >
-              <Trash2 className="size-4" />
-            </button>
+            <>
+              {isMe ? (
+                <Link
+                  to="/cuenta"
+                  className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-surface-low hover:text-brand"
+                  aria-label="Cambiar mi contraseña"
+                  title="Cambiar mi contraseña (Mi cuenta)"
+                >
+                  <KeyRound className="size-4" />
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setResetting(true)}
+                  disabled={busy !== null}
+                  className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-surface-low hover:text-brand"
+                  aria-label={`Cambiar la contraseña de ${m.name}`}
+                  title="Cambiar contraseña"
+                >
+                  <KeyRound className="size-4" />
+                </button>
+              )}
+              <button
+                onClick={() => setConfirming(true)}
+                disabled={busy !== null}
+                className="flex size-9 items-center justify-center rounded-lg text-muted hover:bg-brand-soft/40 hover:text-brand"
+                aria-label={`Quitar a ${m.name}`}
+                title="Quitar del establecimiento"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </>
           )}
         </div>
       </div>
       {error && <p className="text-xs text-brand">{error}</p>}
+      {resetting && <ResetPasswordDialog member={m} onClose={() => setResetting(false)} />}
     </Card>
   )
 }
@@ -364,7 +390,6 @@ function randomPassword() {
 
 function AddMemberDialog({ onClose, onDone }) {
   const [form, setForm] = useState(EMPTY_MEMBER)
-  const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [created, setCreated] = useState(null)
@@ -390,101 +415,190 @@ function AddMemberDialog({ onClose, onDone }) {
   }
 
   return (
+    <Dialog title={created ? 'Usuario listo' : 'Nuevo usuario'} onClose={onClose}>
+      {created ? (
+        <Credentials
+          email={created.email}
+          password={created.password}
+          onClose={onClose}
+          intro={
+            <>
+              <b className="text-ink">{created.name}</b> ya puede entrar como {ROLE_LABEL[created.role].toLowerCase()}.
+              Pasale estos datos (si ya tenía cuenta, usa su contraseña de siempre):
+            </>
+          }
+        />
+      ) : (
+        <form onSubmit={submit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <RoleCard
+              selected={form.role === 'user'}
+              onClick={() => setForm((f) => ({ ...f, role: 'user' }))}
+              icon={User}
+              title="Usuario"
+              text="Ve todo, atiende alertas y recibe alarmas."
+            />
+            <RoleCard
+              selected={form.role === 'owner'}
+              onClick={() => setForm((f) => ({ ...f, role: 'owner' }))}
+              icon={Crown}
+              title="Dueño"
+              text="Administra todo, incluidos los usuarios."
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs text-muted">
+              Nombre
+              <input required value={form.name} onChange={set('name')} className={INPUT} />
+            </label>
+            <label className="text-xs text-muted">
+              Email
+              <input required type="email" value={form.email} onChange={set('email')} className={INPUT} />
+            </label>
+            <label className="text-xs text-muted">
+              Teléfono (opcional)
+              <input value={form.phone} onChange={set('phone')} className={INPUT} />
+            </label>
+            <PasswordField
+              label="Contraseña inicial (mín. 8)"
+              value={form.password}
+              onChange={(password) => setForm((f) => ({ ...f, password }))}
+            />
+          </div>
+          <p className="text-xs text-muted">Si el email ya tiene cuenta en MooPing, se suma con su contraseña actual.</p>
+          {error && <p className="text-xs text-brand">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" className="py-2" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" icon={UserPlus} className="py-2" busy={busy}>
+              Crear {ROLE_LABEL[form.role].toLowerCase()}
+            </Button>
+          </div>
+        </form>
+      )}
+    </Dialog>
+  )
+}
+
+function Dialog({ title, onClose, children }) {
+  return (
     <div className="fixed inset-0 z-[1100] flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Nuevo usuario"
+        aria-label={title}
         onClick={(e) => e.stopPropagation()}
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <p className="font-display text-lg font-bold text-ink">{created ? 'Usuario listo' : 'Nuevo usuario'}</p>
+          <p className="font-display text-lg font-bold text-ink">{title}</p>
           <button onClick={onClose} className="text-muted" aria-label="Cerrar">
             <X className="size-5" />
           </button>
         </div>
-        {created ? <Created member={created} onClose={onClose} /> : (
-          <form onSubmit={submit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <RoleCard
-                selected={form.role === 'user'}
-                onClick={() => setForm((f) => ({ ...f, role: 'user' }))}
-                icon={User}
-                title="Usuario"
-                text="Ve todo, atiende alertas y recibe alarmas."
-              />
-              <RoleCard
-                selected={form.role === 'owner'}
-                onClick={() => setForm((f) => ({ ...f, role: 'owner' }))}
-                icon={Crown}
-                title="Dueño"
-                text="Administra todo, incluidos los usuarios."
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-xs text-muted">
-                Nombre
-                <input required value={form.name} onChange={set('name')} className={INPUT} />
-              </label>
-              <label className="text-xs text-muted">
-                Email
-                <input required type="email" value={form.email} onChange={set('email')} className={INPUT} />
-              </label>
-              <label className="text-xs text-muted">
-                Teléfono (opcional)
-                <input value={form.phone} onChange={set('phone')} className={INPUT} />
-              </label>
-              <label className="text-xs text-muted">
-                Contraseña inicial (mín. 8)
-                <div className="relative">
-                  <input
-                    required
-                    minLength={8}
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.password}
-                    onChange={set('password')}
-                    className={cx(INPUT, 'pr-16')}
-                  />
-                  <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setForm((f) => ({ ...f, password: randomPassword() }))
-                        setShowPassword(true)
-                      }}
-                      className="text-muted hover:text-brand"
-                      title="Generar contraseña"
-                      aria-label="Generar contraseña"
-                    >
-                      <Wand2 className="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="text-muted hover:text-brand"
-                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                    >
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
-                </div>
-              </label>
-            </div>
-            <p className="text-xs text-muted">Si el email ya tiene cuenta en MooPing, se suma con su contraseña actual.</p>
-            {error && <p className="text-xs text-brand">{error}</p>}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" className="py-2" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit" icon={UserPlus} className="py-2" busy={busy}>
-                Crear {ROLE_LABEL[form.role].toLowerCase()}
-              </Button>
-            </div>
-          </form>
-        )}
+        {children}
       </div>
     </div>
+  )
+}
+
+// Campo de contraseña con "generar" y "mostrar".
+function PasswordField({ label, value, onChange }) {
+  const [show, setShow] = useState(false)
+  return (
+    <label className="block text-xs text-muted">
+      {label}
+      <div className="relative">
+        <input
+          required
+          minLength={8}
+          type={show ? 'text' : 'password'}
+          autoComplete="new-password"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={cx(INPUT, 'pr-16')}
+        />
+        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              onChange(randomPassword())
+              setShow(true)
+            }}
+            className="text-muted hover:text-brand"
+            title="Generar contraseña"
+            aria-label="Generar contraseña"
+          >
+            <Wand2 className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShow((v) => !v)}
+            className="text-muted hover:text-brand"
+            aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
+            {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
+      </div>
+    </label>
+  )
+}
+
+function ResetPasswordDialog({ member, onClose }) {
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [done, setDone] = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await api(`organization/members/${member.user_id}/password/`, { method: 'POST', body: { new_password: password } })
+      setDone(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog title={done ? 'Contraseña cambiada' : `Contraseña de ${member.name}`} onClose={onClose}>
+      {done ? (
+        <Credentials
+          email={member.email}
+          password={password}
+          onClose={onClose}
+          intro={
+            <>
+              Listo. Se cerraron las sesiones abiertas de <b className="text-ink">{member.name}</b>; tiene que volver a
+              entrar con estos datos:
+            </>
+          }
+        />
+      ) : (
+        <form onSubmit={submit} className="space-y-4">
+          <p className="text-sm text-muted">
+            Le ponés una contraseña nueva a <b className="text-ink">{member.email}</b>. La actual deja de servir y se
+            cierran todas sus sesiones.
+          </p>
+          <PasswordField label="Contraseña nueva (mín. 8)" value={password} onChange={setPassword} />
+          {error && <p className="text-xs text-brand">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" className="py-2" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" icon={KeyRound} className="py-2" busy={busy}>
+              Cambiar contraseña
+            </Button>
+          </div>
+        </form>
+      )}
+    </Dialog>
   )
 }
 
@@ -506,9 +620,10 @@ function RoleCard({ selected, onClick, icon: Icon, title, text }) {
   )
 }
 
-function Created({ member, onClose }) {
+// Datos de acceso listos para copiar y pasarle a la persona.
+function Credentials({ intro, email, password, onClose }) {
   const [copied, setCopied] = useState(false)
-  const text = `MooPing: ${window.location.origin}\nUsuario: ${member.email}\nContraseña: ${member.password}`
+  const text = `MooPing: ${window.location.origin}\nUsuario: ${email}\nContraseña: ${password}`
 
   async function copy() {
     try {
@@ -521,10 +636,7 @@ function Created({ member, onClose }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">
-        <b className="text-ink">{member.name}</b> ya puede entrar como {ROLE_LABEL[member.role].toLowerCase()}. Pasale
-        estos datos (si ya tenía cuenta, usa su contraseña de siempre):
-      </p>
+      <p className="text-sm text-muted">{intro}</p>
       <pre className="whitespace-pre-wrap rounded-lg bg-surface-low p-3 text-xs text-ink">{text}</pre>
       <div className="flex justify-end gap-2">
         <Button variant="outline" icon={copied ? Check : Copy} className="py-2" onClick={copy}>

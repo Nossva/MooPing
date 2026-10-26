@@ -89,3 +89,12 @@ def get_user_by_token(token_hash):
 
 def delete_token(token_hash):
     ApiToken.objects.filter(token_hash=token_hash).delete()
+
+
+def delete_user_tokens(user_id, keep_hash=None):
+    """Closes the user's sessions, except `keep_hash` (the one making the request)."""
+    ApiToken.objects.filter(user_id=user_id).exclude(token_hash=keep_hash).delete()
+
+
+def set_password(user_id, password_hash):
+    User.objects.filter(id=user_id).update(password_hash=password_hash)

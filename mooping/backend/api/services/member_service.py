@@ -31,8 +31,7 @@ def add_member(organization_id, request):
     _validate_role(request.role)
     user = user_repository.get_by_email(request.email)
     if user is None:
-        if len(request.password) < 8:
-            raise InvalidInput('La contraseña necesita al menos 8 caracteres.')
+        auth_service.validate_new_password(request.password)
         user = user_repository.create(request.name.strip(), request.email.strip().lower(),
                                       auth_service.hash_password(request.password), request.phone or None)
     elif user_repository.get_membership(user.id, organization_id) is not None:
@@ -62,6 +61,18 @@ def update_member(organization_id, user_id, acting_user, request):
     if changes:
         user_repository.update_member(organization_id, user_id, **changes)
     return MemberResponse.from_entity(_get(organization_id, user_id))
+
+
+@transaction.atomic
+def reset_password(organization_id, user_id, acting_user, request):
+    """request: MemberPasswordRequest. The owner sets a new password for a
+    member and closes all their sessions."""
+    if user_id == acting_user.id:
+        raise InvalidInput('Para tu propia contraseña usá "Mi cuenta" (te pide la actual).')
+    _get(organization_id, user_id)
+    auth_service.validate_new_password(request.new_password)
+    user_repository.set_password(user_id, auth_service.hash_password(request.new_password))
+    user_repository.delete_user_tokens(user_id)
 
 
 @transaction.atomic

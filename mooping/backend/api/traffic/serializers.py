@@ -8,6 +8,11 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField()
 
 
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(trim_whitespace=False)
+    new_password = serializers.CharField(max_length=200, trim_whitespace=False)
+
+
 class AlertListQuery(serializers.Serializer):
     status = serializers.ChoiceField(['open', 'all', 'pending', 'assigned', 'in_progress', 'resolved'],
                                      required=False)
@@ -120,6 +125,10 @@ class MemberCreateSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=200)
     role = serializers.ChoiceField(['owner', 'user'], default='user')
     phone = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True)
+
+
+class MemberPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(max_length=200, trim_whitespace=False)
 
 
 class MemberUpdateSerializer(serializers.Serializer):

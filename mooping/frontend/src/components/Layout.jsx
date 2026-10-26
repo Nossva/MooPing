@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BellRing, Compass, LogOut, Radar, Router, Settings, TriangleAlert, X } from 'lucide-react'
+import { Bell, BellRing, Compass, KeyRound, LogOut, Radar, Router, Settings, TriangleAlert, X } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { useApi } from '@/api/useApi'
 import { useAlertWatcher } from '@/api/useAlertWatcher'
@@ -24,7 +24,9 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-  const current = nav.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))
+  const current =
+    nav.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to))) ??
+    (location.pathname.startsWith('/cuenta') ? { label: 'Mi cuenta' } : null)
   const openAlerts = status?.open_alerts ?? 0
 
   return (
@@ -61,7 +63,10 @@ export default function Layout() {
             {me?.organizations?.[0]?.name}
             {role && ` · ${ROLE_LABEL[role] ?? role}`}
           </p>
-          <button onClick={logout} className="mt-3 flex items-center gap-2 text-xs font-semibold text-brand">
+          <NavLink to="/cuenta" className="mt-3 flex items-center gap-2 text-xs font-semibold text-ink hover:text-brand">
+            <KeyRound className="size-4" /> Mi cuenta y contraseña
+          </NavLink>
+          <button onClick={logout} className="mt-2 flex items-center gap-2 text-xs font-semibold text-brand">
             <LogOut className="size-4" /> Cerrar sesión
           </button>
         </div>
@@ -96,7 +101,16 @@ export default function Layout() {
                   <p className="font-semibold">{me?.user?.name}</p>
                   <p className="truncate text-xs text-muted">{me?.user?.email}</p>
                   {role && <p className="mt-1 text-xs font-semibold text-field">{ROLE_LABEL[role] ?? role}</p>}
-                  <button onClick={logout} className="mt-3 flex items-center gap-2 text-xs font-semibold text-brand">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false)
+                      navigate('/cuenta')
+                    }}
+                    className="mt-3 flex items-center gap-2 text-xs font-semibold text-ink hover:text-brand"
+                  >
+                    <KeyRound className="size-4" /> Mi cuenta y contraseña
+                  </button>
+                  <button onClick={logout} className="mt-2 flex items-center gap-2 text-xs font-semibold text-brand">
                     <LogOut className="size-4" /> Cerrar sesión
                   </button>
                 </div>

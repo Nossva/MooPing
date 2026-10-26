@@ -9,6 +9,7 @@ import Alertas from './pages/Alertas'
 import Equipos from './pages/Equipos'
 import Administracion from './pages/Administracion'
 import SinAcceso from './pages/SinAcceso'
+import MiCuenta from './pages/MiCuenta'
 
 export default function App() {
   const { token, me, isOwner, hasAccess } = useAuth()
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="monitoreo" element={<Monitoreo />} />
         <Route path="alertas" element={<Alertas />} />
         <Route path="equipos" element={<Equipos />} />
+        <Route path="cuenta" element={<MiCuenta />} />
         {/* Solo el dueño; mientras carga `me/` no redirigimos (recargar en /admin) */}
         <Route
           path="admin"

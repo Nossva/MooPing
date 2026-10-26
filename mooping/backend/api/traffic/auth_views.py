@@ -2,10 +2,10 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from api.dto.request.auth_request import LoginRequest
+from api.dto.request.auth_request import LoginRequest, PasswordChangeRequest
 from api.services import auth_service
 from api.traffic.http import request_dto, respond
-from api.traffic.serializers import LoginSerializer
+from api.traffic.serializers import LoginSerializer, PasswordChangeSerializer
 
 
 @api_view(['POST'])
@@ -26,3 +26,12 @@ def logout(request):
 @permission_classes([IsAuthenticated])
 def me(request):
     return respond(auth_service.get_profile(request.user))
+
+
+# Any logged-in user changes their own password (owner or not).
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    body = request_dto(PasswordChangeSerializer, PasswordChangeRequest, request.data)
+    auth_service.change_password(request.user, request.auth, body)
+    return Response(status=204)
