@@ -2,8 +2,8 @@
 
     python start.py
 
-Solo necesita Docker Desktop abierto. Equivale a `docker compose up -d --build`
-más esperar a que respondan la API y el frontend.
+Solo necesita Docker Desktop abierto. Equivale a `docker compose up -d --build`,
+aplicar los db/upgrade-*.sql a la base y esperar a que respondan la API y el frontend.
 """
 import os
 import subprocess
@@ -52,6 +52,30 @@ def compose_up():
         sys.exit('Falló `docker compose up`. Revisá el error de arriba.')
 
 
+def apply_db_upgrades():
+    """Runs every db/upgrade-*.sql on the existing database. schema.sql only
+    runs on an empty volume, so schema changes reach old databases this way.
+    The scripts are idempotent: running them on every start is safe."""
+    psql = ['docker', 'compose', 'exec', '-T', 'db']
+    deadline = time.monotonic() + TIMEOUT_S
+    while subprocess.call(psql + ['pg_isready', '-U', 'mooping', '-d', 'mooping'], cwd=ROOT,
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
+        if time.monotonic() > deadline:
+            sys.exit('La base no respondió. Revisá `docker compose logs db`.')
+        time.sleep(2)
+
+    for script in sorted(ROOT.glob('db/upgrade-*.sql')):
+        print(f'Actualizando base: {script.name}')
+        with script.open('rb') as sql:
+            result = subprocess.run(
+                psql + ['psql', '-U', 'mooping', '-d', 'mooping', '-q', '-v', 'ON_ERROR_STOP=1'],
+                cwd=ROOT, stdin=sql, capture_output=True, text=True,
+            )
+        if result.returncode != 0:
+            print(result.stderr, file=sys.stderr)
+            sys.exit(f'Falló {script.name}. Revisá el error de arriba.')
+
+
 def wait_for_api():
     """Polls /api/health/ until it answers with the database ok."""
     print(f'Esperando a que responda {URL} ...')
@@ -97,6 +121,7 @@ def wait_for_frontend():
 def main():
     check_docker()
     compose_up()
+    apply_db_upgrades()
     wait_for_api()
     wait_for_frontend()
     print(f'\nMooPing está andando: {FRONTEND_URL}  (API: {URL})')

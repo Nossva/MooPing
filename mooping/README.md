@@ -25,7 +25,7 @@ cd mooping
 docker compose up -d --build
 ```
 
-O, si tenés Python: `python start.py` hace lo mismo, espera a que respondan la API y el frontend y abre la app (http://localhost:5173).
+O, si tenés Python: `python start.py` hace lo mismo, actualiza la base existente con los `db/upgrade-*.sql`, espera a que respondan la API y el frontend y abre la app (http://localhost:5173).
 
 La primera vez:
 1. Descarga las imágenes y construye el backend (tarda unos minutos).
@@ -53,7 +53,7 @@ Logins (contraseña `mooping123`):
 - `demo@mooping.app`: **Dueño**. Edita todo y ve la sección Administración (usuarios y establecimiento).
 - `maria@mooping.app`: **Usuario**. Ve todo, atiende alertas y recibe las alarmas, pero no edita.
 
-Si tu base es anterior a los roles Dueño/Usuario, actualizala con `docker compose exec -T db psql -U mooping -d mooping < db/upgrade-roles.sql`.
+Si tu base es de antes de un cambio de esquema, `python start.py` la actualiza sola. Con `docker compose up` directo, ver [db/README.md](db/README.md).
 
 ## Conectar la Raspberry Pi
 

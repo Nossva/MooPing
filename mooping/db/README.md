@@ -24,15 +24,21 @@ docker compose down -v   # borra todos los datos
 docker compose up -d
 ```
 
-Si no querés perder los datos, algunos cambios traen un script de actualización:
+Si no querés perder los datos, algunos cambios traen un script de actualización.
+`python start.py` los aplica todos en cada arranque, así que tienen que ser
+**idempotentes** (`IF NOT EXISTS`, `DROP ... IF EXISTS`, etc.): correrlos dos veces no
+puede romper nada.
 
 | Script | Qué cambia |
 |---|---|
 | [upgrade-roles.sql](upgrade-roles.sql) | Roles `owner`/`admin`/`operator`/`viewer` → `owner` (Dueño) / `user` (Usuario) |
 | [upgrade-member-access.sql](upgrade-member-access.sql) | `memberships.active`: suspender el acceso de un usuario sin sacarlo |
 
+Si levantás con `docker compose up` directo, aplicalos a mano (desde `mooping/`):
+
 ```bash
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-roles.sql
+docker compose exec -T db psql -U mooping -d mooping < db/upgrade-member-access.sql
 ```
 
 ## Tablas
