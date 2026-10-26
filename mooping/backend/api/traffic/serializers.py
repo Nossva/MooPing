@@ -3,14 +3,19 @@ becomes a request DTO (see api/dto and traffic/http.request_dto)."""
 from rest_framework import serializers
 
 
+# Passwords: never trimmed (the same text must work in every endpoint) and
+# capped so a huge input can't keep PBKDF2 busy.
+PASSWORD_MAX_LENGTH = 200
+
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField()
+    password = serializers.CharField(max_length=PASSWORD_MAX_LENGTH, trim_whitespace=False)
 
 
 class PasswordChangeSerializer(serializers.Serializer):
-    current_password = serializers.CharField(trim_whitespace=False)
-    new_password = serializers.CharField(max_length=200, trim_whitespace=False)
+    current_password = serializers.CharField(max_length=PASSWORD_MAX_LENGTH, trim_whitespace=False)
+    new_password = serializers.CharField(max_length=PASSWORD_MAX_LENGTH, trim_whitespace=False)
 
 
 class AlertListQuery(serializers.Serializer):
@@ -122,13 +127,13 @@ class NotificationSettingsSerializer(serializers.Serializer):
 class MemberCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=200)
     email = serializers.EmailField()
-    password = serializers.CharField(max_length=200)
+    password = serializers.CharField(max_length=PASSWORD_MAX_LENGTH, trim_whitespace=False)
     role = serializers.ChoiceField(['owner', 'user'], default='user')
     phone = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True)
 
 
 class MemberPasswordSerializer(serializers.Serializer):
-    new_password = serializers.CharField(max_length=200, trim_whitespace=False)
+    new_password = serializers.CharField(max_length=PASSWORD_MAX_LENGTH, trim_whitespace=False)
 
 
 class MemberUpdateSerializer(serializers.Serializer):

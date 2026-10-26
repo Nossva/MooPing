@@ -2,6 +2,8 @@ import hashlib
 import secrets
 
 from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from api.dto.response.auth_response import LoginResponse, ProfileResponse
 from api.repositories import user_repository
@@ -12,8 +14,7 @@ OWNER = 'owner'
 USER = 'user'
 ROLES = (OWNER, USER)
 
-MIN_PASSWORD_LENGTH = 8
-
+_BAD_LOGIN = 'Email o contraseña incorrectos.'
 _SUSPENDED = 'Tu acceso al establecimiento está suspendido. Hablá con el dueño.'
 
 
@@ -25,9 +26,13 @@ def hash_password(password):
     return make_password(password)
 
 
-def validate_new_password(password):
-    if len(password) < MIN_PASSWORD_LENGTH:
-        raise InvalidInput(f'La contraseña necesita al menos {MIN_PASSWORD_LENGTH} caracteres.')
+def validate_new_password(password, user):
+    """Django's AUTH_PASSWORD_VALIDATORS (length, common, numeric, similar to
+    the user's name/email). `user` may be an unsaved User for a new account."""
+    try:
+        validate_password(password, user)
+    except ValidationError as error:
+        raise InvalidInput(' '.join(error.messages))
 
 
 def change_password(user, token, request):
@@ -35,9 +40,9 @@ def change_password(user, token, request):
     their other sessions are closed, this one stays."""
     if not check_password(request.current_password, user.password_hash):
         raise InvalidInput('La contraseña actual no es correcta.')
-    validate_new_password(request.new_password)
     if request.new_password == request.current_password:
         raise InvalidInput('La contraseña nueva tiene que ser distinta de la actual.')
+    validate_new_password(request.new_password, user)
     user_repository.set_password(user.id, hash_password(request.new_password))
     user_repository.delete_user_tokens(user.id, keep_hash=_hash_token(token))
 
@@ -45,8 +50,15 @@ def change_password(user, token, request):
 def login(request):
     """request: LoginRequest -> LoginResponse"""
     user = user_repository.get_by_email(request.email)
-    if user is None or not check_password(request.password, user.password_hash):
-        raise Unauthorized('Email o contraseña incorrectos.')
+    if user is None:
+        make_password(request.password)  # same response time whether the email exists or not
+        raise Unauthorized(_BAD_LOGIN)
+
+    def rehash(raw):  # Django raised the hasher's cost since this hash was stored
+        user_repository.set_password(user.id, make_password(raw))
+
+    if not check_password(request.password, user.password_hash, setter=rehash):
+        raise Unauthorized(_BAD_LOGIN)
     token = secrets.token_urlsafe(32)
     user_repository.create_token(user.id, _hash_token(token))
     return LoginResponse.build(token, get_profile(user))

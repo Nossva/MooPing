@@ -2,8 +2,9 @@ from django.db import models
 
 
 class User(models.Model):
-    name = models.TextField()
-    email = models.TextField()
+    # verbose_name: shown by the password validator ("muy similar a nombre")
+    name = models.TextField(verbose_name='nombre')
+    email = models.TextField(verbose_name='email')
     phone = models.TextField(null=True)
     password_hash = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

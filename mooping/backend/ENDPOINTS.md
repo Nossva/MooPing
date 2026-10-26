@@ -11,8 +11,21 @@ frontend calcula "hace 8 min".
 
 Demo (`python manage.py seed_demo`): `demo@mooping.app` / `mooping123`.
 
-Errores: `{"detail": "mensaje"}` con 400, 401, 403, 404 o 409. Los errores de
+Errores: `{"detail": "mensaje"}` con 400, 401, 403, 404, 409 o 429. Los errores de
 validación de campos vienen como `{"campo": ["mensaje"]}`.
+
+### Contraseñas
+
+- Se guardan hasheadas con PBKDF2-SHA256 (el hasher de Django). Nunca en texto plano.
+- Toda contraseña nueva (`organization/members/`, `me/password/`,
+  `organization/members/{id}/password/`) pasa por los validadores de Django
+  (`AUTH_PASSWORD_VALIDATORS`): mínimo 8 caracteres, no puede ser una contraseña común
+  (`password1`), ni solo números, ni parecida al nombre o al email. Si no cumple → 400
+  con el motivo en `detail`.
+- Los espacios cuentan: no se recortan en ningún endpoint. Máximo 200 caracteres.
+- `auth/login/`: máximo `LOGIN_RATE` intentos por IP (por defecto `10/min`). Pasado el
+  límite → 429 `{"detail": "Demasiados intentos. Probá de nuevo en N s."}` con el header
+  `Retry-After`. El contador vive en memoria del proceso: se reinicia al reiniciar el backend.
 
 ## Roles y permisos
 
@@ -40,7 +53,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | GET | `health/` | `{status, database}` (sin login) |
 | POST | `auth/login/` | `{token, user, organizations}` (sin login) |
 | POST | `auth/logout/` | 204 |
-| POST | `me/password/` | `{current_password, new_password (mín. 8)}` → 204. Cualquier usuario cambia la suya; se cierran sus otras sesiones. |
+| POST | `me/password/` | `{current_password, new_password (ver Contraseñas)}` → 204. Cualquier usuario cambia la suya; se cierran sus otras sesiones. |
 | GET | `me/` | `{user: {id, name, email, phone, initials}, organizations: [{id, name, role}]}` |
 | GET | `status/` | `{online, last_packet_at, radio, gateways_online, gateways_total, open_alerts, server_time}` |
 
@@ -102,9 +115,9 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 |---|---|---|
 | GET · PATCH | `organization/` | `{id, name, vet_phone, fever_threshold_c (37–42), low_battery_pct (5–50), no_signal_minutes (5–1440)}` |
 | GET | `organization/members/` | `[{user_id, name, email, phone, role, active, created_at}]` (dueños primero) |
-| POST | `organization/members/` | `{name, email, password (mín. 8), role: owner\|user, phone?}` → 201. Si el email ya tiene cuenta, se la suma sin cambiar su contraseña; si ya es miembro, 409. |
+| POST | `organization/members/` | `{name, email, password (ver Contraseñas), role: owner\|user, phone?}` → 201. Si el email ya tiene cuenta, se la suma sin cambiar su contraseña; si ya es miembro, 409. |
 | PATCH | `organization/members/{user_id}/` | `{role?, active?}`. `active: false` suspende el acceso sin sacarlo (su `me/` deja de listar el establecimiento y el resto responde 403); `true` lo reactiva. No podés suspenderte a vos mismo ni dejar el establecimiento sin un dueño activo (409). |
-| POST | `organization/members/{user_id}/password/` | `{new_password (mín. 8)}` → 204. Solo dueño: le pone una contraseña nueva y cierra todas sus sesiones. La propia se cambia con `me/password/`. |
+| POST | `organization/members/{user_id}/password/` | `{new_password (ver Contraseñas)}` → 204. Solo dueño: le pone una contraseña nueva y cierra todas sus sesiones. La propia se cambia con `me/password/`. |
 | DELETE | `organization/members/{user_id}/` | 204. Lo saca del establecimiento; la cuenta queda. |
 
 ### Raspberry Pi

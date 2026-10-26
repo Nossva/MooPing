@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from api.dto.response.member_response import MemberResponse
+from api.entities import User
 from api.repositories import user_repository
 from api.services import auth_service
 from api.services.errors import Conflict, InvalidInput, NotFound
@@ -31,9 +32,10 @@ def add_member(organization_id, request):
     _validate_role(request.role)
     user = user_repository.get_by_email(request.email)
     if user is None:
-        auth_service.validate_new_password(request.password)
-        user = user_repository.create(request.name.strip(), request.email.strip().lower(),
-                                      auth_service.hash_password(request.password), request.phone or None)
+        name, email = request.name.strip(), request.email.strip().lower()
+        auth_service.validate_new_password(request.password, User(name=name, email=email))
+        user = user_repository.create(name, email, auth_service.hash_password(request.password),
+                                      request.phone or None)
     elif user_repository.get_membership(user.id, organization_id) is not None:
         raise Conflict(f'{request.email} ya es parte del establecimiento.')
     user_repository.add_membership(organization_id, user.id, request.role)
@@ -69,8 +71,8 @@ def reset_password(organization_id, user_id, acting_user, request):
     member and closes all their sessions."""
     if user_id == acting_user.id:
         raise InvalidInput('Para tu propia contraseña usá "Mi cuenta" (te pide la actual).')
-    _get(organization_id, user_id)
-    auth_service.validate_new_password(request.new_password)
+    member = _get(organization_id, user_id)
+    auth_service.validate_new_password(request.new_password, member.user)
     user_repository.set_password(user_id, auth_service.hash_password(request.new_password))
     user_repository.delete_user_tokens(user_id)
 

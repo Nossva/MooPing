@@ -127,12 +127,16 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
+# Applied to every new password by auth_service.validate_new_password.
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        # api.entities.User has name/email, not username/first_name.
+        'OPTIONS': {'user_attributes': ('name', 'email')},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -173,6 +177,9 @@ REST_FRAMEWORK = {
     ],
     'EXCEPTION_HANDLER': 'api.traffic.exception_handler.exception_handler',
     'UNAUTHENTICATED_USER': None,
+    # Login attempts per client IP (auth_views.login). Counted in the default
+    # in-memory cache: fine for one server process; several need a shared cache (Redis).
+    'DEFAULT_THROTTLE_RATES': {'login': os.environ.get('LOGIN_RATE', '10/min')},
 }
 
 
