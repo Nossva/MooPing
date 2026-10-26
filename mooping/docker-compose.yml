@@ -81,6 +81,7 @@ services:
     working_dir: /app
     environment:
       BACKEND_URL: http://backend:8000
+      VITE_WATCH_POLLING: "true"
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     volumes:

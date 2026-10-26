@@ -18,5 +18,8 @@ export default defineConfig({
     // Sin changeOrigin: Django recibe Host "localhost", que está en DJANGO_ALLOWED_HOSTS
     // ("backend" no lo está).
     proxy: { '/api': { target: backend } },
+    // En Docker sobre Windows los cambios de archivos no llegan como eventos:
+    // sin polling, Vite sigue sirviendo la versión vieja.
+    watch: process.env.VITE_WATCH_POLLING === 'true' ? { usePolling: true, interval: 500 } : undefined,
   },
 })
