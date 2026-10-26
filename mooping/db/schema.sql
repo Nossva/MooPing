@@ -58,6 +58,12 @@ CREATE TABLE memberships (
                    CHECK (role IN ('owner', 'user')),
   -- false = acceso suspendido por el dueño (sigue en la lista, no puede entrar)
   active           BOOLEAN NOT NULL DEFAULT true,
+  -- Permisos de un "user" (el dueño siempre ve todo):
+  -- sections: secciones que ve (["inicio","monitoreo","alertas","equipos"]); NULL = todas,
+  --   incluidas las que se agreguen después.
+  -- all_yards: true = todos los potreros; false = solo member_yards + member_animals.
+  sections         JSONB,
+  all_yards        BOOLEAN NOT NULL DEFAULT true,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (organization_id, user_id)
 );
@@ -186,6 +192,24 @@ CREATE UNIQUE INDEX animal_devices_active_animal_key
   ON animal_devices (animal_id) WHERE unassigned_at IS NULL;
 CREATE UNIQUE INDEX animal_devices_active_device_key
   ON animal_devices (device_id) WHERE unassigned_at IS NULL;
+
+-- Alcance de un usuario con memberships.all_yards = false: ve los animales de
+-- estos potreros más estos animales sueltos (y sus alertas y collares).
+CREATE TABLE member_yards (
+  organization_id  BIGINT NOT NULL,
+  user_id          BIGINT NOT NULL,
+  yard_id          BIGINT NOT NULL REFERENCES yards(id) ON DELETE CASCADE,
+  PRIMARY KEY (organization_id, user_id, yard_id),
+  FOREIGN KEY (organization_id, user_id) REFERENCES memberships ON DELETE CASCADE
+);
+
+CREATE TABLE member_animals (
+  organization_id  BIGINT NOT NULL,
+  user_id          BIGINT NOT NULL,
+  animal_id        BIGINT NOT NULL REFERENCES animals(id) ON DELETE CASCADE,
+  PRIMARY KEY (organization_id, user_id, animal_id),
+  FOREIGN KEY (organization_id, user_id) REFERENCES memberships ON DELETE CASCADE
+);
 
 -- =====================================================================
 -- TELEMETRY

@@ -11,8 +11,25 @@ import Administracion from './pages/Administracion'
 import SinAcceso from './pages/SinAcceso'
 import MiCuenta from './pages/MiCuenta'
 
+// Sección (permiso del usuario, ver Admin > Permisos) -> ruta.
+const SECTION_PATHS = [
+  ['inicio', '/'],
+  ['monitoreo', '/monitoreo'],
+  ['alertas', '/alertas'],
+  ['equipos', '/equipos'],
+]
+
+// Mientras carga `me/` no sabemos los permisos: no redirigimos (recargar en /admin o /equipos).
+function Gate({ allowed, children }) {
+  const { me, can } = useAuth()
+  if (!me) return <Loading />
+  if (allowed(can)) return children
+  const first = SECTION_PATHS.find(([section]) => can(section))
+  return <Navigate to={first ? first[1] : '/cuenta'} replace />
+}
+
 export default function App() {
-  const { token, me, isOwner, hasAccess } = useAuth()
+  const { token, isOwner, hasAccess } = useAuth()
 
   if (!token) {
     return (
@@ -24,20 +41,17 @@ export default function App() {
 
   if (!hasAccess) return <SinAcceso />
 
+  const section = (name, page) => <Gate allowed={(can) => can(name)}>{page}</Gate>
 
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Inicio />} />
-        <Route path="monitoreo" element={<Monitoreo />} />
-        <Route path="alertas" element={<Alertas />} />
-        <Route path="equipos" element={<Equipos />} />
+        <Route index element={section('inicio', <Inicio />)} />
+        <Route path="monitoreo" element={section('monitoreo', <Monitoreo />)} />
+        <Route path="alertas" element={section('alertas', <Alertas />)} />
+        <Route path="equipos" element={section('equipos', <Equipos />)} />
         <Route path="cuenta" element={<MiCuenta />} />
-        {/* Solo el dueño; mientras carga `me/` no redirigimos (recargar en /admin) */}
-        <Route
-          path="admin"
-          element={isOwner ? <Administracion /> : me ? <Navigate to="/" replace /> : <Loading />}
-        />
+        <Route path="admin" element={<Gate allowed={() => isOwner}><Administracion /></Gate>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

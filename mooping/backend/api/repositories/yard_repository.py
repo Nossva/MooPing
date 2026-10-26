@@ -1,7 +1,9 @@
 import json
 
+from api.entities import Yard
 from api.repositories.db import execute, fetch_all, fetch_one, fetch_value
 from api.repositories.records import PointStatusRecord, YardRecord
+from api.repositories.scope import yard_sql
 
 _SELECT = """
     SELECT y.id, y.name,
@@ -13,12 +15,21 @@ _SELECT = """
 """
 
 
-def list_by_org(organization_id):
-    return fetch_all(_SELECT + ' WHERE y.organization_id = %s ORDER BY y.name', [organization_id], YardRecord)
+def list_by_org(organization_id, scope=None):
+    where, params = yard_sql(scope, 'y.id')
+    return fetch_all(_SELECT + ' WHERE y.organization_id = %s' + where + ' ORDER BY y.name',
+                     [organization_id, *params], YardRecord)
 
 
-def get(organization_id, yard_id):
-    return fetch_one(_SELECT + ' WHERE y.organization_id = %s AND y.id = %s', [organization_id, yard_id], YardRecord)
+def get(organization_id, yard_id, scope=None):
+    where, params = yard_sql(scope, 'y.id')
+    return fetch_one(_SELECT + ' WHERE y.organization_id = %s AND y.id = %s' + where,
+                     [organization_id, yard_id, *params], YardRecord)
+
+
+def existing_ids(organization_id, yard_ids):
+    """The ids in `yard_ids` that are potreros of this organization."""
+    return set(Yard.objects.filter(organization_id=organization_id, id__in=yard_ids).values_list('id', flat=True))
 
 
 def create(organization_id, name, boundary_geojson):

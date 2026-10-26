@@ -66,7 +66,8 @@ function beep(ctx) {
   }
 }
 
-export function useAlertWatcher() {
+// enabled=false: el usuario no tiene la sección Alertas, no se consulta nada.
+export function useAlertWatcher({ enabled = true } = {}) {
   const navigate = useNavigate()
   const seen = useRef(null) // ids ya vistos; null hasta la primera carga
   const audio = useRef(null)
@@ -106,11 +107,12 @@ export function useAlertWatcher() {
   }, [navigate])
 
   useEffect(() => {
+    if (!enabled) return
     // fetch: los setState ocurren después del await, no en el cuerpo del efecto
     check()
     const id = setInterval(check, REFRESH_MS)
     return () => clearInterval(id)
-  }, [check])
+  }, [check, enabled])
 
   // El navegador solo deja sonar audio tras un gesto del usuario: si ya activó
   // las alarmas antes, el primer clic en la página vuelve a desbloquearlo.

@@ -26,24 +26,25 @@ def _check_geofence(geofence):
         raise InvalidInput("geofence debe ser 'inside' u 'outside'.")
 
 
-def list_animals(organization_id, request):
+def list_animals(organization_id, request, scope=None):
     """request: AnimalListRequest -> list[AnimalResponse]"""
     _check_geofence(request.geofence)
     records = animal_repository.list_rows(organization_id, search=request.search, yard_id=request.yard_id,
-                                          geofence=request.geofence, status=request.status)
+                                          geofence=request.geofence, status=request.status, scope=scope)
     return [AnimalResponse.from_record(r) for r in records]
 
 
-def list_positions(organization_id, request):
+def list_positions(organization_id, request, scope=None):
     """request: AnimalPositionsRequest -> list[AnimalPositionResponse] (map markers)"""
     _check_geofence(request.geofence)
-    records = animal_repository.list_rows(organization_id, yard_id=request.yard_id, geofence=request.geofence)
+    records = animal_repository.list_rows(organization_id, yard_id=request.yard_id, geofence=request.geofence,
+                                          scope=scope)
     return [AnimalPositionResponse.from_record(r) for r in records if r.lat is not None]
 
 
-def get_animal(organization_id, animal_id):
+def get_animal(organization_id, animal_id, scope=None):
     """Ficha shown in Monitoreo: vitals, activity, position, collar, open alerts."""
-    record = animal_repository.get_row(organization_id, animal_id)
+    record = animal_repository.get_row(organization_id, animal_id, scope)
     if record is None:
         raise NotFound('Animal no encontrado.')
     org = organization_repository.get(organization_id)
@@ -86,9 +87,9 @@ def update_animal(organization_id, animal_id, request):
     return get_animal(organization_id, animal_id)
 
 
-def get_track(organization_id, animal_id, request):
+def get_track(organization_id, animal_id, request, scope=None):
     """request: TrackRequest -> TrackResponse"""
-    if animal_repository.get(organization_id, animal_id) is None:
+    if animal_repository.get(organization_id, animal_id, scope) is None:
         raise NotFound('Animal no encontrado.')
     if not 1 <= request.hours <= 24 * 30:
         raise InvalidInput('hours debe estar entre 1 y 720.')

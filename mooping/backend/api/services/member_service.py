@@ -1,9 +1,9 @@
 from django.db import transaction
 
-from api.dto.response.member_response import MemberResponse
+from api.dto.response.member_response import MemberAccessResponse, MemberResponse
 from api.entities import User
 from api.repositories import user_repository
-from api.services import auth_service
+from api.services import access_service, auth_service
 from api.services.errors import Conflict, InvalidInput, NotFound
 
 _LAST_OWNER = 'El establecimiento necesita al menos un dueño.'
@@ -21,8 +21,29 @@ def _get(organization_id, user_id):
     return member
 
 
+def _access_response(member, record):
+    if member.role == auth_service.OWNER:
+        return MemberAccessResponse(list(auth_service.SECTIONS), True, [], [])
+    return MemberAccessResponse(auth_service.resolve_sections(member.role, record.sections), record.all_yards,
+                                record.yard_ids, record.animal_ids)
+
+
+def _response(organization_id, user_id):
+    member = _get(organization_id, user_id)
+    return MemberResponse.from_entity(
+        member, _access_response(member, user_repository.get_access(organization_id, user_id)))
+
+
 def list_members(organization_id):
-    return [MemberResponse.from_entity(m) for m in user_repository.list_members(organization_id)]
+    access = user_repository.list_access(organization_id)
+    return [MemberResponse.from_entity(m, _access_response(m, access[m.user_id]))
+            for m in user_repository.list_members(organization_id)]
+
+
+def set_access(organization_id, user_id, request):
+    """request: MemberAccessRequest -> MemberResponse"""
+    access_service.set_access(organization_id, user_id, request)
+    return _response(organization_id, user_id)
 
 
 @transaction.atomic
@@ -39,7 +60,7 @@ def add_member(organization_id, request):
     elif user_repository.get_membership(user.id, organization_id) is not None:
         raise Conflict(f'{request.email} ya es parte del establecimiento.')
     user_repository.add_membership(organization_id, user.id, request.role)
-    return MemberResponse.from_entity(_get(organization_id, user.id))
+    return _response(organization_id, user.id)
 
 
 def _is_active_owner(member):
@@ -62,7 +83,7 @@ def update_member(organization_id, user_id, acting_user, request):
         raise Conflict(_LAST_OWNER)
     if changes:
         user_repository.update_member(organization_id, user_id, **changes)
-    return MemberResponse.from_entity(_get(organization_id, user_id))
+    return _response(organization_id, user_id)
 
 
 @transaction.atomic

@@ -4,6 +4,7 @@ from django.utils import timezone
 from api.entities import CATEGORY_BY_TYPE, Alert, AlertNote
 from api.repositories.db import fetch_all, fetch_one
 from api.repositories.records import AlertRecord
+from api.repositories.scope import alert_q, alert_sql
 
 # One row per alert with the animal, collar, potrero, assignee and last position.
 _ALERT_ROWS = """
@@ -35,10 +36,11 @@ def _types_for(category):
 
 
 def list_rows(organization_id, status=None, category=None, resolved_today=False,
-              animal_id=None, device_id=None, sort='urgency', limit=200):
+              animal_id=None, device_id=None, sort='urgency', limit=200, scope=None):
     """status: 'open' (not resolved) | 'resolved' | a concrete status | None (all)."""
-    sql = 'SELECT * FROM (' + _ALERT_ROWS + ') q WHERE true'
-    params = [organization_id]
+    where, params = alert_sql(scope, 'q.animal_id', 'q.yard_id')
+    sql = 'SELECT * FROM (' + _ALERT_ROWS + ') q WHERE true' + where
+    params = [organization_id, *params]
     if status == 'open':
         sql += " AND q.status <> 'resolved'"
     elif status:
@@ -67,26 +69,29 @@ def list_rows(organization_id, status=None, category=None, resolved_today=False,
     return fetch_all(sql, params, AlertRecord)
 
 
-def get_row(organization_id, alert_id):
-    return fetch_one('SELECT * FROM (' + _ALERT_ROWS + ') q WHERE q.id = %s', [organization_id, alert_id], AlertRecord)
+def get_row(organization_id, alert_id, scope=None):
+    where, params = alert_sql(scope, 'q.animal_id', 'q.yard_id')
+    return fetch_one('SELECT * FROM (' + _ALERT_ROWS + ') q WHERE q.id = %s' + where,
+                     [organization_id, alert_id, *params], AlertRecord)
 
 
-def get(organization_id, alert_id):
-    return Alert.objects.filter(organization_id=organization_id, id=alert_id).first()
+def get(organization_id, alert_id, scope=None):
+    return Alert.objects.filter(alert_q(scope), organization_id=organization_id, id=alert_id).first()
 
 
-def open_counts_by_type(organization_id):
+def open_counts_by_type(organization_id, scope=None):
     """{type: count} of alerts that are not resolved."""
+    where, params = alert_sql(scope, 'animal_id', 'yard_id')
     rows = fetch_all(
         """SELECT type, count(*) AS n FROM alerts
-           WHERE organization_id = %s AND status <> 'resolved' GROUP BY type""",
-        [organization_id],
+           WHERE organization_id = %s AND status <> 'resolved'""" + where + ' GROUP BY type',
+        [organization_id, *params],
     )
     return {r['type']: r['n'] for r in rows}
 
 
-def count_open(organization_id, severity=None, status=None):
-    qs = Alert.objects.filter(organization_id=organization_id).exclude(status='resolved')
+def count_open(organization_id, severity=None, status=None, scope=None):
+    qs = Alert.objects.filter(alert_q(scope), organization_id=organization_id).exclude(status='resolved')
     if severity:
         qs = qs.filter(severity=severity)
     if status:

@@ -10,18 +10,18 @@ from api.services import alert_service
 from api.services.errors import NotFound
 
 
-def summary(organization_id, request):
+def summary(organization_id, request, scope=None):
     """request: YardQueryRequest. Cards on top of the Monitoreo map: Rebaño,
     Alertas, Gateway."""
     yard = None
     if request.yard_id is not None:
-        yard = yard_repository.get(organization_id, request.yard_id)
+        yard = yard_repository.get(organization_id, request.yard_id, scope)
         if yard is None:
             raise NotFound('Potrero no encontrado.')
-    animals = animal_repository.list_rows(organization_id, yard_id=request.yard_id)
+    animals = animal_repository.list_rows(organization_id, yard_id=request.yard_id, scope=scope)
     located = [a for a in animals if a.inside_geofence is not None]
     inside = sum(1 for a in located if a.inside_geofence)
-    alerts = alert_service.summary(organization_id)
+    alerts = alert_service.summary(organization_id, scope)
     gateways = [g for g in gateway_repository.list_by_org(organization_id) if g.kind == 'gateway']
     # Battery-powered gateways first: their charge is what the card is for.
     gateways.sort(key=lambda g: g.battery_pct is None)

@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.dto.request.member_request import (
+    MemberAccessRequest,
     MemberCreateRequest,
     MemberPasswordRequest,
     MemberUpdateRequest,
@@ -11,6 +12,7 @@ from api.services import member_service, organization_service
 from api.traffic.context import organization_id
 from api.traffic.http import request_dto, respond
 from api.traffic.serializers import (
+    MemberAccessSerializer,
     MemberCreateSerializer,
     MemberPasswordSerializer,
     MemberUpdateSerializer,
@@ -47,6 +49,12 @@ def member_detail(request, user_id):
         return Response(status=204)
     body = request_dto(MemberUpdateSerializer, MemberUpdateRequest, request.data, partial=True)
     return respond(member_service.update_member(org_id, user_id, request.user, body))
+
+
+@api_view(['PUT'])
+def member_access(request, user_id):
+    body = request_dto(MemberAccessSerializer, MemberAccessRequest, request.data)
+    return respond(member_service.set_access(organization_id(request), user_id, body))
 
 
 @api_view(['POST'])

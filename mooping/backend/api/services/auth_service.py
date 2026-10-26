@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from dataclasses import replace
 
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.password_validation import validate_password
@@ -13,6 +14,16 @@ from api.services.errors import Forbidden, InvalidInput, Unauthorized
 OWNER = 'owner'
 USER = 'user'
 ROLES = (OWNER, USER)
+
+# Sections a "user" can be given (access_service); order = order of the menu.
+SECTIONS = ('inicio', 'monitoreo', 'alertas', 'equipos')
+
+
+def resolve_sections(role, sections):
+    """Sections a member sees: all for owners and for sections=None."""
+    if role == OWNER or sections is None:
+        return list(SECTIONS)
+    return [s for s in SECTIONS if s in sections]
 
 _BAD_LOGIN = 'Email o contraseña incorrectos.'
 _SUSPENDED = 'Tu acceso al establecimiento está suspendido. Hablá con el dueño.'
@@ -103,5 +114,6 @@ def resolve_organization(user, requested_id=None):
 
 def get_profile(user):
     """Only the establecimientos the user can enter (suspended ones are left out)."""
-    memberships = [m for m in user_repository.list_memberships(user.id) if m.active]
+    memberships = [replace(m, sections=resolve_sections(m.role, m.sections))
+                   for m in user_repository.list_memberships(user.id) if m.active]
     return ProfileResponse.build(user, memberships)

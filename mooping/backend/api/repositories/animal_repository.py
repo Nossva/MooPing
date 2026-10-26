@@ -3,6 +3,7 @@ from django.conf import settings
 from api.entities import Animal, AnimalDevice
 from api.repositories.db import fetch_all, fetch_one, fetch_value
 from api.repositories.records import AnimalRecord, ReportingDayRecord, TrackPointRecord
+from api.repositories.scope import animal_q, animal_sql
 
 # One row per animal with its active collar, last position and geofence state.
 _ANIMAL_ROWS = """
@@ -29,10 +30,11 @@ _ANIMAL_ROWS = """
 """
 
 
-def list_rows(organization_id, search=None, yard_id=None, geofence=None, status='active', limit=500):
+def list_rows(organization_id, search=None, yard_id=None, geofence=None, status='active', limit=500, scope=None):
     """geofence: 'inside' | 'outside' | None."""
-    sql = 'SELECT * FROM (' + _ANIMAL_ROWS + ') q WHERE true'
-    params = [organization_id]
+    where, params = animal_sql(scope, 'q.id')
+    sql = 'SELECT * FROM (' + _ANIMAL_ROWS + ') q WHERE true' + where
+    params = [organization_id, *params]
     if status:
         sql += ' AND q.status = %s'
         params.append(status)
@@ -52,12 +54,19 @@ def list_rows(organization_id, search=None, yard_id=None, geofence=None, status=
     return fetch_all(sql, params, AnimalRecord)
 
 
-def get_row(organization_id, animal_id):
-    return fetch_one('SELECT * FROM (' + _ANIMAL_ROWS + ') q WHERE q.id = %s', [organization_id, animal_id], AnimalRecord)
+def get_row(organization_id, animal_id, scope=None):
+    where, params = animal_sql(scope, 'q.id')
+    return fetch_one('SELECT * FROM (' + _ANIMAL_ROWS + ') q WHERE q.id = %s' + where,
+                     [organization_id, animal_id, *params], AnimalRecord)
 
 
-def get(organization_id, animal_id):
-    return Animal.objects.filter(organization_id=organization_id, id=animal_id).first()
+def get(organization_id, animal_id, scope=None):
+    return Animal.objects.filter(animal_q(scope), organization_id=organization_id, id=animal_id).first()
+
+
+def existing_ids(organization_id, animal_ids):
+    """The ids in `animal_ids` that are animals of this organization."""
+    return set(Animal.objects.filter(organization_id=organization_id, id__in=animal_ids).values_list('id', flat=True))
 
 
 def create(organization_id, **fields):
@@ -114,33 +123,36 @@ def track(organization_id, animal_id, hours):
     )
 
 
-def count_active(organization_id):
-    return Animal.objects.filter(organization_id=organization_id, status='active').count()
+def count_active(organization_id, scope=None):
+    return Animal.objects.filter(animal_q(scope), organization_id=organization_id, status='active').count()
 
 
-def count_reporting(organization_id, minutes):
+def count_reporting(organization_id, minutes, scope=None):
     """Active animals whose collar sent data in the last `minutes`."""
+    where, params = animal_sql(scope, 'a.id')
     return fetch_value(
         """SELECT count(*) FROM animals a
            JOIN animal_last_position alp ON alp.animal_id = a.id
            WHERE a.organization_id = %s AND a.status = 'active'
-             AND alp.recorded_at >= now() - make_interval(mins => %s)""",
-        [organization_id, minutes],
+             AND alp.recorded_at >= now() - make_interval(mins => %s)""" + where,
+        [organization_id, minutes, *params],
     )
 
 
-def reporting_series(organization_id, days):
+def reporting_series(organization_id, days, scope=None):
     """Distinct animals with at least one reading per local day."""
+    where, params = animal_sql(scope, 'a.id')
     return fetch_all(
         """SELECT d::date AS date,
                   (SELECT count(DISTINCT t.animal_id)
                      FROM telemetry_readings t JOIN animals a ON a.id = t.animal_id
-                    WHERE a.organization_id = %s
+                    WHERE a.organization_id = %s""" + where + """
                       AND t.recorded_at >= (d AT TIME ZONE %s)
                       AND t.recorded_at <  ((d + interval '1 day') AT TIME ZONE %s)) AS reporting
            FROM generate_series((now() AT TIME ZONE %s)::date - (%s - 1),
                                 (now() AT TIME ZONE %s)::date, interval '1 day') AS d
            ORDER BY d""",
-        [organization_id, settings.TIME_ZONE, settings.TIME_ZONE, settings.TIME_ZONE, days, settings.TIME_ZONE],
+        [organization_id, *params, settings.TIME_ZONE, settings.TIME_ZONE, settings.TIME_ZONE, days,
+         settings.TIME_ZONE],
         ReportingDayRecord,
     )

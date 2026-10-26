@@ -55,11 +55,16 @@ export function AuthProvider({ children }) {
   // Rol en el establecimiento activo: el primero, igual que el backend sin X-Organization-Id.
   const role = me?.organizations?.[0]?.role ?? null
   const isOwner = role === 'owner'
+  // Secciones del menú que puede abrir (el backend ya resuelve "todas" para el dueño).
+  const sections = me?.organizations?.[0]?.sections ?? null
+  const can = useCallback((section) => isOwner || !sections || sections.includes(section), [isOwner, sections])
   // me/ solo lista los establecimientos con acceso activo: vacío = suspendido o sin establecimiento.
   const hasAccess = !me || me.organizations.length > 0
 
   return (
-    <AuthContext value={{ token, me, role, isOwner, hasAccess, login, logout, refreshMe }}>{children}</AuthContext>
+    <AuthContext value={{ token, me, role, isOwner, sections, can, hasAccess, login, logout, refreshMe }}>
+      {children}
+    </AuthContext>
   )
 }
 

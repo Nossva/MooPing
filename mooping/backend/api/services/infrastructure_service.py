@@ -11,9 +11,10 @@ from api.dto.response.summary_response import (
 from api.repositories import device_repository, gateway_repository, telemetry_repository, yard_repository
 
 
-def summary(organization_id):
-    """Header cards of the Equipos screen."""
-    devices = device_repository.list_rows(organization_id)
+def summary(organization_id, scope=None):
+    """Header cards of the Equipos screen. With a scope, the collar figures
+    cover only the collars on visible animals; gateways are shared."""
+    devices = device_repository.list_rows(organization_id, scope=scope)
     assigned = [d for d in devices if d.animal_id is not None]
     reporting = [d for d in assigned if not d.no_signal]
     batteries = [d.battery_pct for d in assigned if d.battery_pct is not None]

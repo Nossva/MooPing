@@ -30,18 +30,18 @@ def _matches(record, filter_):
     return assigned and (record.low_battery or record.no_signal)
 
 
-def list_devices(organization_id, request):
+def list_devices(organization_id, request, scope=None):
     """request: DeviceListRequest -> DeviceListResponse (items + chip counters)"""
     if request.filter and request.filter not in FILTERS:
         raise InvalidInput(f'filter inválido: {request.filter}')
-    records = device_repository.list_rows(organization_id, search=request.search)
+    records = device_repository.list_rows(organization_id, search=request.search, scope=scope)
     counts = {'all': len(records), **{f: sum(_matches(r, f) for r in records) for f in FILTERS}}
     items = [DeviceResponse.from_record(r) for r in records if request.filter is None or _matches(r, request.filter)]
     return DeviceListResponse(counts, items)
 
 
-def get_device(organization_id, device_id):
-    record = device_repository.get_row(organization_id, device_id)
+def get_device(organization_id, device_id, scope=None):
+    record = device_repository.get_row(organization_id, device_id, scope)
     if record is None:
         raise NotFound('Collar no encontrado.')
     return DeviceDetailResponse.build(

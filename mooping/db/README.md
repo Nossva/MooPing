@@ -33,12 +33,14 @@ puede romper nada.
 |---|---|
 | [upgrade-roles.sql](upgrade-roles.sql) | Roles `owner`/`admin`/`operator`/`viewer` → `owner` (Dueño) / `user` (Usuario) |
 | [upgrade-member-access.sql](upgrade-member-access.sql) | `memberships.active`: suspender el acceso de un usuario sin sacarlo |
+| [upgrade-member-permissions.sql](upgrade-member-permissions.sql) | Permisos por usuario: `memberships.sections` / `all_yards`, `member_yards`, `member_animals` |
 
 Si levantás con `docker compose up` directo, aplicalos a mano (desde `mooping/`):
 
 ```bash
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-roles.sql
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-member-access.sql
+docker compose exec -T db psql -U mooping -d mooping < db/upgrade-member-permissions.sql
 ```
 
 ## Tablas

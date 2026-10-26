@@ -3,7 +3,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from api.dto.request.notification_request import NotificationSettingsUpdateRequest
 from api.services import gateway_service, notification_service, product_service
-from api.traffic.context import organization_id
+from api.traffic.context import organization_id, require_section
 from api.traffic.http import request_dto, respond
 from api.traffic.permissions import IsMember
 from api.traffic.serializers import NotificationSettingsSerializer
@@ -11,6 +11,7 @@ from api.traffic.serializers import NotificationSettingsSerializer
 
 @api_view(['GET'])
 def gateway_list(request):
+    require_section(request, 'equipos')
     return respond(gateway_service.list_gateways(organization_id(request)))
 
 

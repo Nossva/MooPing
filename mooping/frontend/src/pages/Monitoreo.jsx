@@ -4,6 +4,7 @@ import {
   ChevronRight, ClipboardPlus, Footprints, Grid3x3, History, LocateFixed, MapPinned, Radio, Search, ShieldCheck,
   Siren, Thermometer, Volume2, X,
 } from 'lucide-react'
+import { useAuth } from '@/api/auth'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
 import HerdMap from '@/components/HerdMap'
@@ -29,7 +30,8 @@ export default function Monitoreo() {
   const summary = useApi('monitoring/summary/', { params: { yard_id: yardId }, refreshMs: 30000 })
   const positions = useApi('animals/positions/', { params: { yard_id: yardId, geofence }, refreshMs: 30000 })
   const results = useApi(search.trim() ? 'animals/' : null, { params: { search: search.trim(), yard_id: yardId } })
-  const alerts = useApi('alerts/', { params: { status: 'open', sort: 'urgency' }, refreshMs: 30000 })
+  const seesAlerts = useAuth().can('alertas')
+  const alerts = useApi(seesAlerts ? 'alerts/' : null, { params: { status: 'open', sort: 'urgency' }, refreshMs: 30000 })
 
   const points = positions.data ?? []
   const selectedId =
@@ -180,12 +182,16 @@ export default function Monitoreo() {
             positions.loading && <Loading />
           )}
 
-          <SectionTitle icon={Siren} aside={`${fieldAlerts.length} no resueltas`}>
-            Alertas de campo
-          </SectionTitle>
-          {fieldAlerts.map((a) => (
-            <FieldAlert key={a.id} alert={a} onSelect={() => a.animal && select(a.animal.id)} />
-          ))}
+          {seesAlerts && (
+            <>
+              <SectionTitle icon={Siren} aside={`${fieldAlerts.length} no resueltas`}>
+                Alertas de campo
+              </SectionTitle>
+              {fieldAlerts.map((a) => (
+                <FieldAlert key={a.id} alert={a} onSelect={() => a.animal && select(a.animal.id)} />
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>

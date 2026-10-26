@@ -17,15 +17,16 @@ def _pct(part, total):
     return round(100 * part / total, 1) if total else None
 
 
-def summary(organization_id):
+def summary(organization_id, scope=None):
     """Inicio: "Hoy tenés N cosas para atender", salud del rodeo and its trend."""
     org = organization_repository.get(organization_id)
-    alerts = alert_service.summary(organization_id)
-    top = alert_repository.list_rows(organization_id, status='open', sort='urgency', limit=1)
+    alerts = alert_service.summary(organization_id, scope)
+    top = alert_repository.list_rows(organization_id, status='open', sort='urgency', limit=1, scope=scope)
 
-    total = animal_repository.count_active(organization_id)
-    reporting = animal_repository.count_reporting(organization_id, max(REPORTING_MINUTES, org.no_signal_minutes))
-    series = animal_repository.reporting_series(organization_id, SERIES_DAYS)
+    total = animal_repository.count_active(organization_id, scope)
+    reporting = animal_repository.count_reporting(organization_id, max(REPORTING_MINUTES, org.no_signal_minutes),
+                                                  scope)
+    series = animal_repository.reporting_series(organization_id, SERIES_DAYS, scope)
 
     return DashboardResponse(
         organization=Ref(org.id, org.name),

@@ -10,11 +10,14 @@ import { cx } from '@/lib/cx'
 import { num, timeAgo, todayLabel } from '@/lib/format'
 
 export default function Inicio() {
-  const { me, isOwner } = useAuth()
+  const { me, isOwner, can } = useAuth()
+  // Sin la sección, ni se piden los datos (el backend respondería 403).
+  const seesAlerts = can('alertas')
+  const seesDevices = can('equipos')
   const summary = useApi('dashboard/summary/', { refreshMs: 30000 })
-  const open = useApi('alerts/', { params: { status: 'open', sort: 'urgency' }, refreshMs: 30000 })
-  const resolved = useApi('alerts/', { params: { status: 'resolved', since: 'today', sort: 'recent' } })
-  const devices = useApi('devices/', { params: { filter: 'needs_attention' } })
+  const open = useApi(seesAlerts ? 'alerts/' : null, { params: { status: 'open', sort: 'urgency' }, refreshMs: 30000 })
+  const resolved = useApi(seesAlerts ? 'alerts/' : null, { params: { status: 'resolved', since: 'today', sort: 'recent' } })
+  const devices = useApi(seesDevices ? 'devices/' : null, { params: { filter: 'needs_attention' } })
 
   const reloadAll = () => {
     summary.reload()
@@ -35,9 +38,9 @@ export default function Inicio() {
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_380px] lg:items-start">
       <div className="space-y-4">
-        <Banner summary={s} />
+        <Banner summary={s} linkToAlerts={seesAlerts} />
 
-        {mine.length > 0 && (
+        {seesAlerts && mine.length > 0 && (
           <>
             <SectionTitle icon={UserCheck} aside={`${mine.length} a tu cargo`}>
               Asignadas a vos
@@ -48,13 +51,17 @@ export default function Inicio() {
           </>
         )}
 
-        <SectionTitle aside="Ordenado por urgencia">{mine.length > 0 ? 'Resto para atender' : 'Para atender'}</SectionTitle>
-        {open.loading && !open.data ? (
-          <Loading />
-        ) : toAttend.length === 0 ? (
-          <Empty>Nada urgente ni sanitario pendiente. 🎉</Empty>
-        ) : (
-          toAttend.map((alert, i) => <AlertCard key={alert.id} alert={alert} highlight={i === 0} onChange={reloadAll} />)
+        {seesAlerts && (
+          <>
+            <SectionTitle aside="Ordenado por urgencia">{mine.length > 0 ? 'Resto para atender' : 'Para atender'}</SectionTitle>
+            {open.loading && !open.data ? (
+              <Loading />
+            ) : toAttend.length === 0 ? (
+              <Empty>Nada urgente ni sanitario pendiente. 🎉</Empty>
+            ) : (
+              toAttend.map((alert, i) => <AlertCard key={alert.id} alert={alert} highlight={i === 0} onChange={reloadAll} />)
+            )}
+          </>
         )}
       </div>
 
@@ -62,20 +69,24 @@ export default function Inicio() {
         {isOwner && <TeamCard />}
         <HerdHealth health={s.herd_health} />
 
-        <SectionTitle aside={`${deviceItems.length} para revisar`}>Equipos</SectionTitle>
-        {deviceItems.length === 0 ? (
-          <Empty>Todos los collares funcionan bien.</Empty>
-        ) : (
-          deviceItems.map((d) => <DeviceAttentionCard key={d.id} device={d} onChange={devices.reload} />)
+        {seesDevices && (
+          <>
+            <SectionTitle aside={`${deviceItems.length} para revisar`}>Equipos</SectionTitle>
+            {deviceItems.length === 0 ? (
+              <Empty>Todos los collares funcionan bien.</Empty>
+            ) : (
+              deviceItems.map((d) => <DeviceAttentionCard key={d.id} device={d} onChange={devices.reload} />)
+            )}
+          </>
         )}
 
-        <ResolvedToday alerts={resolved.data ?? []} />
+        {seesAlerts && <ResolvedToday alerts={resolved.data ?? []} />}
       </div>
     </div>
   )
 }
 
-function Banner({ summary }) {
+function Banner({ summary, linkToAlerts }) {
   const navigate = useNavigate()
   const counts = summary.pending_by_category
   const top = summary.top_alert
@@ -107,8 +118,9 @@ function Banner({ summary }) {
           <button
             key={item.key}
             onClick={() => navigate(`/alertas?category=${item.key}`)}
+            disabled={!linkToAlerts}
             className={cx(
-              'flex flex-1 flex-col items-center rounded-lg p-2.5',
+              'flex flex-1 flex-col items-center rounded-lg p-2.5 disabled:cursor-default',
               i === 0 ? 'bg-white text-brand shadow-sm' : 'bg-white/15 text-white backdrop-blur',
             )}
           >

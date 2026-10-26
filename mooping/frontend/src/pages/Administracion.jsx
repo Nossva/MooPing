@@ -3,15 +3,22 @@ import { Link } from 'react-router-dom'
 import {
   Building2,
   Check,
+  Compass,
   Copy,
   Crown,
   Eye,
   EyeOff,
+  Grid3x3,
   KeyRound,
   Minus,
+  PawPrint,
+  Radar,
+  Router,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
+  TriangleAlert,
   User,
   UserPlus,
   Users,
@@ -184,6 +191,7 @@ function MemberRow({ member: m, onChange }) {
   const [busy, setBusy] = useState(null)
   const [confirming, setConfirming] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [editingAccess, setEditingAccess] = useState(false)
   const [error, setError] = useState(null)
   const isMe = me?.user?.id === m.user_id
 
@@ -230,6 +238,15 @@ function MemberRow({ member: m, onChange }) {
           </p>
         </div>
       </div>
+
+      {m.role === 'user' && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-low px-3 py-2">
+          <AccessSummary access={m.access} />
+          <Button variant="soft" icon={SlidersHorizontal} className="py-1.5" onClick={() => setEditingAccess(true)}>
+            Permisos
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3 border-t border-black/5 pt-3">
         <RoleToggle
@@ -293,6 +310,7 @@ function MemberRow({ member: m, onChange }) {
       </div>
       {error && <p className="text-xs text-brand">{error}</p>}
       {resetting && <ResetPasswordDialog member={m} onClose={() => setResetting(false)} />}
+      {editingAccess && <PermissionsDialog member={m} onClose={() => setEditingAccess(false)} onSaved={onChange} />}
     </Card>
   )
 }
@@ -342,7 +360,7 @@ function AccessSwitch({ active, onChange, disabled, busy, title }) {
 }
 
 const PERMISSIONS = [
-  ['Ver inicio, mapa, alertas y equipos', true, true],
+  ['Ver inicio, mapa, alertas y equipos (el usuario, según sus permisos)', true, true],
   ['Atender alertas y anotar', true, true],
   ['Recibir alarmas', true, true],
   ['Asignar alertas a otros', true, false],
@@ -373,6 +391,9 @@ function RolesGuide() {
           ))}
         </tbody>
       </table>
+      <p className="text-xs text-muted">
+        <b>Permisos</b>: a cada usuario le elegís qué secciones ve y de qué potreros o animales.
+      </p>
       <p className="text-xs text-muted">
         <b>Sin acceso</b>: la persona sigue en la lista pero no puede entrar hasta que la reactives.
       </p>
@@ -436,7 +457,7 @@ function AddMemberDialog({ onClose, onDone }) {
               onClick={() => setForm((f) => ({ ...f, role: 'user' }))}
               icon={User}
               title="Usuario"
-              text="Ve todo, atiende alertas y recibe alarmas."
+              text="Ve lo que le habilites, atiende alertas y recibe alarmas."
             />
             <RoleCard
               selected={form.role === 'owner'}
@@ -542,6 +563,281 @@ function PasswordField({ label, value, onChange }) {
           </button>
         </div>
       </div>
+    </label>
+  )
+}
+
+// ------------------------------------------------------------------ permisos
+
+// Mismo orden y nombres que el menú (Layout.jsx) y que SECTIONS en el backend.
+const SECTIONS = [
+  { key: 'inicio', label: 'Inicio', icon: Compass, text: 'Resumen del día y salud del rodeo.' },
+  { key: 'monitoreo', label: 'Monitoreo', icon: Radar, text: 'Mapa, posición y ficha de cada animal.' },
+  { key: 'alertas', label: 'Alertas', icon: TriangleAlert, text: 'Ver y atender alertas, recibir alarmas.' },
+  { key: 'equipos', label: 'Equipos', icon: Router, text: 'Collares, baterías y gateways.' },
+]
+const SECTION_LABEL = Object.fromEntries(SECTIONS.map((s) => [s.key, s.label]))
+
+function plural(n, one, many) {
+  return `${n} ${n === 1 ? one : many}`
+}
+
+// Resumen de una línea de lo que ve un usuario.
+function AccessSummary({ access }) {
+  const full = access.sections.length === SECTIONS.length && access.all_yards
+  const scope = access.all_yards
+    ? 'todos los potreros'
+    : [
+        access.yard_ids.length > 0 && plural(access.yard_ids.length, 'potrero', 'potreros'),
+        access.animal_ids.length > 0 && plural(access.animal_ids.length, 'animal suelto', 'animales sueltos'),
+      ]
+        .filter(Boolean)
+        .join(' + ') || 'ningún animal'
+  return (
+    <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+      <SlidersHorizontal className="size-3.5" />
+      {full ? (
+        'Ve todo'
+      ) : (
+        <>
+          {access.sections.map((s) => (
+            <Pill key={s} className="bg-surface-high text-ink">
+              {SECTION_LABEL[s] ?? s}
+            </Pill>
+          ))}
+          <span>· {scope}</span>
+        </>
+      )}
+    </p>
+  )
+}
+
+function PermissionsDialog({ member, onClose, onSaved }) {
+  const yards = useApi('yards/')
+  const animals = useApi('animals/')
+  const [sections, setSections] = useState(() => new Set(member.access.sections))
+  const [allYards, setAllYards] = useState(member.access.all_yards)
+  const [yardIds, setYardIds] = useState(() => new Set(member.access.yard_ids))
+  const [animalIds, setAnimalIds] = useState(() => new Set(member.access.animal_ids))
+  const [search, setSearch] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  const toggle = (setter, value) =>
+    setter((prev) => {
+      const next = new Set(prev)
+      if (next.has(value)) next.delete(value)
+      else next.add(value)
+      return next
+    })
+
+  const animalList = animals.data ?? []
+  const byYard = (a) => a.yard && yardIds.has(a.yard.id)
+  const visible = allYards ? animalList : animalList.filter((a) => byYard(a) || animalIds.has(a.id))
+  const q = search.trim().toLowerCase()
+  const matches = animalList.filter(
+    (a) => !q || [a.name, a.tag_number, a.lot, a.yard?.name].some((v) => v?.toLowerCase().includes(q)),
+  )
+
+  async function save() {
+    setBusy(true)
+    setError(null)
+    try {
+      await api(`organization/members/${member.user_id}/access/`, {
+        method: 'PUT',
+        body: {
+          sections: SECTIONS.map((s) => s.key).filter((k) => sections.has(k)),
+          all_yards: allYards,
+          yard_ids: allYards ? [] : [...yardIds],
+          // Los que ya entran por su potrero no hace falta guardarlos sueltos.
+          animal_ids: allYards ? [] : [...animalIds].filter((id) => !byYard(animalList.find((a) => a.id === id) ?? {})),
+        },
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog title={`Permisos de ${member.name}`} onClose={onClose}>
+      <div className="space-y-5">
+        {/* Secciones */}
+        <section className="space-y-2">
+          <p className="text-sm font-semibold text-ink">Qué secciones ve</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {SECTIONS.map((s) => {
+              const on = sections.has(s.key)
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  onClick={() => toggle(setSections, s.key)}
+                  className={cx(
+                    'flex items-start gap-3 rounded-xl border-2 p-3 text-left transition-colors',
+                    on ? 'border-brand bg-brand-soft/30' : 'border-black/5 hover:border-brand/30',
+                  )}
+                >
+                  <s.icon className={cx('mt-0.5 size-5 shrink-0', on ? 'text-brand' : 'text-muted')} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-ink">{s.label}</span>
+                    <span className="block text-xs text-muted">{s.text}</span>
+                  </span>
+                  <span
+                    className={cx(
+                      'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border',
+                      on ? 'border-brand bg-brand text-white' : 'border-outline/50',
+                    )}
+                  >
+                    {on && <Check className="size-3.5" />}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {sections.size === 0 && <p className="text-xs text-brand">Elegí al menos una sección.</p>}
+        </section>
+
+        {/* Potreros */}
+        <section className="space-y-2">
+          <p className="text-sm font-semibold text-ink">Qué campos ve</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              [true, 'Todos los potreros', 'Incluye los que crees después.'],
+              [false, 'Solo algunos', 'Elegí potreros y/o animales sueltos.'],
+            ].map(([value, title, text]) => (
+              <button
+                key={title}
+                type="button"
+                role="radio"
+                aria-checked={allYards === value}
+                onClick={() => setAllYards(value)}
+                className={cx(
+                  'rounded-xl border-2 p-3 text-left transition-colors',
+                  allYards === value ? 'border-brand bg-brand-soft/30' : 'border-black/5 hover:border-brand/30',
+                )}
+              >
+                <p className="font-semibold text-ink">{title}</p>
+                <p className="text-xs text-muted">{text}</p>
+              </button>
+            ))}
+          </div>
+
+          {!allYards && (
+            <div className="space-y-4 rounded-xl bg-surface-low p-3">
+              <div className="space-y-1.5">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <Grid3x3 className="size-3.5" /> Potreros
+                </p>
+                {yards.loading && !yards.data ? (
+                  <Loading />
+                ) : (yards.data ?? []).length === 0 ? (
+                  <p className="text-xs text-muted">No hay potreros cargados.</p>
+                ) : (
+                  yards.data.map((y) => (
+                    <CheckRow
+                      key={y.id}
+                      checked={yardIds.has(y.id)}
+                      onChange={() => toggle(setYardIds, y.id)}
+                      title={y.name}
+                      aside={plural(y.animal_count, 'animal', 'animales')}
+                    />
+                  ))
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <PawPrint className="size-3.5" /> Animales sueltos
+                </p>
+                <p className="text-xs text-muted">Además de los potreros elegidos, puede ver estos animales.</p>
+                <label className="relative block">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar por nombre, caravana, lote o potrero"
+                    className="w-full rounded-lg border border-black/10 bg-white py-2 pl-9 pr-3 text-sm text-ink"
+                  />
+                </label>
+                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                  {animals.loading && !animals.data ? (
+                    <Loading />
+                  ) : matches.length === 0 ? (
+                    <p className="py-2 text-xs text-muted">Ningún animal coincide.</p>
+                  ) : (
+                    matches.map((a) =>
+                      byYard(a) ? (
+                        <CheckRow key={a.id} checked disabled title={a.name} aside={`por ${a.yard.name}`} />
+                      ) : (
+                        <CheckRow
+                          key={a.id}
+                          checked={animalIds.has(a.id)}
+                          onChange={() => toggle(setAnimalIds, a.id)}
+                          title={a.name}
+                          aside={[a.tag_number, a.yard?.name ?? 'sin potrero'].filter(Boolean).join(' · ')}
+                        />
+                      ),
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <p className="rounded-lg bg-field-soft/40 px-3 py-2 text-xs text-ink">
+          Va a ver <b>{plural(visible.length, 'animal', 'animales')}</b>
+          {sections.size > 0 && (
+            <>
+              {' '}
+              en{' '}
+              <b>
+                {SECTIONS.filter((s) => sections.has(s.key))
+                  .map((s) => s.label)
+                  .join(', ')}
+              </b>
+            </>
+          )}
+          , con sus collares y alertas.
+        </p>
+
+        {error && <p className="text-xs text-brand">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" className="py-2" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button icon={Check} className="py-2" busy={busy} disabled={sections.size === 0} onClick={save}>
+            Guardar permisos
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  )
+}
+
+function CheckRow({ checked, onChange, disabled, title, aside }) {
+  return (
+    <label
+      className={cx(
+        'flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm',
+        disabled ? 'cursor-default opacity-60' : 'cursor-pointer hover:bg-surface-mid/40',
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        className="size-4 accent-[var(--color-brand)]"
+      />
+      <span className="min-w-0 flex-1 truncate text-ink">{title}</span>
+      {aside && <span className="shrink-0 text-xs text-muted">{aside}</span>}
     </label>
   )
 }

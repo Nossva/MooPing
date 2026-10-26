@@ -132,6 +132,14 @@ class MemberCreateSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True)
 
 
+class MemberAccessSerializer(serializers.Serializer):
+    # Valid section names are checked in access_service.
+    sections = serializers.ListField(child=serializers.CharField(max_length=30), max_length=20)
+    all_yards = serializers.BooleanField(default=True)
+    yard_ids = serializers.ListField(child=serializers.IntegerField(), default=list, max_length=1000)
+    animal_ids = serializers.ListField(child=serializers.IntegerField(), default=list, max_length=10000)
+
+
 class MemberPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(max_length=PASSWORD_MAX_LENGTH, trim_whitespace=False)
 

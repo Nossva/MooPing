@@ -3,6 +3,7 @@ from django.utils import timezone
 from api.entities import AnimalDevice, Device, DeviceCommand, MaintenanceTask
 from api.repositories.db import fetch_all, fetch_one
 from api.repositories.records import DeviceRecord, LocationRecord, OfflineDeviceRecord
+from api.repositories.scope import animal_sql
 
 # One row per collar with the animal it is on and its open alerts.
 _DEVICE_ROWS = """
@@ -32,9 +33,11 @@ _DEVICE_ROWS = """
 """
 
 
-def list_rows(organization_id, search=None, limit=1000):
-    sql = 'SELECT * FROM (' + _DEVICE_ROWS + ') q WHERE true'
-    params = [organization_id]
+def list_rows(organization_id, search=None, limit=1000, scope=None):
+    """With a scope: only collars on a visible animal (no stock)."""
+    where, params = animal_sql(scope, 'q.animal_id')
+    sql = 'SELECT * FROM (' + _DEVICE_ROWS + ') q WHERE true' + where
+    params = [organization_id, *params]
     if search:
         sql += """ AND (q.label ILIKE %s OR q.device_uid ILIKE %s OR q.animal_name ILIKE %s
                         OR q.animal_lot ILIKE %s)"""
@@ -44,8 +47,10 @@ def list_rows(organization_id, search=None, limit=1000):
     return fetch_all(sql, params, DeviceRecord)
 
 
-def get_row(organization_id, device_id):
-    return fetch_one('SELECT * FROM (' + _DEVICE_ROWS + ') q WHERE q.id = %s', [organization_id, device_id], DeviceRecord)
+def get_row(organization_id, device_id, scope=None):
+    where, params = animal_sql(scope, 'q.animal_id')
+    return fetch_one('SELECT * FROM (' + _DEVICE_ROWS + ') q WHERE q.id = %s' + where,
+                     [organization_id, device_id, *params], DeviceRecord)
 
 
 def get(organization_id, device_id):

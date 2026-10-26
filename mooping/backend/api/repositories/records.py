@@ -41,6 +41,17 @@ class MembershipRecord:
     organization_name: str
     role: str
     active: bool
+    sections: list[str] | None  # None = todas
+
+
+@dataclass
+class AccessRecord:
+    """What a member can see (memberships + member_yards + member_animals)."""
+    user_id: int
+    sections: list[str] | None  # None = todas
+    all_yards: bool
+    yard_ids: list[int]
+    animal_ids: list[int]
 
 
 @dataclass

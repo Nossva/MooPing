@@ -34,7 +34,23 @@ Cada usuario tiene un rol por establecimiento (`organizations[].role` en `login`
 | Rol | Puede |
 |---|---|
 | `owner` (Dueño) | Todo: alta, edición y baja de potreros, animales, collares y usuarios; configurar el establecimiento; alarma sonora, ping y mantenimiento. |
-| `user` (Usuario) | Ver todo (cualquier `GET`); atender alertas (`PATCH alerts/{id}/`, `POST alerts/{id}/notes/`); editar sus preferencias (`PUT notification-settings/`). |
+| `user` (Usuario) | Ver (cualquier `GET`) lo que le permitan sus permisos (abajo); atender alertas (`PATCH alerts/{id}/`, `POST alerts/{id}/notes/`); editar sus preferencias (`PUT notification-settings/`). |
+
+### Permisos de un usuario
+
+El dueño los define con `PUT organization/members/{id}/access/`. El dueño siempre ve todo.
+
+- **Secciones** (`organizations[].sections` en `me/`): `inicio`, `monitoreo`, `alertas`, `equipos`.
+  Sin la sección, sus endpoints responden 403 `{"detail": "No tenés acceso a esta sección."}`:
+  `inicio` → `dashboard/summary/`; `monitoreo` → `monitoring/summary/`, `animals/…` (GET);
+  `alertas` → `alerts/…`; `equipos` → `devices/…`, `gateways/`, `infrastructure/summary/`.
+  `status/`, `yards/`, `me/` y `notification-settings/` no dependen de secciones.
+- **Alcance**: con `all_yards: false` ve solo los animales de `yard_ids` más los animales
+  sueltos de `animal_ids`, y a través de ellos sus collares, alertas, recorridos y
+  contadores (`status/`, resúmenes de Inicio/Monitoreo/Equipos). `yards/` lista solo
+  `yard_ids`. Lo que queda afuera responde 404 como si no existiera. Los collares en
+  stock y las alertas sin animal ni potrero visible no se ven.
+- No se le puede asignar una alerta que no ve (400).
 
 - Cualquier otra escritura (`POST`/`PUT`/`PATCH`/`DELETE`) de un usuario responde
   403 `{"detail": "Solo el dueño puede hacer esto."}`. Las escrituras son solo del
@@ -54,7 +70,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | POST | `auth/login/` | `{token, user, organizations}` (sin login) |
 | POST | `auth/logout/` | 204 |
 | POST | `me/password/` | `{current_password, new_password (ver Contraseñas)}` → 204. Cualquier usuario cambia la suya; se cierran sus otras sesiones. |
-| GET | `me/` | `{user: {id, name, email, phone, initials}, organizations: [{id, name, role}]}` |
+| GET | `me/` | `{user: {id, name, email, phone, initials}, organizations: [{id, name, role, sections}]}` |
 | GET | `status/` | `{online, last_packet_at, radio, gateways_online, gateways_total, open_alerts, server_time}` |
 
 ### Inicio
@@ -114,7 +130,8 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | Método | Ruta | Devuelve |
 |---|---|---|
 | GET · PATCH | `organization/` | `{id, name, vet_phone, fever_threshold_c (37–42), low_battery_pct (5–50), no_signal_minutes (5–1440)}` |
-| GET | `organization/members/` | `[{user_id, name, email, phone, role, active, created_at}]` (dueños primero) |
+| GET | `organization/members/` | `[{user_id, name, email, phone, role, active, access: {sections, all_yards, yard_ids, animal_ids}, created_at}]` (dueños primero) |
+| PUT | `organization/members/{user_id}/access/` | `{sections: [...] (al menos una), all_yards, yard_ids?, animal_ids?}` → el miembro. Solo para rol `user` (a un dueño, 400). Con todas las secciones marcadas se guarda "todas", así incluye las que se agreguen después. |
 | POST | `organization/members/` | `{name, email, password (ver Contraseñas), role: owner\|user, phone?}` → 201. Si el email ya tiene cuenta, se la suma sin cambiar su contraseña; si ya es miembro, 409. |
 | PATCH | `organization/members/{user_id}/` | `{role?, active?}`. `active: false` suspende el acceso sin sacarlo (su `me/` deja de listar el establecimiento y el resto responde 403); `true` lo reactiva. No podés suspenderte a vos mismo ni dejar el establecimiento sin un dueño activo (409). |
 | POST | `organization/members/{user_id}/password/` | `{new_password (ver Contraseñas)}` → 204. Solo dueño: le pone una contraseña nueva y cierra todas sus sesiones. La propia se cambia con `me/password/`. |

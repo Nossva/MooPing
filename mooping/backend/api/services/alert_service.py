@@ -15,6 +15,7 @@ from api.repositories import (
     user_repository,
     yard_repository,
 )
+from api.services import access_service
 from api.services.errors import Forbidden, InvalidInput, NotFound
 
 STATUSES = ('pending', 'assigned', 'in_progress', 'resolved')
@@ -23,7 +24,7 @@ CATEGORIES = ('critical', 'sanitary', 'equipment')
 
 # ---------------------------------------------------------------- queries
 
-def list_alerts(organization_id, request):
+def list_alerts(organization_id, request, scope=None):
     """request: AlertListRequest -> list[AlertResponse]"""
     if request.status and request.status not in ('open', 'all', *STATUSES):
         raise InvalidInput(f'status inválido: {request.status}')
@@ -39,20 +40,21 @@ def list_alerts(organization_id, request):
         animal_id=request.animal_id,
         device_id=request.device_id,
         sort=request.sort,
+        scope=scope,
     )
     return [AlertResponse.from_record(r) for r in records]
 
 
-def get_alert(organization_id, alert_id):
-    record = alert_repository.get_row(organization_id, alert_id)
+def get_alert(organization_id, alert_id, scope=None):
+    record = alert_repository.get_row(organization_id, alert_id, scope)
     if record is None:
         raise NotFound('Alerta no encontrada.')
     return AlertDetailResponse.build(record, alert_repository.list_notes(alert_id))
 
 
-def summary(organization_id):
+def summary(organization_id, scope=None):
     """Counters for the Alertas chips and header."""
-    by_type = alert_repository.open_counts_by_type(organization_id)
+    by_type = alert_repository.open_counts_by_type(organization_id, scope)
     by_category = {c: 0 for c in CATEGORIES}
     for type_, n in by_type.items():
         by_category[CATEGORY_BY_TYPE[type_]] += n
@@ -60,18 +62,19 @@ def summary(organization_id):
         open_total=sum(by_type.values()),
         by_category=by_category,
         by_type=by_type,
-        critical_unattended=alert_repository.count_open(organization_id, severity='critical', status='pending'),
+        critical_unattended=alert_repository.count_open(organization_id, severity='critical', status='pending',
+                                                        scope=scope),
         last_packet_at=telemetry_repository.last_packet_at(organization_id),
     )
 
 
 # ---------------------------------------------------------------- actions
 
-def update_alert(organization_id, alert_id, user, request, is_owner=False):
+def update_alert(organization_id, alert_id, user, request, is_owner=False, scope=None):
     """request: AlertUpdateRequest. Moves an alert through
     pendiente -> asignada -> en curso -> resuelta. Only the owner assigns
     alerts to someone else."""
-    alert = alert_repository.get(organization_id, alert_id)
+    alert = alert_repository.get(organization_id, alert_id, scope)
     if alert is None:
         raise NotFound('Alerta no encontrada.')
     status, assigned_to = request.status, request.assigned_to
@@ -85,6 +88,10 @@ def update_alert(organization_id, alert_id, user, request, is_owner=False):
         assignee = user_repository.get_membership(assigned_to, organization_id)
         if assignee is None or not assignee.active:
             raise InvalidInput('El usuario asignado no pertenece al establecimiento.')
+        assignee_access = access_service.for_member(organization_id, assigned_to, assignee.role)
+        if (not assignee_access.can('alertas')
+                or alert_repository.get(organization_id, alert_id, assignee_access.scope) is None):
+            raise InvalidInput('Esa persona no tiene permiso para ver esta alerta.')
         fields['assigned_to_id'] = assigned_to
         if status is None and alert.status == 'pending':
             fields['status'] = 'assigned'
@@ -100,18 +107,18 @@ def update_alert(organization_id, alert_id, user, request, is_owner=False):
             fields['resolved_by_id'] = None
         if fields:
             alert_repository.update(alert, **fields)
-    return get_alert(organization_id, alert_id)
+    return get_alert(organization_id, alert_id, scope)
 
 
-def list_notes(organization_id, alert_id):
-    if alert_repository.get(organization_id, alert_id) is None:
+def list_notes(organization_id, alert_id, scope=None):
+    if alert_repository.get(organization_id, alert_id, scope) is None:
         raise NotFound('Alerta no encontrada.')
     return [NoteResponse.from_entity(n) for n in alert_repository.list_notes(alert_id)]
 
 
-def add_note(organization_id, alert_id, user, request):
+def add_note(organization_id, alert_id, user, request, scope=None):
     """request: NoteCreateRequest -> NoteResponse"""
-    if alert_repository.get(organization_id, alert_id) is None:
+    if alert_repository.get(organization_id, alert_id, scope) is None:
         raise NotFound('Alerta no encontrada.')
     body = (request.body or '').strip()
     if not body:

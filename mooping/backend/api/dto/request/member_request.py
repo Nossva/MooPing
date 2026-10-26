@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from api.dto.request.base import UNSET, PatchRequest
 
@@ -16,6 +16,14 @@ class MemberCreateRequest:
 class MemberUpdateRequest(PatchRequest):
     role: str = UNSET
     active: bool = UNSET  # false = acceso suspendido
+
+
+@dataclass
+class MemberAccessRequest:
+    sections: list[str]
+    all_yards: bool = True
+    yard_ids: list[int] = field(default_factory=list)
+    animal_ids: list[int] = field(default_factory=list)
 
 
 @dataclass

@@ -13,12 +13,12 @@ def _validate_polygon(boundary):
         raise InvalidInput('El polígono necesita al menos 3 puntos y cerrar en el punto inicial.')
 
 
-def list_yards(organization_id):
-    return [YardResponse.from_record(r) for r in yard_repository.list_by_org(organization_id)]
+def list_yards(organization_id, scope=None):
+    return [YardResponse.from_record(r) for r in yard_repository.list_by_org(organization_id, scope)]
 
 
-def get_yard(organization_id, yard_id):
-    record = yard_repository.get(organization_id, yard_id)
+def get_yard(organization_id, yard_id, scope=None):
+    record = yard_repository.get(organization_id, yard_id, scope)
     if record is None:
         raise NotFound('Potrero no encontrado.')
     return YardResponse.from_record(record)

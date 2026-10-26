@@ -8,26 +8,28 @@ import { ROLE_LABEL, timeAgo } from '@/lib/format'
 import { Logo } from './ui'
 import { cx } from '@/lib/cx'
 
+// section: permiso que hace falta (Admin > Permisos); ownerOnly: solo el dueño.
 const NAV = [
-  { to: '/', label: 'Inicio', icon: Compass, end: true },
-  { to: '/monitoreo', label: 'Monitoreo', icon: Radar },
-  { to: '/alertas', label: 'Alertas', icon: TriangleAlert, badge: true },
-  { to: '/equipos', label: 'Equipos', icon: Router },
+  { to: '/', label: 'Inicio', icon: Compass, end: true, section: 'inicio' },
+  { to: '/monitoreo', label: 'Monitoreo', icon: Radar, section: 'monitoreo' },
+  { to: '/alertas', label: 'Alertas', icon: TriangleAlert, badge: true, section: 'alertas' },
+  { to: '/equipos', label: 'Equipos', icon: Router, section: 'equipos' },
   { to: '/admin', label: 'Admin', icon: Settings, ownerOnly: true },
 ]
 
 export default function Layout() {
-  const { me, role, isOwner, logout } = useAuth()
+  const { me, role, isOwner, can, logout } = useAuth()
   const { data: status } = useApi('status/', { refreshMs: 15000 })
-  const alarms = useAlertWatcher()
-  const nav = NAV.filter((n) => !n.ownerOnly || isOwner)
+  const seesAlerts = can('alertas')
+  const alarms = useAlertWatcher({ enabled: seesAlerts })
+  const nav = NAV.filter((n) => (n.ownerOnly ? isOwner : can(n.section)))
   const location = useLocation()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const current =
     nav.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to))) ??
     (location.pathname.startsWith('/cuenta') ? { label: 'Mi cuenta' } : null)
-  const openAlerts = status?.open_alerts ?? 0
+  const openAlerts = seesAlerts ? (status?.open_alerts ?? 0) : 0
 
   return (
     <div className="min-h-screen bg-surface md:pl-64">
@@ -80,14 +82,16 @@ export default function Layout() {
             {current?.label ?? 'MooPing'}
           </h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/alertas')}
-              className="relative flex size-10 items-center justify-center rounded-full bg-surface-low text-ink"
-              aria-label="Alertas"
-            >
-              <Bell className="size-5" />
-              {openAlerts > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-brand ring-2 ring-white" />}
-            </button>
+            {seesAlerts && (
+              <button
+                onClick={() => navigate('/alertas')}
+                className="relative flex size-10 items-center justify-center rounded-full bg-surface-low text-ink"
+                aria-label="Alertas"
+              >
+                <Bell className="size-5" />
+                {openAlerts > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-brand ring-2 ring-white" />}
+              </button>
+            )}
             <div className="relative">
               <button
                 onClick={() => setMenuOpen((v) => !v)}
@@ -132,7 +136,7 @@ export default function Layout() {
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 md:pb-10">
-        {alarms.needsActivation && (
+        {seesAlerts && alarms.needsActivation && (
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-brand/20 bg-brand-soft/30 p-3 text-sm">
             <BellRing className="size-5 shrink-0 text-brand" />
             <p className="flex-1 text-ink">Activá las alarmas para escuchar y ver las alertas nuevas aunque estés en otra pestaña.</p>

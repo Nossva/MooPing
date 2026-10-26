@@ -3,6 +3,14 @@ from datetime import datetime
 
 
 @dataclass
+class MemberAccessResponse:
+    sections: list[str]     # already resolved: every section for owners
+    all_yards: bool
+    yard_ids: list[int]     # only meaningful when all_yards is false
+    animal_ids: list[int]
+
+
+@dataclass
 class MemberResponse:
     user_id: int
     name: str
@@ -10,12 +18,13 @@ class MemberResponse:
     phone: str | None
     role: str
     active: bool
+    access: MemberAccessResponse
     created_at: datetime
 
     @classmethod
-    def from_entity(cls, membership):
+    def from_entity(cls, membership, access):
         user = membership.user
-        return cls(user.id, user.name, user.email, user.phone, membership.role, membership.active,
+        return cls(user.id, user.name, user.email, user.phone, membership.role, membership.active, access,
                    membership.created_at)
 
 

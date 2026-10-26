@@ -27,6 +27,7 @@ urlpatterns = [
     path('organization/members/', member_views.member_list),
     path('organization/members/<int:user_id>/', member_views.member_detail),
     path('organization/members/<int:user_id>/password/', member_views.member_password),
+    path('organization/members/<int:user_id>/access/', member_views.member_access),
 
     # Screen summaries
     path('status/', status_views.status),

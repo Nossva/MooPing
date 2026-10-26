@@ -24,6 +24,8 @@ class Membership(models.Model):
     user = models.ForeignKey('api.User', on_delete=models.CASCADE)
     role = models.TextField(default='user')
     active = models.BooleanField(default=True)
+    sections = models.JSONField(null=True)  # None = todas (ver access_service)
+    all_yards = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

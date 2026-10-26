@@ -20,10 +20,12 @@ class OrganizationResponse:
     id: int
     name: str
     role: str
+    sections: list[str]  # menu sections this member can open (all for owners)
 
     @classmethod
     def from_record(cls, membership):
-        return cls(membership.organization_id, membership.organization_name, membership.role)
+        return cls(membership.organization_id, membership.organization_name, membership.role,
+                   membership.sections)
 
 
 @dataclass
