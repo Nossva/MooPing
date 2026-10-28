@@ -6,8 +6,9 @@ import {
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
+import { usePagedApi } from '@/api/usePagedApi'
 import DeviceAttentionCard from '@/components/DeviceAttentionCard'
-import { Button, Card, Empty, ErrorBox, IconBubble, Loading, Metric, OwnerOnly, Pill, SectionTitle } from '@/components/ui'
+import { Button, Card, Empty, ErrorBox, IconBubble, Loading, Metric, MoreButton, OwnerOnly, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { num, timeAgo } from '@/lib/format'
 
@@ -33,8 +34,7 @@ export default function Equipos() {
   const gateways = useApi('gateways/', { refreshMs: 30000 })
   const [filter, setFilter] = useState('')
   const [search, setSearch] = useState('')
-  const [showAll, setShowAll] = useState(false)
-  const devices = useApi('devices/', { params: { filter, search: search.trim() } })
+  const devices = usePagedApi('devices/', { params: { filter, search: search.trim() }, pageSize: 10, pick: (d) => d.items })
 
   const reload = () => {
     infra.reload()
@@ -127,16 +127,10 @@ export default function Equipos() {
           {devices.loading && !devices.data ? (
             <Loading />
           ) : (
-            (devices.data?.items ?? [])
-              .slice(0, showAll ? undefined : 6)
-              .map((d) => <CollarCard key={d.id} device={d} onChange={reload} />)
+            (devices.items ?? []).map((d) => <CollarCard key={d.id} device={d} onChange={reload} />)
           )}
-          {!showAll && devices.data?.items.length > 6 && (
-            <button onClick={() => setShowAll(true)} className="w-full py-2 text-sm font-semibold text-brand">
-              Ver los {devices.data.items.length} collares ›
-            </button>
-          )}
-          {devices.data?.items.length === 0 && <Empty>Ningún collar coincide.</Empty>}
+          <MoreButton list={devices}>Ver más collares</MoreButton>
+          {devices.items?.length === 0 && <Empty>Ningún collar coincide.</Empty>}
         </div>
       </div>
     </div>

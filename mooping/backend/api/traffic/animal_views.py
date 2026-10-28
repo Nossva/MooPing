@@ -1,4 +1,7 @@
-from rest_framework.decorators import api_view
+from django.http import FileResponse, Http404
+from rest_framework.decorators import api_view, authentication_classes, parser_classes, permission_classes
+from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import AllowAny
 
 from api.dto.request.animal_request import (
     AnimalCreateRequest,
@@ -7,6 +10,7 @@ from api.dto.request.animal_request import (
     AnimalUpdateRequest,
     TrackRequest,
 )
+from api.repositories import photo_repository
 from api.services import animal_service
 from api.traffic.context import organization_id, require_section, scope
 from api.traffic.http import request_dto, respond
@@ -46,6 +50,30 @@ def animal_track(request, animal_id):
     require_section(request, 'monitoreo')
     query = request_dto(TrackQuery, TrackRequest, request.query_params)
     return respond(animal_service.get_track(organization_id(request), animal_id, query, scope(request)))
+
+
+@api_view(['POST', 'DELETE'])
+@parser_classes([MultiPartParser])
+def animal_photo(request, animal_id):
+    """POST multipart con el archivo en "photo" (reemplaza la anterior); DELETE la quita."""
+    require_section(request, 'monitoreo')
+    org_id = organization_id(request)
+    if request.method == 'DELETE':
+        return respond(animal_service.remove_photo(org_id, animal_id))
+    return respond(animal_service.set_photo(org_id, animal_id, request.FILES.get('photo')))
+
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def animal_photo_file(request, name):
+    """Public: <img> can't send the token. The name is random (photo_repository)."""
+    file = photo_repository.path(name)
+    if file is None:
+        raise Http404
+    response = FileResponse(file.open('rb'), content_type=photo_repository.CONTENT_TYPES[file.suffix[1:]])
+    response['Cache-Control'] = 'public, max-age=31536000, immutable'  # a new photo gets a new name
+    return response
 
 
 @api_view(['POST'])

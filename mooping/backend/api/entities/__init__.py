@@ -15,6 +15,7 @@ from .gateway import Gateway
 from .notification_settings import NotificationSettings
 from .organization import Organization
 from .rules import CATEGORY_BY_TYPE, battery_days_left, device_state
+from .support import SupportRequest
 from .telemetry import AnimalDailyStatistics, AnimalLastPosition, TelemetryReading
 from .user import ApiToken, Membership, User
 from .yard import Yard
@@ -22,7 +23,7 @@ from .yard import Yard
 __all__ = [
     'CATEGORY_BY_TYPE', 'Alert', 'AlertNote', 'Animal', 'AnimalDevice', 'Device',
     'DeviceCommand', 'MaintenanceTask', 'Gateway', 'NotificationSettings',
-    'Organization', 'AnimalDailyStatistics', 'AnimalLastPosition',
+    'Organization', 'SupportRequest', 'AnimalDailyStatistics', 'AnimalLastPosition',
     'TelemetryReading', 'ApiToken', 'Membership', 'User', 'Yard',
     'battery_days_left', 'device_state',
 ]

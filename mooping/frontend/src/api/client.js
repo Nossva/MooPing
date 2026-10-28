@@ -57,12 +57,14 @@ export async function api(path, { method = 'GET', body, params } = {}) {
   const headers = { Accept: 'application/json' }
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // FormData (archivos): el navegador pone el Content-Type multipart con su boundary.
+  const isForm = body instanceof FormData
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
   const res = await fetch(url, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined || isForm ? body : JSON.stringify(body),
   })
   if (res.status === 204) return null
   const data = await res.json().catch(() => null)

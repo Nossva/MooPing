@@ -164,6 +164,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Uploaded files (animal photos, see api/repositories/photo_repository.py).
+# Served by the API under /api/media/, so no extra web server config is needed.
+MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+
 
 # Django REST framework
 
@@ -179,7 +183,11 @@ REST_FRAMEWORK = {
     'UNAUTHENTICATED_USER': None,
     # Login attempts per client IP (auth_views.login). Counted in the default
     # in-memory cache: fine for one server process; several need a shared cache (Redis).
-    'DEFAULT_THROTTLE_RATES': {'login': os.environ.get('LOGIN_RATE', '10/min')},
+    # Reclamos de soporte per member (support_views.SupportRateThrottle).
+    'DEFAULT_THROTTLE_RATES': {
+        'login': os.environ.get('LOGIN_RATE', '10/min'),
+        'support': os.environ.get('SUPPORT_RATE', '5/hour'),
+    },
 }
 
 
@@ -191,6 +199,12 @@ TELEMETRY_API_KEY = os.environ.get('TELEMETRY_API_KEY', '')
 # TCP port where `manage.py telemetry_tcp` listens for the Pi (lora_receiver.c).
 TELEMETRY_TCP_PORT = int(os.environ.get('TELEMETRY_TCP_PORT', '4001'))
 MOOPING_SERVER_NAME = os.environ.get('MOOPING_SERVER_NAME', 'AgroServer #AS-01')
+# Soporte técnico (GET /api/support/). Empty = that button doesn't show.
+SUPPORT_WHATSAPP = ''.join(c for c in os.environ.get('SUPPORT_WHATSAPP', '') if c.isdigit())  # country code + number
+SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')
+SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE', '')
+SUPPORT_HOURS = os.environ.get('SUPPORT_HOURS', '')
+
 # API tokens expire this many days after login (using them doesn't extend it).
 TOKEN_TTL_DAYS = int(os.environ.get('TOKEN_TTL_DAYS', '30'))
 
@@ -203,8 +217,23 @@ CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# Used by the reclamos de soporte (support_service). Without EMAIL_HOST the
+# email is only printed in the backend log (docker compose logs backend);
+# the reclamo is saved anyway.
+_email_host = os.environ.get('EMAIL_HOST', '')  # lowercase: not a (deprecated) Django setting
 MAILERS = {
     'default': {
+        'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+        'OPTIONS': {
+            'host': _email_host,
+            'port': int(os.environ.get('EMAIL_PORT', '587')),
+            'username': os.environ.get('EMAIL_HOST_USER', ''),
+            'password': os.environ.get('EMAIL_HOST_PASSWORD', ''),
+            'use_tls': os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true',
+            'timeout': 10,  # seconds: a slow SMTP mustn't hang the request
+        },
+    } if _email_host else {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or os.environ.get('EMAIL_HOST_USER') or 'MooPing <no-reply@mooping.app>'

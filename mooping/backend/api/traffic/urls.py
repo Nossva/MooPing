@@ -9,6 +9,7 @@ from api.traffic import (
     member_views,
     misc_views,
     status_views,
+    support_views,
     telemetry_views,
     yard_views,
 )
@@ -51,6 +52,8 @@ urlpatterns = [
     path('animals/<int:animal_id>/', animal_views.animal_detail),
     path('animals/<int:animal_id>/track/', animal_views.animal_track),
     path('animals/<int:animal_id>/alarm/', animal_views.animal_alarm),
+    path('animals/<int:animal_id>/photo/', animal_views.animal_photo),
+    path('media/animals/<str:name>', animal_views.animal_photo_file),
 
     # Collars
     path('devices/', device_views.device_list),
@@ -64,6 +67,10 @@ urlpatterns = [
     path('gateways/', misc_views.gateway_list),
     path('notification-settings/', misc_views.notification_settings),
     path('products/', misc_views.product_list),
+
+    # Soporte técnico (every member)
+    path('support/', support_views.support),
+    path('support/requests/', support_views.support_requests),
 
     # Data from the Raspberry Pi
     path('telemetry/', telemetry_views.telemetry_ingest),

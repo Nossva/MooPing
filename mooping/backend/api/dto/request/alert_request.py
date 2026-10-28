@@ -9,6 +9,7 @@ class AlertListRequest:
     sort: str = 'urgency'              # urgency | recent
     animal_id: int | None = None
     device_id: int | None = None
+    limit: int | None = None
 
 
 @dataclass

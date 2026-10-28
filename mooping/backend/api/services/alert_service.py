@@ -41,6 +41,7 @@ def list_alerts(organization_id, request, scope=None):
         device_id=request.device_id,
         sort=request.sort,
         scope=scope,
+        **({'limit': request.limit} if request.limit else {}),
     )
     return [AlertResponse.from_record(r) for r in records]
 

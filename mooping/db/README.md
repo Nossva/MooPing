@@ -34,6 +34,7 @@ puede romper nada.
 | [upgrade-roles.sql](upgrade-roles.sql) | Roles `owner`/`admin`/`operator`/`viewer` → `owner` (Dueño) / `user` (Usuario) |
 | [upgrade-member-access.sql](upgrade-member-access.sql) | `memberships.active`: suspender el acceso de un usuario sin sacarlo |
 | [upgrade-member-permissions.sql](upgrade-member-permissions.sql) | Permisos por usuario: `memberships.sections` / `all_yards`, `member_yards`, `member_animals` |
+| [upgrade-support-requests.sql](upgrade-support-requests.sql) | `support_requests`: reclamos enviados desde la pestaña Soporte |
 
 Si levantás con `docker compose up` directo, aplicalos a mano (desde `mooping/`):
 

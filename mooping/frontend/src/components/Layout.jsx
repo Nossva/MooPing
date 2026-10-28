@@ -1,20 +1,22 @@
-import { useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BellRing, Compass, KeyRound, LogOut, Radar, Router, Settings, TriangleAlert, X } from 'lucide-react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { BellRing, Compass, KeyRound, LifeBuoy, LogOut, Radar, Router, Settings, TriangleAlert, X } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { useApi } from '@/api/useApi'
 import { useAlertWatcher } from '@/api/useAlertWatcher'
 import { ROLE_LABEL, timeAgo } from '@/lib/format'
+import HeaderMenus from './HeaderMenus'
 import { Logo } from './ui'
 import { cx } from '@/lib/cx'
 
-// section: permiso que hace falta (Admin > Permisos); ownerOnly: solo el dueño.
+// section: permiso que hace falta (Admin > Permisos); ownerOnly: solo el dueño; always: todos.
+// mobile: false = no entra en la barra inferior (en el celular se llega desde el perfil).
 const NAV = [
   { to: '/', label: 'Inicio', icon: Compass, end: true, section: 'inicio' },
   { to: '/monitoreo', label: 'Monitoreo', icon: Radar, section: 'monitoreo' },
   { to: '/alertas', label: 'Alertas', icon: TriangleAlert, badge: true, section: 'alertas' },
   { to: '/equipos', label: 'Equipos', icon: Router, section: 'equipos' },
   { to: '/admin', label: 'Admin', icon: Settings, ownerOnly: true },
+  { to: '/soporte', label: 'Soporte', icon: LifeBuoy, always: true, mobile: false },
 ]
 
 export default function Layout() {
@@ -22,10 +24,9 @@ export default function Layout() {
   const { data: status } = useApi('status/', { refreshMs: 15000 })
   const seesAlerts = can('alertas')
   const alarms = useAlertWatcher({ enabled: seesAlerts })
-  const nav = NAV.filter((n) => (n.ownerOnly ? isOwner : can(n.section)))
+  const nav = NAV.filter((n) => n.always || (n.ownerOnly ? isOwner : can(n.section)))
+  const mobileNav = nav.filter((n) => n.mobile !== false)
   const location = useLocation()
-  const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
   const current =
     nav.find((n) => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to))) ??
     (location.pathname.startsWith('/cuenta') ? { label: 'Mi cuenta' } : null)
@@ -81,46 +82,7 @@ export default function Layout() {
           <h1 className="absolute left-1/2 -translate-x-1/2 font-display text-[15px] font-bold uppercase tracking-wide text-brand md:static md:translate-x-0 md:text-lg md:normal-case md:tracking-normal md:text-ink">
             {current?.label ?? 'MooPing'}
           </h1>
-          <div className="flex items-center gap-2">
-            {seesAlerts && (
-              <button
-                onClick={() => navigate('/alertas')}
-                className="relative flex size-10 items-center justify-center rounded-full bg-surface-low text-ink"
-                aria-label="Alertas"
-              >
-                <Bell className="size-5" />
-                {openAlerts > 0 && <span className="absolute right-2 top-2 size-2.5 rounded-full bg-brand ring-2 ring-white" />}
-              </button>
-            )}
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                className="flex size-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white"
-                aria-label="Cuenta"
-              >
-                {me?.user?.initials ?? '··'}
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 top-12 w-48 rounded-xl border border-black/5 bg-white p-3 text-sm shadow-lg">
-                  <p className="font-semibold">{me?.user?.name}</p>
-                  <p className="truncate text-xs text-muted">{me?.user?.email}</p>
-                  {role && <p className="mt-1 text-xs font-semibold text-field">{ROLE_LABEL[role] ?? role}</p>}
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false)
-                      navigate('/cuenta')
-                    }}
-                    className="mt-3 flex items-center gap-2 text-xs font-semibold text-ink hover:text-brand"
-                  >
-                    <KeyRound className="size-4" /> Mi cuenta y contraseña
-                  </button>
-                  <button onClick={logout} className="mt-2 flex items-center gap-2 text-xs font-semibold text-brand">
-                    <LogOut className="size-4" /> Cerrar sesión
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <HeaderMenus seesAlerts={seesAlerts} openAlerts={openAlerts} />
         </div>
         {/* Barra verde de estado */}
         <div className="flex items-center justify-between bg-field-soft/70 px-4 py-1.5 text-[11px] text-ink">
@@ -154,9 +116,9 @@ export default function Layout() {
       {/* Nav inferior (mobile) */}
       <nav
         className="fixed inset-x-0 bottom-0 z-[1000] grid h-16 border-t border-black/5 bg-white md:hidden"
-        style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: `repeat(${mobileNav.length}, minmax(0, 1fr))` }}
       >
-        {nav.map((item) => (
+        {mobileNav.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

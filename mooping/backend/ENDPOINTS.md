@@ -44,7 +44,7 @@ El dueño los define con `PUT organization/members/{id}/access/`. El dueño siem
   Sin la sección, sus endpoints responden 403 `{"detail": "No tenés acceso a esta sección."}`:
   `inicio` → `dashboard/summary/`; `monitoreo` → `monitoring/summary/`, `animals/…` (GET);
   `alertas` → `alerts/…`; `equipos` → `devices/…`, `gateways/`, `infrastructure/summary/`.
-  `status/`, `yards/`, `me/` y `notification-settings/` no dependen de secciones.
+  `status/`, `yards/`, `me/`, `notification-settings/` y `support/` no dependen de secciones.
 - **Alcance**: con `all_yards: false` ve solo los animales de `yard_ids` más los animales
   sueltos de `animal_ids`, y a través de ellos sus collares, alertas, recorridos y
   contadores (`status/`, resúmenes de Inicio/Monitoreo/Equipos). `yards/` lista solo
@@ -72,6 +72,9 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | POST | `me/password/` | `{current_password, new_password (ver Contraseñas)}` → 204. Cualquier usuario cambia la suya; se cierran sus otras sesiones. |
 | GET | `me/` | `{user: {id, name, email, phone, initials}, organizations: [{id, name, role, sections}]}` |
 | GET | `status/` | `{online, last_packet_at, radio, gateways_online, gateways_total, open_alerts, server_time}` |
+| GET | `support/` | Pantalla Soporte: `{contacts: {whatsapp, email, phone, hours}, diagnostic: {organization, server: {name, server_time}, link: {online, last_packet_at, radio}, gateways: [{name, gateway_uid, kind, online, last_seen_at}], collars: {total, assigned, no_signal, low_battery}, problem_collars: [{label, device_uid, animal_name, state, battery_pct, last_seen_at}] (hasta 10), open_alerts: {critical, sanitary, equipment}}}`. Los contactos salen de `SUPPORT_*` en `backend/.env` (`null` si no están) |
+| GET | `support/requests/` | Mis reclamos (los 10 últimos del usuario): `[{id, category, message, created_at, emailed}]` |
+| POST | `support/requests/` | Enviar reclamo `{category: collar\|gateway\|app\|other, message}` (hasta 2000 caracteres) → 201 con el reclamo. Se guarda con el diagnóstico y se manda por email a `SUPPORT_EMAIL` (responder le escribe al usuario). Si el email no sale, queda guardado con `emailed: false`. Cualquier miembro; límite `SUPPORT_RATE` (5/hora) → 429 |
 
 ### Inicio
 
@@ -99,6 +102,9 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | GET | `animals/{id}/track/?hours=24` | "Ver historial de recorrido": `{points: [{recorded_at, lat, lng, speed_kmh, heading_deg, temp_body_c}]}` |
 | POST | `animals/{id}/alarm/` | "Alarma sonora" → 202 `{command_id, device_id, status: "queued"}` |
 | PATCH | `animals/{id}/` | "Editar ficha" / "Ficha sanitaria" |
+| POST | `animals/{id}/photo/` | Subir foto: multipart con el archivo en `photo` (JPG, PNG, WEBP o GIF, hasta 5 MB). Reemplaza la anterior → el animal |
+| DELETE | `animals/{id}/photo/` | Quitar la foto → el animal |
+| GET | `media/animals/{nombre}` | El archivo de la foto (público, sin token: lo pide un `<img>`). Es la URL que queda en `photo_url` |
 | POST | `animals/` | Alta de animal |
 | POST · PATCH · DELETE | `yards/`, `yards/{id}/` | Crear / editar / borrar potrero (`boundary` = GeoJSON Polygon) |
 

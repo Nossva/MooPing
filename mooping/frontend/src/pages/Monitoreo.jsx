@@ -1,17 +1,28 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  ChevronRight, ClipboardPlus, Footprints, Grid3x3, History, LocateFixed, MapPinned, Radio, Search, ShieldCheck,
-  Siren, Thermometer, Volume2, X,
+  Check, ChevronRight, ClipboardPlus, Footprints, Grid3x3, History, ImageUp, LocateFixed, MapPinned, Pencil, Radio, Search,
+  ShieldCheck, Siren, Thermometer, Volume2, X,
 } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
+import { usePagedApi } from '@/api/usePagedApi'
 import HerdMap from '@/components/HerdMap'
-import { Button, Card, ErrorBox, Loading, OwnerOnly, Pill, SectionTitle } from '@/components/ui'
+import { Button, Card, ErrorBox, Loading, MoreButton, OwnerOnly, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { ALERT_TYPES } from '@/lib/alerts'
 import { dms, num, timeAgo } from '@/lib/format'
+
+const INPUT = 'mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm text-ink'
+const PHOTO_MAX_MB = 5 // mismo límite que el backend (animal_service.PHOTO_MAX_BYTES)
+
+const STATUS_OPTIONS = [
+  { key: 'active', label: 'Activo' },
+  { key: 'inactive', label: 'Inactivo' },
+  { key: 'sold', label: 'Vendido' },
+  { key: 'dead', label: 'Muerto' },
+]
 
 const FILTERS = [
   { key: '', label: 'Todos' },
@@ -29,9 +40,9 @@ export default function Monitoreo() {
   const yards = useApi('yards/')
   const summary = useApi('monitoring/summary/', { params: { yard_id: yardId }, refreshMs: 30000 })
   const positions = useApi('animals/positions/', { params: { yard_id: yardId, geofence }, refreshMs: 30000 })
-  const results = useApi(search.trim() ? 'animals/' : null, { params: { search: search.trim(), yard_id: yardId } })
+  const results = usePagedApi(search.trim() ? 'animals/' : null, { params: { search: search.trim(), yard_id: yardId }, pageSize: 10 })
   const seesAlerts = useAuth().can('alertas')
-  const alerts = useApi(seesAlerts ? 'alerts/' : null, { params: { status: 'open', sort: 'urgency' }, refreshMs: 30000 })
+  const alerts = usePagedApi(seesAlerts ? 'alerts/' : null, { params: { status: 'open', sort: 'urgency' }, refreshMs: 30000, pageSize: 10 })
 
   const points = positions.data ?? []
   const selectedId =
@@ -46,7 +57,7 @@ export default function Monitoreo() {
 
   const yardList = yards.data ?? []
   const s = summary.data
-  const fieldAlerts = (alerts.data ?? []).filter((a) => a.category !== 'equipment')
+  const fieldAlerts = (alerts.items ?? []).filter((a) => a.category !== 'equipment')
 
   return (
     <div className="space-y-4">
@@ -150,7 +161,7 @@ export default function Monitoreo() {
             </div>
             {search.trim() && (
               <ul className="divide-y divide-black/5">
-                {(results.data ?? []).map((a) => (
+                {(results.items ?? []).map((a) => (
                   <li key={a.id}>
                     <button
                       onClick={() => {
@@ -169,27 +180,41 @@ export default function Monitoreo() {
                     </button>
                   </li>
                 ))}
-                {results.data?.length === 0 && <li className="py-2 text-sm text-muted">Sin resultados.</li>}
+                {results.items?.length === 0 && <li className="py-2 text-sm text-muted">Sin resultados.</li>}
               </ul>
+            )}
+            {search.trim() && (
+              <MoreButton list={results}>Ver más resultados</MoreButton>
             )}
           </Card>
         </div>
 
         <div className="space-y-4">
           {selectedId ? (
-            <AnimalPanel key={selectedId} animalId={selectedId} onTrack={setTrack} hasTrack={!!track} />
+            <AnimalPanel
+              key={selectedId}
+              animalId={selectedId}
+              yards={yardList}
+              onTrack={setTrack}
+              hasTrack={!!track}
+              onChanged={() => {
+                positions.reload()
+                results.reload()
+              }}
+            />
           ) : (
             positions.loading && <Loading />
           )}
 
           {seesAlerts && (
             <>
-              <SectionTitle icon={Siren} aside={`${fieldAlerts.length} no resueltas`}>
+              <SectionTitle icon={Siren} aside={`${fieldAlerts.length}${alerts.hasMore ? '+' : ''} no resueltas`}>
                 Alertas de campo
               </SectionTitle>
               {fieldAlerts.map((a) => (
                 <FieldAlert key={a.id} alert={a} onSelect={() => a.animal && select(a.animal.id)} />
               ))}
+              <MoreButton list={alerts}>Ver más alertas</MoreButton>
             </>
           )}
         </div>
@@ -238,11 +263,12 @@ function FieldAlert({ alert, onSelect }) {
   )
 }
 
-function AnimalPanel({ animalId, onTrack, hasTrack }) {
+function AnimalPanel({ animalId, yards, onTrack, hasTrack, onChanged }) {
   const { data: a, error, loading, reload } = useApi(`animals/${animalId}/`, { refreshMs: 30000 })
   const [busy, setBusy] = useState(null)
   const [msg, setMsg] = useState(null)
   const [editing, setEditing] = useState(false)
+  const [editingData, setEditingData] = useState(false)
   const [notes, setNotes] = useState('')
 
   if (loading && !a) return <Loading />
@@ -297,9 +323,22 @@ function AnimalPanel({ animalId, onTrack, hasTrack }) {
             {a.name} {a.health_status === 'optimal' && <ShieldCheck className="size-4 text-field" />}
           </h3>
           <p className="text-sm text-muted">
-            {a.breed} · {a.tag_number}
+            {[a.breed, a.tag_number, a.lot].filter(Boolean).join(' · ')}
           </p>
         </div>
+        <OwnerOnly>
+          <button
+            type="button"
+            title="Editar datos"
+            onClick={() => setEditingData((v) => !v)}
+            className={cx(
+              'flex size-9 items-center justify-center rounded-lg text-muted hover:bg-surface-low hover:text-ink',
+              editingData && 'bg-surface-low text-ink',
+            )}
+          >
+            <Pencil className="size-4" />
+          </button>
+        </OwnerOnly>
         <div className="text-right">
           <Pill className={inside ? 'bg-field-soft text-field' : 'bg-brand text-white'}>
             <span className={cx('size-1.5 rounded-full', inside ? 'bg-field' : 'bg-white')} />
@@ -308,6 +347,19 @@ function AnimalPanel({ animalId, onTrack, hasTrack }) {
           <p className="mt-1 text-xs text-muted">{a.health_status === 'optimal' ? 'Óptimo' : 'En alerta'}</p>
         </div>
       </div>
+
+      {editingData && (
+        <AnimalForm
+          animal={a}
+          yards={yards}
+          onCancel={() => setEditingData(false)}
+          onSaved={() => {
+            setEditingData(false)
+            reload()
+            onChanged()
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <Tile label="Temp. interna" icon={Thermometer}>
@@ -397,6 +449,164 @@ function AnimalPanel({ animalId, onTrack, hasTrack }) {
         </div>
       </OwnerOnly>
     </Card>
+  )
+}
+
+// Datos del animal (PATCH animals/{id}/). Solo el dueño: lo envuelve OwnerOnly.
+function AnimalForm({ animal, yards, onCancel, onSaved }) {
+  const [form, setForm] = useState({
+    name: animal.name,
+    tag_number: animal.tag_number ?? '',
+    lot: animal.lot ?? '',
+    breed: animal.breed ?? '',
+    sex: animal.sex ?? '',
+    birth_date: animal.birth_date ?? '',
+    yard_id: animal.yard?.id ?? '',
+    status: animal.status,
+  })
+  // photo: File elegido, null = quitar la actual, undefined = sin cambios
+  const [photo, setPhoto] = useState(undefined)
+  const [preview, setPreview] = useState(animal.photo_url)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const orNull = (value) => value.trim() || null
+
+  function pickPhoto(e) {
+    const file = e.target.files[0]
+    e.target.value = '' // permite volver a elegir el mismo archivo
+    if (!file) return
+    if (file.size > PHOTO_MAX_MB * 1024 * 1024) {
+      setError(`La foto pesa más de ${PHOTO_MAX_MB} MB.`)
+      return
+    }
+    setError(null)
+    setPhoto(file)
+    setPreview(URL.createObjectURL(file))
+  }
+
+  function clearPhoto() {
+    setPhoto(animal.photo_url ? null : undefined)
+    setPreview(null)
+  }
+
+  async function submit(e) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await api(`animals/${animal.id}/`, {
+        method: 'PATCH',
+        body: {
+          name: form.name.trim(),
+          tag_number: orNull(form.tag_number),
+          lot: orNull(form.lot),
+          breed: orNull(form.breed),
+          sex: form.sex || null,
+          birth_date: form.birth_date || null,
+          yard_id: form.yard_id ? Number(form.yard_id) : null,
+          status: form.status,
+        },
+      })
+      if (photo) {
+        const data = new FormData()
+        data.append('photo', photo)
+        await api(`animals/${animal.id}/photo/`, { method: 'POST', body: data })
+      } else if (photo === null) {
+        await api(`animals/${animal.id}/photo/`, { method: 'DELETE' })
+      }
+      onSaved()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 rounded-xl bg-surface-low p-3">
+      <div className="grid grid-cols-2 gap-3">
+        <label className="col-span-2 text-xs text-muted">
+          Nombre
+          <input required maxLength={200} value={form.name} onChange={set('name')} className={INPUT} />
+        </label>
+        <label className="text-xs text-muted">
+          Caravana
+          <input maxLength={100} value={form.tag_number} onChange={set('tag_number')} className={INPUT} />
+        </label>
+        <label className="text-xs text-muted">
+          Lote
+          <input maxLength={200} value={form.lot} onChange={set('lot')} className={INPUT} />
+        </label>
+        <label className="text-xs text-muted">
+          Raza
+          <input maxLength={200} value={form.breed} onChange={set('breed')} className={INPUT} />
+        </label>
+        <label className="text-xs text-muted">
+          Sexo
+          <select value={form.sex} onChange={set('sex')} className={INPUT}>
+            <option value="">Sin dato</option>
+            <option value="female">Hembra</option>
+            <option value="male">Macho</option>
+          </select>
+        </label>
+        <label className="text-xs text-muted">
+          Fecha de nacimiento
+          <input type="date" value={form.birth_date} onChange={set('birth_date')} className={INPUT} />
+        </label>
+        <label className="text-xs text-muted">
+          Estado
+          <select value={form.status} onChange={set('status')} className={INPUT}>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="col-span-2 text-xs text-muted">
+          Potrero
+          <select value={form.yard_id} onChange={set('yard_id')} className={INPUT}>
+            <option value="">Sin potrero</option>
+            {yards.map((y) => (
+              <option key={y.id} value={y.id}>
+                {y.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="col-span-2 text-xs text-muted">
+          Foto
+          <div className="mt-1 flex items-center gap-3">
+            <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white text-2xl">
+              {preview ? <img src={preview} alt="" className="size-16 object-cover" /> : '🐄'}
+            </div>
+            <label className="cursor-pointer rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-semibold text-ink hover:bg-surface-high">
+              <ImageUp className="mr-1.5 inline size-4" />
+              {preview ? 'Cambiar' : 'Subir foto'}
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={pickPhoto} className="hidden" />
+            </label>
+            {preview && (
+              <button type="button" onClick={clearPhoto} className="text-sm font-semibold text-brand">
+                Quitar
+              </button>
+            )}
+          </div>
+          <p className="mt-1">JPG, PNG, WEBP o GIF, hasta {PHOTO_MAX_MB} MB.</p>
+        </div>
+      </div>
+
+      {error && <p className="text-xs text-brand">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" className="py-2" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="submit" icon={Check} className="py-2" busy={busy}>
+          Guardar
+        </Button>
+      </div>
+    </form>
   )
 }
 

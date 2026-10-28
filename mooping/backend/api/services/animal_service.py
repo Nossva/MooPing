@@ -10,10 +10,18 @@ from api.dto.response.animal_response import (
     TrackResponse,
 )
 from api.dto.response.command_response import CommandQueuedResponse
-from api.repositories import alert_repository, animal_repository, device_repository, organization_repository, yard_repository
+from api.repositories import (
+    alert_repository,
+    animal_repository,
+    device_repository,
+    organization_repository,
+    photo_repository,
+    yard_repository,
+)
 from api.services.errors import Conflict, InvalidInput, NotFound
 
 NORMAL_TEMP_MIN_C = 38.0
+PHOTO_MAX_BYTES = 5 * 1024 * 1024
 
 
 def _check_yard(organization_id, yard_id):
@@ -30,7 +38,8 @@ def list_animals(organization_id, request, scope=None):
     """request: AnimalListRequest -> list[AnimalResponse]"""
     _check_geofence(request.geofence)
     records = animal_repository.list_rows(organization_id, search=request.search, yard_id=request.yard_id,
-                                          geofence=request.geofence, status=request.status, scope=scope)
+                                          geofence=request.geofence, status=request.status, scope=scope,
+                                          **({'limit': request.limit} if request.limit else {}))
     return [AnimalResponse.from_record(r) for r in records]
 
 
@@ -79,11 +88,56 @@ def update_animal(organization_id, animal_id, request):
     changes = request.changes()
     if 'yard_id' in changes:
         _check_yard(organization_id, changes['yard_id'])
+    old_photo = animal.photo_url
     try:
         with transaction.atomic():
             animal_repository.update(animal, **changes)
     except IntegrityError:
         raise Conflict('Ya existe un animal con esa caravana.')
+    if changes.get('photo_url', old_photo) != old_photo:
+        photo_repository.delete_url(old_photo)
+    return get_animal(organization_id, animal_id)
+
+
+def _image_extension(head):
+    """Real type from the first bytes (the browser's content type can't be trusted)."""
+    if head.startswith(b'\xff\xd8\xff'):
+        return 'jpg'
+    if head.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'png'
+    if head[:4] == b'RIFF' and head[8:12] == b'WEBP':
+        return 'webp'
+    if head[:6] in (b'GIF87a', b'GIF89a'):
+        return 'gif'
+    return None
+
+
+def set_photo(organization_id, animal_id, upload):
+    """upload: the uploaded file (Django UploadedFile) -> AnimalDetailResponse"""
+    animal = animal_repository.get(organization_id, animal_id)
+    if animal is None:
+        raise NotFound('Animal no encontrado.')
+    if upload is None:
+        raise InvalidInput('Falta la foto (campo "photo").')
+    if upload.size > PHOTO_MAX_BYTES:
+        raise InvalidInput(f'La foto pesa más de {PHOTO_MAX_BYTES // (1024 * 1024)} MB.')
+    content = upload.read()
+    extension = _image_extension(content[:12])
+    if extension is None:
+        raise InvalidInput('La foto tiene que ser JPG, PNG, WEBP o GIF.')
+    old_photo = animal.photo_url
+    animal_repository.update(animal, photo_url=photo_repository.save(content, extension))
+    photo_repository.delete_url(old_photo)
+    return get_animal(organization_id, animal_id)
+
+
+def remove_photo(organization_id, animal_id):
+    animal = animal_repository.get(organization_id, animal_id)
+    if animal is None:
+        raise NotFound('Animal no encontrado.')
+    old_photo = animal.photo_url
+    animal_repository.update(animal, photo_url=None)
+    photo_repository.delete_url(old_photo)
     return get_animal(organization_id, animal_id)
 
 

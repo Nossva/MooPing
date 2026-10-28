@@ -75,6 +75,36 @@ queda guardado y genera alertas automáticamente. Para ver lo que llega:
 
 Los cambios en el código del backend se recargan solos, sin reiniciar el contenedor.
 
+## Soporte técnico (reclamos por email)
+
+Los reclamos de la pestaña **Soporte** se guardan en la base (`support_requests`) y se
+mandan por email a `SUPPORT_EMAIL` con el estado del sistema. "Responder" le escribe
+directo al usuario. Configuralo en `backend/.env` y reiniciá (`docker compose restart backend telemetry`):
+
+```
+SUPPORT_EMAIL=soporte@ejemplo.com   # a quién llegan los reclamos
+
+# SMTP para enviarlos (ej. Gmail con una "contraseña de aplicación")
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=tu-cuenta@gmail.com
+EMAIL_HOST_PASSWORD=xxxx xxxx xxxx xxxx
+DEFAULT_FROM_EMAIL=MooPing <tu-cuenta@gmail.com>
+
+# Opcionales: "¿Es urgente?" debajo del formulario
+SUPPORT_WHATSAPP=5491100000000      # código de país + número, sin + ni espacios
+SUPPORT_PHONE=+54 9 11 0000-0000
+SUPPORT_HOURS=Lun a vie de 8 a 18 h
+```
+
+Sin `EMAIL_HOST` el email se imprime en `docker compose logs backend` (útil para probar).
+Si falta `SUPPORT_EMAIL` o el SMTP falla, el reclamo queda guardado igual y en "Mis
+reclamos" figura como *Guardado* en vez de *Enviado*:
+
+```bash
+docker compose exec db psql -U mooping -d mooping -c "SELECT id, category, message, email_error FROM support_requests WHERE email_sent_at IS NULL"
+```
+
 ## Puertos ocupados
 
 Si ya tenés algo en el 5432, el 8000 o el 4001, creá un archivo `.env` en `mooping/`:

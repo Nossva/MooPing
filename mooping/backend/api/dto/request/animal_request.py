@@ -10,6 +10,7 @@ class AnimalListRequest:
     yard_id: int | None = None
     geofence: str | None = None        # inside | outside
     status: str = 'active'
+    limit: int | None = None
 
 
 @dataclass

@@ -37,7 +37,7 @@ def list_devices(organization_id, request, scope=None):
     records = device_repository.list_rows(organization_id, search=request.search, scope=scope)
     counts = {'all': len(records), **{f: sum(_matches(r, f) for r in records) for f in FILTERS}}
     items = [DeviceResponse.from_record(r) for r in records if request.filter is None or _matches(r, request.filter)]
-    return DeviceListResponse(counts, items)
+    return DeviceListResponse(counts, items[:request.limit] if request.limit else items)
 
 
 def get_device(organization_id, device_id, scope=None):

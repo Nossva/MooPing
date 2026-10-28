@@ -139,3 +139,13 @@ export function ErrorBox({ error, onRetry }) {
 export function Empty({ children }) {
   return <Card className="text-center text-sm text-muted">{children}</Card>
 }
+
+// "Ver más" al pie de una lista de usePagedApi.
+export function MoreButton({ list, children = 'Ver más' }) {
+  if (!list.hasMore) return null
+  return (
+    <button onClick={list.loadMore} className="w-full py-2 text-sm font-semibold text-brand">
+      {children} ›
+    </button>
+  )
+}

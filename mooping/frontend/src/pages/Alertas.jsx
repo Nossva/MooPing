@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import { BellRing, Siren, SlidersHorizontal, Tractor, Volume2, VolumeX, Wifi } from 'lucide-react'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
+import { usePagedApi } from '@/api/usePagedApi'
 import AlertCard from '@/components/AlertCard'
 import HerdMap from '@/components/HerdMap'
-import { Card, Empty, ErrorBox, Loading, Pill, SectionTitle } from '@/components/ui'
+import { Card, Empty, ErrorBox, Loading, MoreButton, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { timeAgo } from '@/lib/format'
 import { useAuth } from '@/api/auth'
@@ -22,7 +23,7 @@ export default function Alertas() {
   const [searchParams, setSearchParams] = useSearchParams()
   const category = searchParams.get('category') ?? ''
   const summary = useApi('alerts/summary/', { refreshMs: 15000 })
-  const list = useApi('alerts/', { params: { status: 'open', sort: 'urgency', category }, refreshMs: 15000 })
+  const list = usePagedApi('alerts/', { params: { status: 'open', sort: 'urgency', category }, refreshMs: 15000 })
 
   const reload = () => {
     summary.reload()
@@ -30,7 +31,7 @@ export default function Alertas() {
   }
 
   const s = summary.data
-  const alerts = list.data ?? []
+  const alerts = list.items ?? []
   const immediate = alerts.filter((a) => a.category !== 'equipment')
   const equipment = alerts.filter((a) => a.category === 'equipment')
 
@@ -104,7 +105,7 @@ export default function Alertas() {
           )}
           {(category === '' || category === 'equipment') && (
             <section className="space-y-4">
-              <SectionTitle icon={SlidersHorizontal} aside={`${equipment.length} novedades`}>
+              <SectionTitle icon={SlidersHorizontal} aside={`${s?.by_category?.equipment ?? equipment.length} novedades`}>
                 Telemetría y equipamiento
               </SectionTitle>
               {equipment.length === 0 && <Empty>Los equipos no reportan problemas.</Empty>}
@@ -114,6 +115,9 @@ export default function Alertas() {
               <NotificationSettings />
             </section>
           )}
+          <div className="lg:col-span-2">
+            <MoreButton list={list}>Ver más alertas</MoreButton>
+          </div>
         </div>
       )}
     </div>

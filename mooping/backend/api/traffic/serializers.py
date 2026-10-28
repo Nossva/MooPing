@@ -2,6 +2,8 @@
 becomes a request DTO (see api/dto and traffic/http.request_dto)."""
 from rest_framework import serializers
 
+# Longest page a list endpoint (alerts/, animals/, devices/) hands out with ?limit=.
+MAX_LIST_LIMIT = 1000
 
 # Passwords: never trimmed (the same text must work in every endpoint) and
 # capped so a huge input can't keep PBKDF2 busy.
@@ -26,6 +28,8 @@ class AlertListQuery(serializers.Serializer):
     sort = serializers.ChoiceField(['urgency', 'recent'], default='urgency')
     animal_id = serializers.IntegerField(required=False)
     device_id = serializers.IntegerField(required=False)
+    # "Ver más": the client asks for one more than it shows to know if there are more.
+    limit = serializers.IntegerField(min_value=1, max_value=MAX_LIST_LIMIT, required=False)
 
 
 class AlertUpdateSerializer(serializers.Serializer):
@@ -35,6 +39,11 @@ class AlertUpdateSerializer(serializers.Serializer):
 
 class NoteSerializer(serializers.Serializer):
     body = serializers.CharField(max_length=2000)
+
+
+class SupportRequestSerializer(serializers.Serializer):
+    category = serializers.ChoiceField(['collar', 'gateway', 'app', 'other'])
+    message = serializers.CharField(max_length=2000)
 
 
 class YardSerializer(serializers.Serializer):
@@ -56,6 +65,8 @@ class AnimalListQuery(serializers.Serializer):
     yard_id = serializers.IntegerField(required=False)
     geofence = serializers.ChoiceField(['inside', 'outside'], required=False)
     status = serializers.ChoiceField(['active', 'inactive', 'sold', 'dead'], default='active')
+    # "Ver más": the client asks for one more than it shows to know if there are more.
+    limit = serializers.IntegerField(min_value=1, max_value=MAX_LIST_LIMIT, required=False)
 
 
 class AnimalSerializer(serializers.Serializer):
@@ -80,6 +91,8 @@ class DeviceListQuery(serializers.Serializer):
     search = serializers.CharField(required=False, allow_blank=True)
     filter = serializers.ChoiceField(['low_battery', 'alert', 'stock', 'no_signal', 'needs_attention'],
                                      required=False)
+    # "Ver más": the client asks for one more than it shows to know if there are more.
+    limit = serializers.IntegerField(min_value=1, max_value=MAX_LIST_LIMIT, required=False)
 
 
 class DevicePairSerializer(serializers.Serializer):

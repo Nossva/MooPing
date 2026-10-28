@@ -10,6 +10,7 @@ import Equipos from './pages/Equipos'
 import Administracion from './pages/Administracion'
 import SinAcceso from './pages/SinAcceso'
 import MiCuenta from './pages/MiCuenta'
+import Soporte from './pages/Soporte'
 
 // Sección (permiso del usuario, ver Admin > Permisos) -> ruta.
 const SECTION_PATHS = [
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="alertas" element={section('alertas', <Alertas />)} />
         <Route path="equipos" element={section('equipos', <Equipos />)} />
         <Route path="cuenta" element={<MiCuenta />} />
+        <Route path="soporte" element={<Soporte />} />
         <Route path="admin" element={<Gate allowed={() => isOwner}><Administracion /></Gate>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
