@@ -30,9 +30,10 @@ function Gate({ allowed, children }) {
 }
 
 export default function App() {
-  const { token, isOwner, hasAccess } = useAuth()
+  const { session, isOwner, hasAccess } = useAuth()
 
-  if (!token) {
+  if (session === 'checking') return <Loading />
+  if (session === 'out') {
     return (
       <Routes>
         <Route path="*" element={<Login />} />

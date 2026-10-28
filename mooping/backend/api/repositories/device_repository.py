@@ -1,8 +1,9 @@
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from api.entities import AnimalDevice, Device, DeviceCommand, MaintenanceTask
 from api.repositories.db import fetch_all, fetch_one
-from api.repositories.records import DeviceRecord, LocationRecord, OfflineDeviceRecord
+from api.repositories.records import DetectedDeviceRecord, DeviceRecord, LocationRecord, OfflineDeviceRecord
 from api.repositories.scope import animal_sql
 
 # One row per collar with the animal it is on and its open alerts.
@@ -59,6 +60,37 @@ def get(organization_id, device_id):
 
 def get_by_uid(device_uid):
     return Device.objects.filter(device_uid=device_uid).first()
+
+
+def list_detected(organization_id, days, limit):
+    """Collars without an establecimiento whose last reading came in through one
+    of this establecimiento's gateways (the Pi sends "GW"), seen in the last `days`."""
+    return fetch_all(
+        """SELECT d.id, d.device_uid, d.last_seen_at, d.battery_pct, d.last_rssi_dbm, g.name AS gateway_name
+           FROM devices d
+           JOIN LATERAL (
+               SELECT r.gateway_id FROM telemetry_readings r
+               WHERE r.device_id = d.id ORDER BY r.recorded_at DESC LIMIT 1
+           ) last ON true
+           JOIN gateways g ON g.id = last.gateway_id
+           WHERE d.organization_id IS NULL AND g.organization_id = %s
+             AND d.last_seen_at >= now() - make_interval(days => %s)
+           ORDER BY d.last_seen_at DESC LIMIT %s""",
+        [organization_id, days, limit], DetectedDeviceRecord,
+    )
+
+
+def get_or_create_by_uid(device_uid, **fields):
+    """Safe when two readings of a new collar arrive at once (the TCP listener
+    runs one thread per connection): the loser of the race reads the winner's row."""
+    device = get_by_uid(device_uid)
+    if device is not None:
+        return device
+    try:
+        with transaction.atomic():
+            return Device.objects.create(device_uid=device_uid, **fields)
+    except IntegrityError:
+        return get_by_uid(device_uid)
 
 
 def create(device_uid, organization_id=None, **fields):

@@ -1,24 +1,15 @@
 // Cliente de la API de MooPing (ver mooping/backend/ENDPOINTS.md).
 // En dev Vite proxyea /api a http://localhost:8000.
 
+// La sesión viaja en una cookie HttpOnly que pone el backend al loguearse: JS no la ve,
+// así que un XSS no puede robarla. El fetch la manda solo (misma origen).
 const BASE = import.meta.env.VITE_API_URL || '/api'
-const TOKEN_KEY = 'mooping.token'
 
-export function getToken() {
-  try {
-    return localStorage.getItem(TOKEN_KEY)
-  } catch {
-    return null
-  }
-}
-
-export function setToken(token) {
-  try {
-    if (token) localStorage.setItem(TOKEN_KEY, token)
-    else localStorage.removeItem(TOKEN_KEY)
-  } catch {
-    // sin storage: la sesión dura lo que la pestaña
-  }
+// Versiones anteriores guardaban el token en localStorage: lo borramos.
+try {
+  localStorage.removeItem('mooping.token')
+} catch {
+  // sin storage: nada que limpiar
 }
 
 export class ApiError extends Error {
@@ -54,9 +45,8 @@ export async function api(path, { method = 'GET', body, params } = {}) {
       if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v)
     }
   }
-  const headers = { Accept: 'application/json' }
-  const token = getToken()
-  if (token) headers.Authorization = `Bearer ${token}`
+  // X-Requested-With: el backend lo exige en las escrituras (protección CSRF de la cookie).
+  const headers = { Accept: 'application/json', 'X-Requested-With': 'MooPing' }
   // FormData (archivos): el navegador pone el Content-Type multipart con su boundary.
   const isForm = body instanceof FormData
   if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
@@ -64,6 +54,7 @@ export async function api(path, { method = 'GET', body, params } = {}) {
   const res = await fetch(url, {
     method,
     headers,
+    credentials: 'same-origin',
     body: body === undefined || isForm ? body : JSON.stringify(body),
   })
   if (res.status === 204) return null

@@ -5,9 +5,17 @@ frontend calcula "hace 8 min".
 
 ## Autenticación
 
-1. `POST /api/auth/login/` con `{"email", "password"}` → devuelve `token`.
-2. En cada request: `Authorization: Bearer <token>`.
-3. Opcional: `X-Organization-Id: <id>` para elegir establecimiento (por defecto, el primero del usuario).
+1. `POST /api/auth/login/` con `{"email", "password"}` → setea la cookie `mooping_session`
+   (`HttpOnly`, `SameSite=Lax`, `Path=/api/`, `Secure` fuera de DEBUG). El token no viaja en el
+   JSON: JavaScript no puede leerlo, así que un XSS no puede robar la sesión.
+2. Cada request la manda sola (misma origen). Con `curl`: `-c cookies.txt` al loguearse y
+   `-b cookies.txt` después.
+3. **Escrituras** (POST, PUT, PATCH, DELETE): header `X-Requested-With: MooPing` obligatorio,
+   si no → 403. Otro sitio no puede agregar ese header sin pasar por CORS: es la protección CSRF.
+4. Opcional: `X-Organization-Id: <id>` para elegir establecimiento (por defecto, el primero del
+   usuario). Si no sos miembro de ese establecimiento → 403.
+5. La sesión dura `TOKEN_TTL_DAYS` (30). `auth/logout/` la borra; cambiar la contraseña cierra
+   las demás sesiones. En la base solo se guarda el SHA-256 del token.
 
 Demo (`python manage.py seed_demo`): `demo@mooping.app` / `mooping123`.
 
@@ -23,9 +31,11 @@ validación de campos vienen como `{"campo": ["mensaje"]}`.
   (`password1`), ni solo números, ni parecida al nombre o al email. Si no cumple → 400
   con el motivo en `detail`.
 - Los espacios cuentan: no se recortan en ningún endpoint. Máximo 200 caracteres.
-- `auth/login/`: máximo `LOGIN_RATE` intentos por IP (por defecto `10/min`). Pasado el
-  límite → 429 `{"detail": "Demasiados intentos. Probá de nuevo en N s."}` con el header
-  `Retry-After`. El contador vive en memoria del proceso: se reinicia al reiniciar el backend.
+- `auth/login/`: máximo `LOGIN_RATE` intentos por IP (por defecto `10/min`) y
+  `LOGIN_ACCOUNT_RATE` por email desde cualquier IP (`20/hour`). Pasado el límite → 429
+  `{"detail": "Demasiados intentos. Probá de nuevo en N s."}` con el header `Retry-After`.
+  Los contadores viven en un caché en archivos (`CACHE_DIR`, `/tmp/mooping-cache`) compartido
+  por los procesos de gunicorn.
 
 ## Roles y permisos
 
@@ -67,7 +77,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | Método | Ruta | Devuelve |
 |---|---|---|
 | GET | `health/` | `{status, database}` (sin login) |
-| POST | `auth/login/` | `{token, user, organizations}` (sin login) |
+| POST | `auth/login/` | `{user, organizations}` + cookie de sesión (sin login) |
 | POST | `auth/logout/` | 204 |
 | POST | `me/password/` | `{current_password, new_password (ver Contraseñas)}` → 204. Cualquier usuario cambia la suya; se cierran sus otras sesiones. |
 | GET | `me/` | `{user: {id, name, email, phone, initials}, organizations: [{id, name, role, sections}]}` |
@@ -104,7 +114,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | PATCH | `animals/{id}/` | "Editar ficha" / "Ficha sanitaria" |
 | POST | `animals/{id}/photo/` | Subir foto: multipart con el archivo en `photo` (JPG, PNG, WEBP o GIF, hasta 5 MB). Reemplaza la anterior → el animal |
 | DELETE | `animals/{id}/photo/` | Quitar la foto → el animal |
-| GET | `media/animals/{nombre}` | El archivo de la foto (público, sin token: lo pide un `<img>`). Es la URL que queda en `photo_url` |
+| GET | `media/animals/{nombre}` | El archivo de la foto. Pide sesión (el `<img>` manda la cookie) y que la foto sea de un animal de tu establecimiento; si no → 404. Es la URL que queda en `photo_url` |
 | POST | `animals/` | Alta de animal |
 | POST · PATCH · DELETE | `yards/`, `yards/{id}/` | Crear / editar / borrar potrero (`boundary` = GeoJSON Polygon) |
 
@@ -125,7 +135,8 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | GET | `infrastructure/summary/` | `{collars: {total, active, assigned, no_signal, in_stock, operative_pct}, gateways: {total, online, coverage_ha}, repeaters: {total, online, names}, batteries: {average_pct, low_count}, server: {name, status}, last_sync_at}` |
 | GET | `devices/?search=&filter=low_battery\|alert\|stock\|no_signal\|needs_attention` | `{counts: {all, low_battery, alert, stock, no_signal, needs_attention}, items: [collar]}` |
 | GET | `devices/{id}/` | Collar + `maintenance` + `pending_commands` |
-| POST | `devices/` | "Emparejar nuevo collar (NFC/QR)": `{device_uid, label?, ...}` |
+| GET | `devices/detected/` | "Detectados sin vincular": collares sin establecimiento cuya última lectura entró por un gateway propio (campo `GW` del JSON), vistos en los últimos 7 días: `[{device_uid, suggested_label, last_seen_at, battery_pct, rssi_dbm, gateway_name}]` |
+| POST | `devices/` | "Vincular collar": `{device_uid, label?, ...}`. `device_uid` es el número del collar en cualquier formato (`84`, `084`, `C-084`, `COLLAR-84`) y se guarda como lo manda la Pi: `COLLAR-84`. Sin `label`, queda `C-084`. Si el collar ya transmitía sin dueño, se lo adopta con sus lecturas |
 | PATCH | `devices/{id}/` | "Configurar": `label`, `tx_interval_s` (10–3600), `battery_model`, `storage_location`, ... |
 | POST | `devices/{id}/assign/` | "Vincular a un animal": `{animal_id}` |
 | POST | `devices/{id}/unassign/` | Desvincular: `{storage_location?}` |
@@ -147,7 +158,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 
 | Método | Ruta | Para qué |
 |---|---|---|
-| POST | `telemetry/` | Una lectura o una lista. Sin login; si `TELEMETRY_API_KEY` está configurada, header `X-Api-Key`. |
+| POST | `telemetry/` | Una lectura o una lista. Sin login; si `TELEMETRY_API_KEY` está configurada, header `X-Api-Key`. Por TCP (`telemetry_tcp`, puerto 4001) la clave va dentro de cada JSON como `"KEY"` (en la Pi: `TELEMETRY_KEY`) |
 | TCP | puerto `4001` | Lo mismo por TCP (servicio `telemetry`), para `lora_receiver.c` sin cambios: solo apuntar `BACKEND_IP` a esta PC. |
 
 Payload que manda la Pi hoy: `{"ID":"COLLAR-3","LAT":-34.70,"LONG":-58.24,"TEMP":"38.40"}`.

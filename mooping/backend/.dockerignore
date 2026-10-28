@@ -1,4 +1,7 @@
+# Never bake secrets or local data into the image.
+.env
+.env.*
+media/
 .venv/
 __pycache__/
 *.pyc
-.env

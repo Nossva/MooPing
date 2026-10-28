@@ -1,0 +1,8 @@
+# Contexto de deploy/web.Dockerfile: sin secretos, datos ni dependencias locales.
+**/.env
+**/.env.*
+**/node_modules
+**/__pycache__
+backend/media
+backend/.venv
+frontend/dist

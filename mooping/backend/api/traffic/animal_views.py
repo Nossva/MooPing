@@ -1,7 +1,6 @@
 from django.http import FileResponse, Http404
-from rest_framework.decorators import api_view, authentication_classes, parser_classes, permission_classes
+from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import AllowAny
 
 from api.dto.request.animal_request import (
     AnimalCreateRequest,
@@ -10,7 +9,7 @@ from api.dto.request.animal_request import (
     AnimalUpdateRequest,
     TrackRequest,
 )
-from api.repositories import photo_repository
+from api.repositories import animal_repository, photo_repository
 from api.services import animal_service
 from api.traffic.context import organization_id, require_section, scope
 from api.traffic.http import request_dto, respond
@@ -64,15 +63,14 @@ def animal_photo(request, animal_id):
 
 
 @api_view(['GET'])
-@authentication_classes([])
-@permission_classes([AllowAny])
 def animal_photo_file(request, name):
-    """Public: <img> can't send the token. The name is random (photo_repository)."""
+    """The <img> sends the session cookie: only members of the animal's
+    establecimiento get the photo."""
     file = photo_repository.path(name)
-    if file is None:
+    if file is None or not animal_repository.has_photo(organization_id(request), photo_repository.URL_PREFIX + name):
         raise Http404
     response = FileResponse(file.open('rb'), content_type=photo_repository.CONTENT_TYPES[file.suffix[1:]])
-    response['Cache-Control'] = 'public, max-age=31536000, immutable'  # a new photo gets a new name
+    response['Cache-Control'] = 'private, max-age=31536000, immutable'  # a new photo gets a new name
     return response
 
 

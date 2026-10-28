@@ -59,7 +59,7 @@ def change_password(user, token, request):
 
 
 def login(request):
-    """request: LoginRequest -> LoginResponse"""
+    """request: LoginRequest -> (session token, LoginResponse)"""
     user = user_repository.get_by_email(request.email)
     if user is None:
         make_password(request.password)  # same response time whether the email exists or not
@@ -72,7 +72,7 @@ def login(request):
         raise Unauthorized(_BAD_LOGIN)
     token = secrets.token_urlsafe(32)
     user_repository.create_token(user.id, _hash_token(token))
-    return LoginResponse.build(token, get_profile(user))
+    return token, LoginResponse.build(get_profile(user))
 
 
 def logout(token):

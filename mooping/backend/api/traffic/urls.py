@@ -57,6 +57,7 @@ urlpatterns = [
 
     # Collars
     path('devices/', device_views.device_list),
+    path('devices/detected/', device_views.device_detected),
     path('devices/<int:device_id>/', device_views.device_detail),
     path('devices/<int:device_id>/assign/', device_views.device_assign),
     path('devices/<int:device_id>/unassign/', device_views.device_unassign),

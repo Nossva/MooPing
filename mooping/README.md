@@ -57,9 +57,28 @@ Si tu base es de antes de un cambio de esquema, `python start.py` la actualiza s
 
 ## Conectar la Raspberry Pi
 
-En `firmware/AgroBot/firmware/lora_receiver.c`, cambiá `BACKEND_IP` por la IP
-de la PC donde corre Docker (`BACKEND_PORT` queda en 4001). Cada paquete LoRa
-queda guardado y genera alertas automáticamente. Para ver lo que llega:
+El receptor de la Pi (`firmware/AgroBot/firmware/lora_receiver.c`) reenvía cada
+lectura por TCP a todos los destinos de `TELEMETRY_TARGETS`, así que AgroBot y MooPing
+reciben lo mismo en paralelo, sin sincronizar bases. Para sumar MooPing, agregá la IP
+de la PC donde corre Docker (puerto `TELEMETRY_PORT`, 4001 por defecto):
+
+```bash
+sudo TELEMETRY_TARGETS=127.0.0.1:4001,192.168.1.50:4001 GATEWAY_ID=AGROBOT-01 \
+  ./build/agrobot-lora-receiver
+```
+
+- `127.0.0.1:4001` es el servidor AgroBot en la misma Pi; `192.168.1.50:4001`, MooPing.
+  Si uno está apagado, el otro sigue recibiendo (cada envío corta a los 2 s).
+- `GATEWAY_ID` tiene que coincidir con el `gateway_uid` del gateway en MooPing (el demo trae
+  `AGROBOT-01` y `AGROBOT-02`): así figura "conectado" en Equipos y Soporte.
+- Si AgroBot y MooPing corren en la misma máquina no pueden usar los dos el 4001: mové
+  MooPing con `TELEMETRY_PORT` en `mooping/.env` y usá ese puerto en el destino.
+- La PC tiene que aceptar conexiones entrantes en ese puerto (firewall).
+- **Clave de telemetría**: si en `backend/.env` ponés `TELEMETRY_API_KEY=<clave>`, MooPing
+  descarta toda lectura que no la traiga. En la Pi pasá la misma: `TELEMETRY_KEY=<clave>`.
+  Sin clave, cualquiera en la red puede mandar posiciones falsas y disparar alertas.
+
+Cada paquete queda guardado y genera alertas automáticamente. Para ver lo que llega:
 `docker compose logs -f telemetry`.
 
 ## Comandos útiles
@@ -104,6 +123,31 @@ reclamos" figura como *Guardado* en vez de *Enviado*:
 ```bash
 docker compose exec db psql -U mooping -d mooping -c "SELECT id, category, message, email_error FROM support_requests WHERE email_sent_at IS NULL"
 ```
+
+## Seguridad y producción
+
+`docker-compose.yml` es para desarrollo: DEBUG prendido, recarga automática, backend y Vite
+abiertos a la red (para probar desde el celular). La base escucha **solo en esta PC**
+(`127.0.0.1:5432`). Para instalarlo en un campo usá `docker-compose.prod.yml`:
+
+```bash
+cp .env.prod.example .env.prod      # completá SITE_HOST y las claves
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec backend python manage.py seed_demo  # opcional
+```
+
+- **HTTPS** con Caddy delante de todo. `CADDY_TLS=internal` usa un certificado propio (red
+  local: el navegador avisa la primera vez); con un dominio público poné tu email y saca uno
+  de Let's Encrypt.
+- Desde la red solo quedan abiertos 80/443 (Caddy) y 4001 (telemetría, con clave obligatoria).
+  La base y el backend quedan en la red interna de Docker.
+- Backend con gunicorn y `DEBUG=false`. Arranca solo si `DJANGO_SECRET_KEY` es aleatoria y
+  `SITE_HOST` es un host real (no `*`).
+- Las claves viven en `.env.prod`, que está en `.gitignore`; las imágenes no copian ningún `.env`.
+
+Sesión: cookie `HttpOnly` (JavaScript no la ve), las escrituras exigen el header
+`X-Requested-With` (protección CSRF), contraseñas con PBKDF2 y tokens guardados como SHA-256.
+Detalle en [backend/ENDPOINTS.md](backend/ENDPOINTS.md#autenticación).
 
 ## Puertos ocupados
 

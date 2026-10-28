@@ -147,6 +147,16 @@ class DeviceRecord:
 
 
 @dataclass
+class DetectedDeviceRecord:
+    id: int
+    device_uid: str
+    last_seen_at: datetime | None
+    battery_pct: float | None
+    last_rssi_dbm: int | None
+    gateway_name: str
+
+
+@dataclass
 class OfflineDeviceRecord:
     device_id: int
     organization_id: int

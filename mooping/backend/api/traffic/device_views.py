@@ -21,6 +21,13 @@ from api.traffic.serializers import (
 )
 
 
+@api_view(['GET'])
+def device_detected(request):
+    """Collars transmitting through this establecimiento's gateways that nobody claimed."""
+    require_section(request, 'equipos')
+    return respond(device_service.list_detected(organization_id(request)))
+
+
 @api_view(['GET', 'POST'])
 def device_list(request):
     require_section(request, 'equipos')

@@ -352,22 +352,43 @@ function StoreCard() {
   )
 }
 
+// Mismo formato que manda la Pi (lora_receiver.c: "COLLAR-%u") y que normaliza el backend
+// (entities/rules.collar_uid): "84", "084", "C-084" -> "COLLAR-84". null si no es un número de collar.
+function collarUid(raw) {
+  const match = /^\s*(?:collar|c)?\s*[-_ #]?\s*0*(\d{1,5})\s*$/i.exec(raw)
+  if (!match || Number(match[1]) > 65535) return null
+  return `COLLAR-${Number(match[1])}`
+}
+
+const defaultLabel = (uid) => `C-${uid.replace('COLLAR-', '').padStart(3, '0')}`
+
+// "Vincular collar": por número (el grabado en el collar) o eligiendo uno de los detectados,
+// que ya transmiten por los gateways del establecimiento pero no tienen dueño.
 function PairCollar({ onDone }) {
+  const detected = useApi('devices/detected/', { refreshMs: 30000 })
   const [open, setOpen] = useState(false)
-  const [uid, setUid] = useState('')
+  const [number, setNumber] = useState('')
   const [label, setLabel] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+
+  const uid = collarUid(number)
+
+  function start(device) {
+    setNumber(device ? device.device_uid.replace('COLLAR-', '') : '')
+    setLabel('')
+    setError(null)
+    setOpen(true)
+  }
 
   async function submit(e) {
     e.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      await api('devices/', { method: 'POST', body: { device_uid: uid.trim(), label: label.trim() || undefined } })
-      setUid('')
-      setLabel('')
+      await api('devices/', { method: 'POST', body: { device_uid: uid, label: label.trim() || undefined } })
       setOpen(false)
+      detected.reload()
       onDone()
     } catch (err) {
       setError(err.message)
@@ -376,40 +397,86 @@ function PairCollar({ onDone }) {
     }
   }
 
-  if (!open) {
-    return (
-      <Button icon={CirclePlus} className="w-full py-4 text-base" onClick={() => setOpen(true)}>
-        Emparejar nuevo collar (NFC / QR)
-      </Button>
-    )
-  }
   return (
-    <Card>
-      <form onSubmit={submit} className="space-y-3">
-        <p className="font-display text-lg font-bold">Emparejar nuevo collar</p>
-        <input
-          required
-          value={uid}
-          onChange={(e) => setUid(e.target.value)}
-          placeholder="ID del collar (ej: COLLAR-205)"
-          className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm"
-        />
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Etiqueta (ej: C-205)"
-          className="w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm"
-        />
-        {error && <p className="text-xs text-brand">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" className="py-2" onClick={() => setOpen(false)}>
-            Cancelar
-          </Button>
-          <Button type="submit" className="py-2" busy={busy}>
-            Emparejar
-          </Button>
-        </div>
-      </form>
-    </Card>
+    <div className="space-y-4">
+      {open ? (
+        <Card>
+          <form onSubmit={submit} className="space-y-3">
+            <p className="font-display text-lg font-bold">Vincular collar</p>
+            <label className="block text-xs text-muted">
+              Número del collar
+              <input
+                required
+                autoFocus
+                inputMode="numeric"
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
+                placeholder="Ej: 84"
+                className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm text-ink"
+              />
+            </label>
+            <p className={cx('-mt-1 text-xs', uid || !number.trim() ? 'text-muted' : 'text-brand')}>
+              {uid ? (
+                <>
+                  Se vincula como <span className="font-mono font-semibold text-ink">{uid}</span>, el ID que manda el collar.
+                </>
+              ) : number.trim() ? (
+                'Escribí el número grabado en el collar (de 0 a 65535).'
+              ) : (
+                'Es el número grabado en el collar.'
+              )}
+            </p>
+            <label className="block text-xs text-muted">
+              Etiqueta (opcional)
+              <input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder={uid ? defaultLabel(uid) : 'Ej: C-084'}
+                className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm text-ink"
+              />
+            </label>
+            {error && <p className="text-xs text-brand">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" className="py-2" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="py-2" busy={busy} disabled={!uid}>
+                Vincular
+              </Button>
+            </div>
+          </form>
+        </Card>
+      ) : (
+        <Button icon={CirclePlus} className="w-full py-4 text-base" onClick={() => start(null)}>
+          Vincular collar
+        </Button>
+      )}
+
+      {detected.data?.length > 0 && (
+        <Card className="space-y-2">
+          <SectionTitle icon={Radar} aside={<Pill className="bg-warn-soft text-warn-ink">{detected.data.length}</Pill>}>
+            Detectados sin vincular
+          </SectionTitle>
+          <p className="text-xs text-muted">Transmiten por tus gateways pero todavía no son de ningún establecimiento.</p>
+          <ul className="divide-y divide-black/5">
+            {detected.data.map((d) => (
+              <li key={d.device_uid} className="flex items-center gap-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-sm font-semibold text-ink">{d.device_uid}</p>
+                  <p className="truncate text-xs text-muted">
+                    {d.gateway_name} · {timeAgo(d.last_seen_at)}
+                    {d.rssi_dbm != null && ` · ${d.rssi_dbm} dBm`}
+                    {d.battery_pct != null && ` · ${num(d.battery_pct)}%`}
+                  </p>
+                </div>
+                <Button variant="soft" icon={Link2} className="shrink-0 px-3 py-2" onClick={() => start(d)}>
+                  Vincular
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </div>
   )
 }

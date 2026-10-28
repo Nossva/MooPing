@@ -38,8 +38,8 @@ PGPASSWORD=mooping
 def _ensure_env_file():
     """First run: create .env from ENV_TEMPLATE with a fresh secret key."""
     env_file = BASE_DIR / '.env'
-    if env_file.exists():
-        return
+    if env_file.exists() or os.environ.get('DJANGO_DEBUG', '').lower() == 'false':
+        return  # production gets everything from the environment (docker-compose.prod.yml)
     env_file.write_text(ENV_TEMPLATE.format(secret_key=secrets.token_urlsafe(50)), encoding='utf-8')
     print(f'Created {env_file}')
 
@@ -59,6 +59,23 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-chang
 DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() == 'true'
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+
+if not DEBUG:
+    # Production (docker-compose.prod.yml): refuse to start with the dev defaults.
+    from django.core.exceptions import ImproperlyConfigured
+
+    if SECRET_KEY.startswith('django-insecure') or len(SECRET_KEY) < 40:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY: poné una clave aleatoria de 40+ caracteres.')
+    if '*' in ALLOWED_HOSTS:
+        raise ImproperlyConfigured('DJANGO_ALLOWED_HOSTS: listá los dominios/IPs reales, no "*".')
+
+    # Behind the HTTPS proxy (Caddy): it tells Django the original scheme.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '0'))  # >0 only with a real certificate
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = True
+    X_FRAME_OPTIONS = 'DENY'
 
 
 # Application definition
@@ -169,11 +186,22 @@ STATIC_URL = 'static/'
 MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
 
 
+# Login/support throttles count here. A file cache is shared by all gunicorn
+# workers of the container (the default in-memory cache is per process, which
+# would multiply LOGIN_RATE by the number of workers).
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': os.environ.get('CACHE_DIR', '/tmp/mooping-cache'),
+    },
+}
+
+
 # Django REST framework
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
-    'DEFAULT_AUTHENTICATION_CLASSES': ['api.traffic.authentication.BearerTokenAuthentication'],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['api.traffic.authentication.SessionCookieAuthentication'],
     # Writes are owner-only unless a view opts in with IsMember (api/traffic/permissions.py).
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -186,6 +214,7 @@ REST_FRAMEWORK = {
     # Reclamos de soporte per member (support_views.SupportRateThrottle).
     'DEFAULT_THROTTLE_RATES': {
         'login': os.environ.get('LOGIN_RATE', '10/min'),
+        'login_account': os.environ.get('LOGIN_ACCOUNT_RATE', '20/hour'),
         'support': os.environ.get('SUPPORT_RATE', '5/hour'),
     },
 }
@@ -207,6 +236,10 @@ SUPPORT_HOURS = os.environ.get('SUPPORT_HOURS', '')
 
 # API tokens expire this many days after login (using them doesn't extend it).
 TOKEN_TTL_DAYS = int(os.environ.get('TOKEN_TTL_DAYS', '30'))
+# Session cookie (api/traffic/authentication.py). Secure = only over HTTPS: on by
+# default outside DEBUG; AUTH_COOKIE_SECURE=false to test production over plain http.
+AUTH_COOKIE_NAME = 'mooping_session'
+AUTH_COOKIE_SECURE = os.environ.get('AUTH_COOKIE_SECURE', str(not DEBUG)).lower() == 'true'
 
 
 # CORS (web frontend origins)

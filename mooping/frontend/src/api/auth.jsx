@@ -1,45 +1,54 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { api, getToken, setForbiddenHandler, setToken, setUnauthorizedHandler } from './client'
+import { api, setForbiddenHandler, setUnauthorizedHandler } from './client'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [token, setTokenState] = useState(getToken)
+  // La cookie de sesión es HttpOnly: JS no sabe si existe. me/ lo dice
+  // (200 = hay sesión, 401 = no). 'checking' hasta la primera respuesta.
+  const [session, setSession] = useState('checking') // checking | in | out
   const [me, setMe] = useState(null)
 
-  const logout = useCallback(async () => {
-    try {
-      if (getToken()) await api('auth/logout/', { method: 'POST' })
-    } catch {
-      // el token ya no sirve: igual cerramos sesión
-    }
-    setToken(null)
-    setTokenState(null)
+  const signedOut = useCallback(() => {
+    setSession('out')
     setMe(null)
   }, [])
 
-  useEffect(() => {
-    setUnauthorizedHandler(() => {
-      setToken(null)
-      setTokenState(null)
-      setMe(null)
-    })
-  }, [])
+  const logout = useCallback(async () => {
+    try {
+      await api('auth/logout/', { method: 'POST' })
+    } catch {
+      // la sesión ya no servía: igual cerramos
+    }
+    signedOut()
+  }, [signedOut])
 
-  const refreshMe = useCallback(() => api('me/').then(setMe).catch(() => {}), [])
+  useEffect(() => {
+    setUnauthorizedHandler(signedOut)
+  }, [signedOut])
+
+  // Un error que no sea 401 (p. ej. el backend se estaba reiniciando) no cierra la sesión.
+  const refreshMe = useCallback(
+    () =>
+      api('me/')
+        .then((data) => {
+          setMe(data)
+          setSession('in')
+        })
+        .catch(() => {}),
+    [],
+  )
 
   useEffect(() => {
-    if (!token) return
     refreshMe()
-  }, [token, refreshMe])
+  }, [refreshMe])
 
-  // Si me/ falló (p. ej. el backend se estaba reiniciando), reintentar: sin `me`
-  // no sabemos el rol y el dueño no vería "Admin".
+  // Si me/ falló sin un 401, reintentar: sin `me` no sabemos el rol y el dueño no vería "Admin".
   useEffect(() => {
-    if (!token || me) return
+    if (session === 'out' || me) return
     const id = setInterval(refreshMe, 5000)
     return () => clearInterval(id)
-  }, [token, me, refreshMe])
+  }, [session, me, refreshMe])
 
   useEffect(() => {
     setForbiddenHandler(refreshMe)
@@ -47,9 +56,8 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const result = await api('auth/login/', { method: 'POST', body: { email, password } })
-    setToken(result.token)
-    setTokenState(result.token)
     setMe({ user: result.user, organizations: result.organizations })
+    setSession('in')
   }, [])
 
   // Rol en el establecimiento activo: el primero, igual que el backend sin X-Organization-Id.
@@ -62,7 +70,7 @@ export function AuthProvider({ children }) {
   const hasAccess = !me || me.organizations.length > 0
 
   return (
-    <AuthContext value={{ token, me, role, isOwner, sections, can, hasAccess, login, logout, refreshMe }}>
+    <AuthContext value={{ session, me, role, isOwner, sections, can, hasAccess, login, logout, refreshMe }}>
       {children}
     </AuthContext>
   )

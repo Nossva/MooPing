@@ -4,16 +4,21 @@ from django.db import transaction
 
 from api.dto.response.command_response import CommandQueuedResponse
 from api.dto.response.device_response import (
+    DetectedDeviceResponse,
     DeviceDetailResponse,
     DeviceListResponse,
     DeviceResponse,
     MaintenanceResponse,
 )
+from api.entities import collar_uid, default_collar_label
 from api.repositories import animal_repository, device_repository
 from api.services.errors import Conflict, InvalidInput, NotFound
 
 FILTERS = ('low_battery', 'alert', 'stock', 'no_signal', 'needs_attention')
 MAINTENANCE_KINDS = ('battery_replacement', 'repair', 'inspection')
+# "Detectados sin vincular": collars heard in the last DETECTED_DAYS days.
+DETECTED_DAYS = 7
+DETECTED_LIMIT = 50
 
 
 def _matches(record, filter_):
@@ -54,10 +59,12 @@ def pair_device(organization_id, request):
     """request: DevicePairRequest. 'Emparejar nuevo collar (NFC/QR)': claims a
     collar for the establecimiento; one that already sent data without an owner
     is claimed as is."""
-    device_uid = (request.device_uid or '').strip()
-    if not device_uid:
-        raise InvalidInput('device_uid es obligatorio.')
+    # Same id the Pi sends (COLLAR-<n>): otherwise readings would go to another collar.
+    device_uid = collar_uid(request.device_uid)
+    if device_uid is None:
+        raise InvalidInput('El ID del collar es el número grabado en el collar (de 0 a 65535), ej: 84.')
     fields = request.fields_to_set()
+    fields.setdefault('label', default_collar_label(device_uid))
     device = device_repository.get_by_uid(device_uid)
     if device is not None:
         if device.organization_id == organization_id:
@@ -66,9 +73,14 @@ def pair_device(organization_id, request):
             raise Conflict('El collar pertenece a otro establecimiento.')
         device_repository.update(device, organization_id=organization_id, **fields)
     else:
-        fields.setdefault('label', device_uid)
         device = device_repository.create(device_uid, organization_id=organization_id, **fields)
     return get_device(organization_id, device.id)
+
+
+def list_detected(organization_id):
+    """-> list[DetectedDeviceResponse]"""
+    rows = device_repository.list_detected(organization_id, DETECTED_DAYS, DETECTED_LIMIT)
+    return [DetectedDeviceResponse.from_record(r) for r in rows]
 
 
 @transaction.atomic

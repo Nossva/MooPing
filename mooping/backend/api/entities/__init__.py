@@ -14,7 +14,7 @@ from .device import Device, DeviceCommand, MaintenanceTask
 from .gateway import Gateway
 from .notification_settings import NotificationSettings
 from .organization import Organization
-from .rules import CATEGORY_BY_TYPE, battery_days_left, device_state
+from .rules import CATEGORY_BY_TYPE, battery_days_left, collar_uid, default_collar_label, device_state
 from .support import SupportRequest
 from .telemetry import AnimalDailyStatistics, AnimalLastPosition, TelemetryReading
 from .user import ApiToken, Membership, User
@@ -25,5 +25,5 @@ __all__ = [
     'DeviceCommand', 'MaintenanceTask', 'Gateway', 'NotificationSettings',
     'Organization', 'SupportRequest', 'AnimalDailyStatistics', 'AnimalLastPosition',
     'TelemetryReading', 'ApiToken', 'Membership', 'User', 'Yard',
-    'battery_days_left', 'device_state',
+    'battery_days_left', 'collar_uid', 'default_collar_label', 'device_state',
 ]

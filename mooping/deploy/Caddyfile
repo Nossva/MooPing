@@ -1,0 +1,29 @@
+# MooPing en producción: HTTPS delante de todo. Sirve el frontend compilado y
+# pasa /api al backend (gunicorn). Ver docker-compose.prod.yml.
+#   SITE_ADDRESS: dominio o IP por la que entran (ej. mooping.tucampo.com, 192.168.1.50)
+#   CADDY_TLS:    "internal" = certificado propio (red local, el navegador avisa la 1ª vez)
+#                 o un email = certificado real de Let's Encrypt (dominio público, puertos 80/443 abiertos)
+{$SITE_ADDRESS} {
+	tls {$CADDY_TLS}
+	encode gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Leaflet usa estilos inline; los mapas vienen de OpenStreetMap; blob: = vista previa de fotos.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://*.tile.openstreetmap.org; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

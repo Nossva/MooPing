@@ -1,4 +1,6 @@
+import hmac
 import json
+import socket
 import socketserver
 import threading
 import time
@@ -11,6 +13,25 @@ from api.services import alert_service
 from api.traffic.telemetry_views import ingest_payload
 
 NO_SIGNAL_CHECK_SECONDS = 60
+# The Pi opens a connection per reading: anything slower or bigger isn't the Pi.
+CONNECTION_TIMEOUT_SECONDS = 30
+MAX_BUFFER_CHARS = 64 * 1024
+
+
+def key_ok(item):
+    """With TELEMETRY_API_KEY set, every reading must carry it as "KEY"
+    (lora_receiver.c: TELEMETRY_KEY). Without it, anyone on the network could
+    invent positions and trigger alerts."""
+    expected = settings.TELEMETRY_API_KEY
+    if not expected:
+        return True
+    provided = item.get('KEY') if isinstance(item, dict) else None
+    return isinstance(provided, str) and hmac.compare_digest(provided.encode(), expected.encode())
+
+
+def for_log(items):
+    """The payload without the key, so it never ends up in the logs."""
+    return json.dumps([{k: v for k, v in i.items() if k != 'KEY'} if isinstance(i, dict) else i for i in items])
 
 
 def extract_json_payloads(buffer):
@@ -44,12 +65,19 @@ class TelemetryHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         peer = self.client_address[0]
+        self.request.settimeout(CONNECTION_TIMEOUT_SECONDS)
         buffer = ''
         while True:
-            data = self.request.recv(4096)
+            try:
+                data = self.request.recv(4096)
+            except socket.timeout:
+                break
             if not data:
                 break
             buffer += data.decode('utf-8', errors='replace')
+            if len(buffer) > MAX_BUFFER_CHARS:
+                self.server.log(f'[{peer}] más de {MAX_BUFFER_CHARS} caracteres sin un JSON completo: cierro la conexión')
+                break
             payloads, buffer = extract_json_payloads(buffer)
             for payload in payloads:
                 self.server.process(payload, peer)
@@ -66,16 +94,21 @@ class TelemetryServer(socketserver.ThreadingTCPServer):
     def process(self, payload, peer):
         close_old_connections()
         try:
-            for result in ingest_payload(json.loads(payload)):
+            parsed = json.loads(payload)
+            items = parsed if isinstance(parsed, list) else [parsed]
+            if not all(key_ok(item) for item in items):
+                self.log(f'[{peer}] descartada: falta KEY o no coincide con TELEMETRY_API_KEY')
+                return
+            for result in ingest_payload(items):
                 if result.ok:
                     alerts = f', alertas nuevas {result.alerts_created}' if result.alerts_created else ''
                     self.log(f'[{peer}] lectura {result.reading_id} collar {result.device_id}{alerts}')
                 else:
-                    self.log(f'[{peer}] descartada: {result.error} <- {payload}')
+                    self.log(f'[{peer}] descartada: {result.error} <- {for_log(items)}')
         except json.JSONDecodeError:
-            self.log(f'[{peer}] JSON inválido: {payload}')
+            self.log(f'[{peer}] JSON inválido ({len(payload)} caracteres)')
         except Exception as error:  # keep the listener alive
-            self.log(f'[{peer}] error procesando {payload}: {error}')
+            self.log(f'[{peer}] error procesando la lectura: {error}')
         finally:
             close_old_connections()
 
@@ -107,4 +140,6 @@ class Command(BaseCommand):
         threading.Thread(target=self._check_no_signal_forever, daemon=True).start()
         with TelemetryServer(('0.0.0.0', options['port']), self._log) as server:
             self._log(f"Escuchando telemetría TCP en el puerto {options['port']}")
+            if not settings.TELEMETRY_API_KEY:
+                self._log('ATENCIÓN: TELEMETRY_API_KEY vacía, se acepta telemetría de cualquiera en la red.')
             server.serve_forever()

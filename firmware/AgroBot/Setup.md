@@ -123,6 +123,12 @@ Listening for AgroNeck LoRa packets at 433 MHz
 
 Dejá el receptor corriendo antes de encender o despertar el AgroNeck. `sudo` permite abrir `/dev/spidev0.0` y solicitar las líneas GPIO.
 
+Para mandar las lecturas también a MooPing, pasá los destinos y el ID del gateway (detalle en [firmware/README.md](firmware/README.md#destinos-de-la-telemetría)):
+
+```bash
+sudo TELEMETRY_TARGETS=127.0.0.1:4001,<ip-de-mooping>:4001 GATEWAY_ID=AGROBOT-01 ./build/agrobot-lora-receiver
+```
+
 ## 6. Flashear y despertar el AgroNeck
 
 En una computadora con ESP-IDF configurado y la ESP32 del collar conectada por USB:

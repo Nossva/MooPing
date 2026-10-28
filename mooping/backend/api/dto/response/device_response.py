@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from api.dto.response.base import geofence_status
-from api.entities import battery_days_left, device_state
+from api.entities import battery_days_left, default_collar_label, device_state
 
 
 @dataclass
@@ -47,6 +47,22 @@ class DeviceResponse:
             animal=DeviceAnimalResponse(r.animal_id, r.animal_name, r.animal_breed, r.animal_lot,
                                         r.yard_name, geofence_status(r.inside_geofence)) if r.animal_id else None,
         )
+
+
+@dataclass
+class DetectedDeviceResponse:
+    """A collar that is transmitting but nobody claimed yet ("Detectados sin vincular")."""
+    device_uid: str
+    suggested_label: str
+    last_seen_at: datetime | None
+    battery_pct: float | None
+    rssi_dbm: int | None
+    gateway_name: str
+
+    @classmethod
+    def from_record(cls, r):
+        return cls(r.device_uid, default_collar_label(r.device_uid), r.last_seen_at, r.battery_pct,
+                   r.last_rssi_dbm, r.gateway_name)
 
 
 @dataclass

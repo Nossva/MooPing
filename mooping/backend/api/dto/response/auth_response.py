@@ -40,10 +40,10 @@ class ProfileResponse:
 
 @dataclass
 class LoginResponse:
-    token: str
+    """The token itself travels only in the HttpOnly cookie (auth_views.login)."""
     user: UserResponse
     organizations: list[OrganizationResponse]
 
     @classmethod
-    def build(cls, token, profile):
-        return cls(token, profile.user, profile.organizations)
+    def build(cls, profile):
+        return cls(profile.user, profile.organizations)

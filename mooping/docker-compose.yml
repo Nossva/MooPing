@@ -11,8 +11,10 @@ services:
       POSTGRES_DB: mooping
       POSTGRES_USER: mooping
       POSTGRES_PASSWORD: mooping
+    # Solo desde esta PC (DBeaver, psql): con usuario/clave "mooping", abrirla a la red
+    # dejaría la base a cualquiera en la misma WiFi.
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - mooping-data:/var/lib/postgresql/data

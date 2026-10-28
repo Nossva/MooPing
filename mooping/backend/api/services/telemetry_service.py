@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from api.dto.response.telemetry_response import TelemetryAcceptedResponse
+from api.entities import collar_uid
 from api.repositories import animal_repository, device_repository, gateway_repository, telemetry_repository
 from api.services import alert_service
 
@@ -13,9 +14,8 @@ def ingest(request):
     """request: TelemetryReadingRequest -> TelemetryAcceptedResponse.
     Stores one reading and evaluates alerts. Unknown collars are registered
     without an establecimiento until someone pairs them."""
-    device = device_repository.get_by_uid(request.device_uid)
-    if device is None:
-        device = device_repository.create(request.device_uid, label=request.device_uid)
+    device_uid = collar_uid(request.device_uid) or request.device_uid  # 'COLLAR-084' -> 'COLLAR-84'
+    device = device_repository.get_or_create_by_uid(device_uid, label=device_uid)
     animal = animal_repository.get_by_device(device.id)
     gateway = gateway_repository.get_by_uid(request.gateway_uid) if request.gateway_uid else None
 

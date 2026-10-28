@@ -73,6 +73,11 @@ def create(organization_id, **fields):
     return Animal.objects.create(organization_id=organization_id, **fields)
 
 
+def has_photo(organization_id, photo_url):
+    """True if an animal of the establecimiento uses this photo."""
+    return Animal.objects.filter(organization_id=organization_id, photo_url=photo_url).exists()
+
+
 def update(animal, **fields):
     for name, value in fields.items():
         setattr(animal, name, value)
