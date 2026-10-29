@@ -125,7 +125,7 @@ def main():
     wait_for_api()
     wait_for_frontend()
     print(f'\nMooPing está andando: {FRONTEND_URL}  (API: {URL})')
-    print('Entrá con "Probar con Establecimiento Demo".'
+    print('Entrá con demo@mooping.app / mooping123.'
           ' Si no hay datos: docker compose exec backend python manage.py seed_demo')
     print('Logs: docker compose logs -f backend frontend   |   Apagar: docker compose down')
     webbrowser.open(FRONTEND_URL)

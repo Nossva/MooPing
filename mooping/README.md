@@ -13,7 +13,7 @@ mooping/
 |---|---|---|
 | `db` | 5432 | PostgreSQL + PostGIS |
 | `backend` | 8000 | API REST (`/api/...`) |
-| `frontend` | 5173 | App web: http://localhost:5173 (login demo con "Probar con Establecimiento Demo") |
+| `frontend` | 5173 | App web: http://localhost:5173 |
 | `telemetry` | 4001 | Recibe por TCP los JSON de la Raspberry Pi (`lora_receiver.c`) y revisa cada minuto los collares sin señal |
 
 ## Primera vez (y siempre)

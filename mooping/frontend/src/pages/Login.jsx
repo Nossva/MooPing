@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { ArrowRight, Eye, EyeOff, Lock, MapPin, MonitorPlay, Radar, Radio, SunMedium, Thermometer, User } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff, Lock, MapPin, Radar, Radio, SunMedium, Thermometer, User } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { useApi } from '@/api/useApi'
 import { LogoMark } from '@/components/ui'
-
-const DEMO = { email: 'demo@mooping.app', password: 'mooping123' }
 
 export default function Login() {
   const { login } = useAuth()
@@ -132,15 +130,6 @@ export default function Login() {
               className="flex w-full items-center justify-center gap-2 rounded-full bg-brand py-4 font-semibold text-white shadow-lg shadow-brand/20 hover:bg-brand-dark disabled:opacity-60"
             >
               {busy === 'form' ? 'Ingresando…' : 'Ingresar al sistema'} <ArrowRight className="size-4" />
-            </button>
-            <button
-              type="button"
-              disabled={!!busy}
-              onClick={() => submit(DEMO, 'demo')}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-soft/50 py-3 text-sm font-semibold text-brand-dark hover:bg-brand-soft disabled:opacity-60"
-            >
-              <MonitorPlay className="size-4" />
-              {busy === 'demo' ? 'Entrando…' : 'Probar con Establecimiento Demo'}
             </button>
           </form>
         </div>

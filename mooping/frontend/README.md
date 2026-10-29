@@ -27,8 +27,7 @@ docker compose up -d --build
 docker exec mooping-backend python manage.py seed_demo   # datos de demo (una vez)
 ```
 
-Abrir http://localhost:5173 y tocar **Probar con Establecimiento Demo**
-(`demo@mooping.app` / `mooping123`).
+Abrir http://localhost:5173 y entrar con `demo@mooping.app` / `mooping123`.
 
 Solo el frontend, con el backend ya corriendo en :8000:
 
