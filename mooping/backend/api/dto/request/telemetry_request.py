@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -40,6 +40,13 @@ _RANGES = {
 }
 
 
+# recorded_at accepted as sent within this window around the server clock.
+_MAX_FUTURE = timedelta(minutes=5)
+_MAX_PAST = timedelta(days=7)
+# Epoch numbers above this are milliseconds (in seconds it would be year 5138).
+_EPOCH_MS_FROM = 1e11
+
+
 def _in_range(name, value):
     if not math.isfinite(value):
         return False
@@ -54,15 +61,38 @@ def _pick(raw, name):
     return None
 
 
+def _to_datetime(value):
+    """TS as sent (epoch seconds or milliseconds, or ISO 8601) -> aware datetime, or None."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and value.strip().isdigit():
+        value = int(value)
+    try:
+        if isinstance(value, (int, float)):
+            if value > _EPOCH_MS_FROM:
+                value /= 1000
+            return datetime.fromtimestamp(value, tz=dt_timezone.utc)
+        parsed = parse_datetime(str(value))
+    except (ValueError, OverflowError, OSError):  # year out of range, NaN, 2026-13-45...
+        return None
+    if parsed is None:
+        return None
+    return parsed if parsed.tzinfo else timezone.make_aware(parsed)
+
+
 def _parse_time(value):
+    """A clock far off (a Pi without RTC boots in 1970 or ahead) gets the
+    arrival time: a future recorded_at would freeze devices.last_seen_at and
+    animal_last_position (both keep the newest) until that date."""
+    now = timezone.now()
     if value is None:
-        return timezone.now()
-    if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(value, tz=dt_timezone.utc)
-    parsed = parse_datetime(str(value))
+        return now
+    parsed = _to_datetime(value)
     if parsed is None:
         raise DtoValidationError(f'recorded_at inválido: {value}')
-    return parsed if parsed.tzinfo else timezone.make_aware(parsed)
+    if not now - _MAX_PAST <= parsed <= now + _MAX_FUTURE:
+        return now
+    return parsed
 
 
 @dataclass
