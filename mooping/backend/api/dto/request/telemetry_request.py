@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone as dt_timezone
 
@@ -24,6 +25,26 @@ _ALIASES = {
 }
 _NUMERIC = ('lat', 'lng', 'temp_body_c', 'battery_pct', 'rssi_dbm', 'snr_db', 'activity',
             'rumination_min', 'speed_mps', 'heading_deg')
+# Plausible values per sensor field. A value outside (or NaN/inf, e.g. a failed
+# sensor) is dropped: the rest of the reading, position included, is kept.
+# NaN in the database would break every screen that serializes it (strict JSON).
+_RANGES = {
+    'temp_body_c': (0, 60),       # LM35/MLX glitches (85, 127...) must not open fever alerts
+    'battery_pct': (0, 100),
+    'rssi_dbm': (-200, 20),       # SMALLINT column
+    'snr_db': (-50, 50),
+    'activity': (0, None),
+    'rumination_min': (0, None),
+    'speed_mps': (0, 100),
+    'heading_deg': (0, 360),
+}
+
+
+def _in_range(name, value):
+    if not math.isfinite(value):
+        return False
+    low, high = _RANGES.get(name, (None, None))
+    return (low is None or value >= low) and (high is None or value <= high)
 
 
 def _pick(raw, name):
@@ -76,7 +97,9 @@ class TelemetryReadingRequest:
                     values[name] = float(values[name])
                 except (TypeError, ValueError):
                     raise DtoValidationError(f'{name} no es numérico: {values[name]}')
-        # NEO-6M reports 0,0 while it has no fix.
+                if not _in_range(name, values[name]):
+                    values[name] = None
+        # NEO-6M reports 0,0 while it has no fix (NaN coordinates: same, no fix).
         if values['lat'] in (None, 0.0) or values['lng'] in (None, 0.0):
             values['lat'] = values['lng'] = None
         elif not (-90 <= values['lat'] <= 90 and -180 <= values['lng'] <= 180):

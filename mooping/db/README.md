@@ -35,6 +35,7 @@ puede romper nada.
 | [upgrade-member-access.sql](upgrade-member-access.sql) | `memberships.active`: suspender el acceso de un usuario sin sacarlo |
 | [upgrade-member-permissions.sql](upgrade-member-permissions.sql) | Permisos por usuario: `memberships.sections` / `all_yards`, `member_yards`, `member_animals` |
 | [upgrade-support-requests.sql](upgrade-support-requests.sql) | `support_requests`: reclamos enviados desde la pestaña Soporte |
+| [upgrade-telemetry-nan.sql](upgrade-telemetry-nan.sql) | Pasa a NULL los NaN / Infinity de telemetría guardados antes de validarlos |
 
 Si levantás con `docker compose up` directo, aplicalos a mano (desde `mooping/`):
 
@@ -42,6 +43,7 @@ Si levantás con `docker compose up` directo, aplicalos a mano (desde `mooping/`
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-roles.sql
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-member-access.sql
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-member-permissions.sql
+docker compose exec -T db psql -U mooping -d mooping < db/upgrade-telemetry-nan.sql
 ```
 
 ## Tablas
