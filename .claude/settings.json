@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npx --yes esbuild@0.24.0 src/pages/Equipos.jsx --loader:.jsx=jsx --log-level=error > $null)"
+    ]
+  }
+}

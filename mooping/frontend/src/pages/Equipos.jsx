@@ -25,7 +25,7 @@ const STATE = {
   low_battery: { label: 'Batería baja', className: 'bg-warn-soft text-warn-ink' },
   alert: { label: 'Fuga', className: 'bg-brand text-white' },
   no_signal: { label: 'Sin señal', className: 'bg-surface-high text-ink' },
-  stock: { label: 'En pausa', className: 'bg-surface-high text-muted' },
+  stock: { label: 'En stock', className: 'bg-surface-high text-muted' },
 }
 
 export default function Equipos() {
@@ -186,6 +186,7 @@ function CollarCard({ device: d, onChange }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const animals = useApi(mode === 'assign' ? 'animals/' : null)
+  const freeAnimals = (animals.data ?? []).filter((a) => !a.device)
   const state = STATE[d.state] ?? STATE.optimal
   const alert = d.state === 'alert'
   const weakSignal = d.rssi_dbm != null && d.rssi_dbm <= -95
@@ -224,7 +225,7 @@ function CollarCard({ device: d, onChange }) {
 
       {d.state === 'stock' ? (
         <div className="flex justify-between rounded-lg bg-surface-low px-3 py-2 text-xs">
-          <span>Listo para emparejar ({d.device_uid})</span>
+          <span>Falta ponérselo a un animal · {d.device_uid}</span>
           <span className="font-semibold">Batería {d.battery_pct != null ? `${num(d.battery_pct)}%` : '—'}</span>
         </div>
       ) : (
@@ -272,7 +273,11 @@ function CollarCard({ device: d, onChange }) {
         </Button>
       )}
 
-      {mode === 'assign' && (
+      {mode === 'assign' && animals.data && freeAnimals.length === 0 ? (
+        <p className="rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn-ink">
+          No hay animales sin collar. Para pasarle este a uno, primero desvinculá el que tiene desde Configurar en su tarjeta.
+        </p>
+      ) : mode === 'assign' && (
         <div className="flex items-end gap-2">
           <label className="flex-1 text-xs text-muted">
             Animal
@@ -282,13 +287,11 @@ function CollarCard({ device: d, onChange }) {
               className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2 text-sm text-ink"
             >
               <option value="">Elegí un animal…</option>
-              {(animals.data ?? [])
-                .filter((a) => !a.device)
-                .map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} · {a.tag_number}
-                  </option>
-                ))}
+              {freeAnimals.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} · {a.tag_number}
+                </option>
+              ))}
             </select>
           </label>
           <Button
@@ -301,9 +304,6 @@ function CollarCard({ device: d, onChange }) {
             Vincular
           </Button>
         </div>
-      )}
-      {mode === 'assign' && animals.data && animals.data.filter((a) => !a.device).length === 0 && (
-        <p className="text-xs text-muted">Todos los animales ya tienen collar. Para pasarle este, desvinculá el suyo desde Configurar en su tarjeta.</p>
       )}
       {error && <p className="text-xs text-brand">{error}</p>}
 
@@ -325,8 +325,8 @@ function CollarCard({ device: d, onChange }) {
         ) : (
           <OwnerOnly>
             {d.state === 'stock' ? (
-              <Button variant="outline" icon={Link2} className="py-2" onClick={() => setMode(mode === 'assign' ? null : 'assign')}>
-                Vincular a un animal
+              <Button variant="outline" icon={mode === 'assign' ? undefined : Link2} className="py-2" onClick={() => setMode(mode === 'assign' ? null : 'assign')}>
+                {mode === 'assign' ? 'Cancelar' : 'Ponérselo a un animal'}
               </Button>
             ) : (
               <Button variant="outline" className="py-2" onClick={() => setMode(mode === 'config' ? null : 'config')}>
@@ -375,7 +375,7 @@ function collarUid(raw) {
 
 const defaultLabel = (uid) => `C-${uid.replace('COLLAR-', '').padStart(3, '0')}`
 
-// "Vincular collar": por número (el grabado en el collar) o eligiendo uno de los detectados,
+// "Agregar collar": por número (el grabado en el collar) o eligiendo uno de los detectados,
 // que ya transmiten por los gateways del establecimiento pero no tienen dueño.
 function PairCollar({ onDone }) {
   const detected = useApi('devices/detected/', { refreshMs: 30000 })
@@ -415,7 +415,8 @@ function PairCollar({ onDone }) {
       {open ? (
         <Card>
           <form onSubmit={submit} className="space-y-3">
-            <p className="font-display text-lg font-bold">Vincular collar</p>
+            <p className="font-display text-lg font-bold">Agregar collar</p>
+            <p className="-mt-2 text-xs text-muted">Queda en stock. Después se lo ponés a un animal desde su tarjeta en "Collares en campo".</p>
             <label className="block text-xs text-muted">
               Número del collar
               <input
@@ -454,21 +455,21 @@ function PairCollar({ onDone }) {
                 Cancelar
               </Button>
               <Button type="submit" className="py-2" busy={busy} disabled={!uid}>
-                Vincular
+                Agregar
               </Button>
             </div>
           </form>
         </Card>
       ) : (
         <Button icon={CirclePlus} className="w-full py-4 text-base" onClick={() => start(null)}>
-          Vincular collar
+          Agregar collar
         </Button>
       )}
 
       {detected.data?.length > 0 && (
         <Card className="space-y-2">
           <SectionTitle icon={Radar} aside={<Pill className="bg-warn-soft text-warn-ink">{detected.data.length}</Pill>}>
-            Detectados sin vincular
+            Detectados sin agregar
           </SectionTitle>
           <p className="text-xs text-muted">Transmiten por tus gateways pero todavía no son de ningún establecimiento.</p>
           <ul className="divide-y divide-black/5">
@@ -482,8 +483,8 @@ function PairCollar({ onDone }) {
                     {d.battery_pct != null && ` · ${num(d.battery_pct)}%`}
                   </p>
                 </div>
-                <Button variant="soft" icon={Link2} className="shrink-0 px-3 py-2" onClick={() => start(d)}>
-                  Vincular
+                <Button variant="soft" icon={CirclePlus} className="shrink-0 px-3 py-2" onClick={() => start(d)}>
+                  Agregar
                 </Button>
               </li>
             ))}
