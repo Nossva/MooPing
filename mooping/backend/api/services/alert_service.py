@@ -192,9 +192,14 @@ def check_no_signal():
         if alert_repository.find_open('no_signal', device_id=row.device_id):
             continue
         last = device_repository.last_location(row.device_id)
+        if row.last_seen_at is None:
+            message = 'Sin señal: el collar todavía no mandó ningún dato.'
+        elif last is None:
+            message = 'Sin señal. No hay posición guardada.'
+        else:
+            message = 'Sin señal. Última posición guardada.'
         created.append(alert_repository.create(
-            row.organization_id, 'no_signal', 'warning',
-            'Sin señal. Última posición guardada.',
+            row.organization_id, 'no_signal', 'warning', message,
             {'last_seen_at': row.last_seen_at.isoformat() if row.last_seen_at else None,
              'lat': last.lat if last else None, 'lng': last.lng if last else None},
             animal_id=row.animal_id, device_id=row.device_id, yard_id=row.yard_id,

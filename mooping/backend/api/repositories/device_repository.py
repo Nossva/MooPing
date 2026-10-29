@@ -16,7 +16,10 @@ _DEVICE_ROWS = """
            CASE WHEN alp.location IS NULL OR y.id IS NULL THEN NULL
                 ELSE ST_Covers(y.boundary, alp.location) END AS inside_geofence,
            geo.triggered_at AS geofence_alert_since,
-           (d.last_seen_at IS NULL OR d.last_seen_at < now() - make_interval(mins => o.no_signal_minutes))
+           -- From the last reading or the assignment, whichever is later (GREATEST skips NULLs):
+           -- a collar just put on an animal gets no_signal_minutes before counting as silent.
+           (GREATEST(d.last_seen_at, ad.assigned_at) IS NULL
+            OR GREATEST(d.last_seen_at, ad.assigned_at) < now() - make_interval(mins => o.no_signal_minutes))
                AS no_signal,
            (d.battery_pct IS NOT NULL AND d.battery_pct < o.low_battery_pct) AS low_battery
     FROM devices d
@@ -147,14 +150,16 @@ def list_maintenance(device_id):
 
 def offline_assigned_devices():
     """Assigned collars (any organization) silent for longer than their
-    organization's no_signal_minutes."""
+    organization's no_signal_minutes. Same rule as _DEVICE_ROWS.no_signal:
+    counted from the last reading or the assignment, whichever is later, so a
+    collar that never transmitted also alerts (after the same grace period)."""
     return fetch_all(
         """SELECT d.id AS device_id, d.organization_id, d.last_seen_at, ad.animal_id, a.yard_id
            FROM devices d
            JOIN organizations o ON o.id = d.organization_id
            JOIN animal_devices ad ON ad.device_id = d.id AND ad.unassigned_at IS NULL
            JOIN animals a ON a.id = ad.animal_id
-           WHERE d.last_seen_at < now() - make_interval(mins => o.no_signal_minutes)""",
+           WHERE GREATEST(d.last_seen_at, ad.assigned_at) < now() - make_interval(mins => o.no_signal_minutes)""",
         record=OfflineDeviceRecord,
     )
 
