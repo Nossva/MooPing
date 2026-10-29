@@ -16,6 +16,7 @@ from api.repositories import (
     photo_repository,
     yard_repository,
 )
+from api.services import alert_service
 from api.services.errors import Conflict, InvalidInput, NotFound
 
 NORMAL_TEMP_MIN_C = 38.0
@@ -89,7 +90,11 @@ def update_animal(organization_id, animal_id, request):
     old_photo = animal.photo_url
     try:
         with transaction.atomic():
+            old_yard_id = animal.yard_id
             animal_repository.update(animal, **changes)
+            if animal.yard_id != old_yard_id:
+                # Inside/outside is now measured against the new potrero (or none).
+                alert_service.recheck_geofence(organization_id, animal_id=animal_id)
     except IntegrityError:
         raise Conflict('Ya existe un animal con esa caravana.')
     if changes.get('photo_url', old_photo) != old_photo:

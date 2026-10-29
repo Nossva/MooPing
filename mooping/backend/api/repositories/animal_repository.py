@@ -2,7 +2,7 @@ from django.conf import settings
 
 from api.entities import Animal, AnimalDevice
 from api.repositories.db import fetch_all, fetch_one, fetch_value
-from api.repositories.records import AnimalRecord, ReportingDayRecord, TrackPointRecord
+from api.repositories.records import AnimalRecord, GeofenceCheckRecord, ReportingDayRecord, TrackPointRecord
 from api.repositories.scope import animal_q, animal_sql
 
 # One row per animal with its active collar, last position and geofence state.
@@ -89,6 +89,27 @@ def get_by_device(device_id):
     """Animal currently wearing the collar, or None."""
     link = AnimalDevice.objects.select_related('animal').filter(device_id=device_id, unassigned_at__isnull=True).first()
     return link.animal if link else None
+
+
+def geofence_checks(organization_id, yard_id=None, animal_id=None):
+    """Active animals with a potrero and a last position, inside or not
+    (distance_m: meters outside the boundary, 0 if inside)."""
+    sql = """SELECT a.id AS animal_id, a.name AS animal_name, a.yard_id, alp.device_id,
+                    ST_Y(alp.location::geometry) AS lat, ST_X(alp.location::geometry) AS lng,
+                    ST_Covers(y.boundary, alp.location) AS inside,
+                    ROUND(ST_Distance(y.boundary, alp.location)::numeric)::float AS distance_m
+             FROM animals a
+             JOIN yards y ON y.id = a.yard_id
+             JOIN animal_last_position alp ON alp.animal_id = a.id
+             WHERE a.organization_id = %s AND a.status = 'active'"""
+    params = [organization_id]
+    if yard_id is not None:
+        sql += ' AND a.yard_id = %s'
+        params.append(yard_id)
+    if animal_id is not None:
+        sql += ' AND a.id = %s'
+        params.append(animal_id)
+    return fetch_all(sql, params, GeofenceCheckRecord)
 
 
 def distance_today_m(animal_id):

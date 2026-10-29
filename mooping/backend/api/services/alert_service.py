@@ -9,6 +9,7 @@ from api.dto.response.alert_response import (
 from api.entities import CATEGORY_BY_TYPE
 from api.repositories import (
     alert_repository,
+    animal_repository,
     device_repository,
     organization_repository,
     telemetry_repository,
@@ -129,6 +130,41 @@ def add_note(organization_id, alert_id, user, request, scope=None):
 
 # ---------------------------------------------------------------- rules
 
+def _geofence_message(animal_name, distance_m):
+    return f'{animal_name} fuera del perímetro, a {round(distance_m)} m del límite.'
+
+
+def recheck_geofence(organization_id, yard_id=None, animal_id=None):
+    """Re-evaluates 'fuera del perímetro' against the last known position
+    after a potrero's boundary changed (yard_id) or an animal changed potrero
+    (animal_id). Without this, the alert keeps the old state until the next
+    reading. Returns created alert ids."""
+    created = []
+    checks = animal_repository.geofence_checks(organization_id, yard_id=yard_id, animal_id=animal_id)
+    for c in checks:
+        open_geo = alert_repository.find_open('geofence_exit', animal_id=c.animal_id)
+        if c.inside:
+            if open_geo:
+                alert_repository.resolve(open_geo, metadata={'resolution': 'boundary_changed'})
+            continue
+        metadata = {'distance_m': c.distance_m, 'lat': c.lat, 'lng': c.lng}
+        message = _geofence_message(c.animal_name, c.distance_m)
+        if open_geo:
+            alert_repository.update(open_geo, message=message, yard_id=c.yard_id,
+                                    metadata={**open_geo.metadata, **metadata})
+        else:
+            created.append(alert_repository.create(
+                organization_id, 'geofence_exit', 'critical', message, metadata,
+                animal_id=c.animal_id, device_id=c.device_id, yard_id=c.yard_id,
+            ).id)
+    # An animal left without a potrero (or without a position): nothing to be outside of.
+    if animal_id is not None and not checks:
+        open_geo = alert_repository.find_open('geofence_exit', animal_id=animal_id)
+        if open_geo:
+            alert_repository.resolve(open_geo, metadata={'resolution': 'yard_changed'})
+    return created
+
+
 def evaluate_reading(animal, device, recorded_at, lng, lat, temp_body_c):
     """Opens/closes alerts after a new reading. Returns created alert ids."""
     org = organization_repository.get(animal.organization_id)
@@ -150,7 +186,7 @@ def evaluate_reading(animal, device, recorded_at, lng, lat, temp_body_c):
         open_geo = alert_repository.find_open('geofence_exit', animal_id=animal.id)
         if state and not state.inside:
             metadata = {'distance_m': state.distance_m, 'lat': lat, 'lng': lng}
-            message = f'{animal.name} fuera del perímetro, a {round(state.distance_m)} m del límite.'
+            message = _geofence_message(animal.name, state.distance_m)
             if open_geo:
                 alert_repository.update(open_geo, message=message, metadata={**open_geo.metadata, **metadata})
             else:

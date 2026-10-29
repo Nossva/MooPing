@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BellRing, Siren, SlidersHorizontal, Tractor, Volume2, VolumeX, Wifi } from 'lucide-react'
+import { BellRing, Siren, SlidersHorizontal, Tractor, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
 import { usePagedApi } from '@/api/usePagedApi'
@@ -23,6 +23,8 @@ export default function Alertas() {
   const [searchParams, setSearchParams] = useSearchParams()
   const category = searchParams.get('category') ?? ''
   const summary = useApi('alerts/summary/', { refreshMs: 15000 })
+  // Same rule as the green bar of Layout: data from the field in the last 5 min.
+  const { data: status } = useApi('status/', { refreshMs: 15000 })
   const list = usePagedApi('alerts/', { params: { status: 'open', sort: 'urgency', category }, refreshMs: 15000 })
 
   const reload = () => {
@@ -60,9 +62,12 @@ export default function Alertas() {
             <p className="font-semibold text-ink">{s?.critical_unattended ?? '—'} críticas sin atender</p>
             <p className="text-xs text-muted">Último paquete: {timeAgo(s?.last_packet_at)}</p>
           </div>
-          <Pill className="bg-field-soft text-field">
-            <Wifi className="size-3.5" /> LoRa OK
-          </Pill>
+          {status && (
+            <Pill className={status.online ? 'bg-field-soft text-field' : 'bg-brand-soft/60 text-brand'}>
+              {status.online ? <Wifi className="size-3.5" /> : <WifiOff className="size-3.5" />}
+              {status.radio ?? 'LoRa'} {status.online ? 'OK' : 'sin datos'}
+            </Pill>
+          )}
         </Card>
       )}
 

@@ -70,6 +70,19 @@ class PointStatusRecord:
 
 
 @dataclass
+class GeofenceCheckRecord:
+    """An active animal's last known position against its potrero."""
+    animal_id: int
+    animal_name: str
+    yard_id: int
+    device_id: int | None
+    lat: float
+    lng: float
+    inside: bool
+    distance_m: float
+
+
+@dataclass
 class AnimalRecord:
     id: int
     name: str

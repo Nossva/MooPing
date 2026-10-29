@@ -2,6 +2,7 @@ from django.db import DatabaseError, IntegrityError, transaction
 
 from api.dto.response.yard_response import YardResponse
 from api.repositories import yard_repository
+from api.services import alert_service
 from api.services.errors import Conflict, InvalidInput, NotFound
 
 
@@ -51,6 +52,9 @@ def update_yard(organization_id, yard_id, request):
     try:
         with transaction.atomic():
             yard_repository.update(organization_id, yard_id, name=request.name, boundary_geojson=request.boundary)
+            if request.boundary is not None:
+                # New perímetro: who is inside/outside changes now, not at the next reading.
+                alert_service.recheck_geofence(organization_id, yard_id=yard_id)
     except IntegrityError:
         raise Conflict(f'Ya existe un potrero llamado "{request.name}".')
     return get_yard(organization_id, yard_id)
