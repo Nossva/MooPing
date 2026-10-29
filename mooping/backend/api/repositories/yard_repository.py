@@ -75,3 +75,12 @@ def total_area_ha(organization_id):
            FROM yards WHERE organization_id = %s""",
         [organization_id],
     )
+
+
+def boundary_problem(boundary_geojson):
+    """None if the polygon is valid, else PostGIS's reason (e.g. 'Self-intersection[...]')."""
+    return fetch_value(
+        """SELECT CASE WHEN ST_IsValid(g) THEN NULL ELSE ST_IsValidReason(g) END
+           FROM ST_GeomFromGeoJSON(%s) AS g""",
+        [json.dumps(boundary_geojson)],
+    )

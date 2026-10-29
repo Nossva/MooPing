@@ -1,4 +1,4 @@
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 
 from api.dto.response.yard_response import YardResponse
 from api.repositories import yard_repository
@@ -11,6 +11,14 @@ def _validate_polygon(boundary):
     rings = boundary.get('coordinates')
     if not rings or len(rings[0]) < 4 or rings[0][0] != rings[0][-1]:
         raise InvalidInput('El polígono necesita al menos 3 puntos y cerrar en el punto inicial.')
+    try:
+        with transaction.atomic():
+            problem = yard_repository.boundary_problem(boundary)
+    except DatabaseError:
+        raise InvalidInput('boundary no es un GeoJSON válido.')
+    if problem:
+        # Un perímetro cruzado deja el área y el "dentro/fuera" sin sentido.
+        raise InvalidInput('El perímetro se cruza a sí mismo: marcá las esquinas en orden, siguiendo el borde.')
 
 
 def list_yards(organization_id, scope=None):

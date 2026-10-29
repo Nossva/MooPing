@@ -3,7 +3,7 @@ import { BellRing, Compass, KeyRound, LifeBuoy, LogOut, Radar, Router, Settings,
 import { useAuth } from '@/api/auth'
 import { useApi } from '@/api/useApi'
 import { useAlertWatcher } from '@/api/useAlertWatcher'
-import { ROLE_LABEL, timeAgo } from '@/lib/format'
+import { ROLE_LABEL } from '@/lib/format'
 import HeaderMenus from './HeaderMenus'
 import { Logo } from './ui'
 import { cx } from '@/lib/cx'
@@ -83,17 +83,6 @@ export default function Layout() {
             {current?.label ?? 'MooPing'}
           </h1>
           <HeaderMenus seesAlerts={seesAlerts} openAlerts={openAlerts} />
-        </div>
-        {/* Barra verde de estado */}
-        <div className="flex items-center justify-between bg-field-soft/70 px-4 py-1.5 text-[11px] text-ink">
-          <span className="flex items-center gap-2">
-            <span className={cx('size-2 rounded-full', status?.online ? 'bg-field' : 'bg-brand')} />
-            Actualizado {timeAgo(status?.last_packet_at)} · {status?.radio ?? 'LoRa'}{' '}
-            {status ? `${status.gateways_online}/${status.gateways_total} gateways` : ''}
-          </span>
-          <span className={cx('font-semibold', status?.online ? 'text-field' : 'text-brand')}>
-            {status ? (status.online ? 'En línea' : 'Sin datos') : '…'}
-          </span>
         </div>
       </header>
 

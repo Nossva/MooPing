@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Guía: probar la Raspberry Pi con MooPing</title>
+<!-- Fuente de docs/Guia-Raspberry-MooPing.pdf. Para regenerar el PDF:
+     python3 docs/guia-raspberry-mooping/build_pdf.py -->
+<style>
+  :root {
+    --brand: #670626; --brand-soft: #fbe9ec; --field: #4d6631; --field-soft: #eef6e3;
+    --warn: #92400e; --warn-soft: #fef3c7; --ink: #1c1b1f; --muted: #5f5b63; --line: #e4e0e6;
+    --code-bg: #1f1d24;
+  }
+  @page { size: A4; margin: 22mm 18mm 20mm 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--ink);
+         font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3 { color: var(--ink); line-height: 1.25; }
+  h2 { font-size: 18pt; margin: 9mm 0 4mm; padding-bottom: 2mm; border-bottom: 2px solid var(--brand);
+       break-after: avoid; }
+  h2.np { break-before: page; margin-top: 0; }
+  h2 .num { color: var(--brand); margin-right: 3mm; }
+  h3 { font-size: 12.5pt; margin: 6mm 0 2mm; break-after: avoid; }
+  h4 { font-size: 10.5pt; margin: 4mm 0 1mm; break-after: avoid; }
+  p { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1mm; }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 9pt; background: #f1eef3;
+         padding: 0.3mm 1.2mm; border-radius: 1mm; }
+  pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.8pt; line-height: 1.45;
+        background: var(--code-bg); color: #f2eef5; padding: 3mm 4mm; border-radius: 2mm;
+        white-space: pre-wrap; overflow-wrap: anywhere; margin: 1.5mm 0 3.5mm; break-inside: avoid; }
+  pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+  pre .c { color: #9b95a3; }            /* comentario */
+  pre.out { background: #f6f4f7; color: var(--ink); border: 1px solid var(--line); }
+  pre.out::before { content: "Salida esperada"; display: block; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+                    font-size: 7.5pt; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 1mm; }
+  .box { border-radius: 2mm; padding: 3mm 4mm; margin: 3mm 0; break-inside: avoid; border-left: 1.2mm solid; }
+  .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+  .box .t { font-weight: 700; display: block; margin-bottom: 1mm; }
+  .info { background: var(--field-soft); border-color: var(--field); }
+  .warn { background: var(--warn-soft); border-color: #d97706; }
+  .warn .t { color: var(--warn); }
+  .danger { background: var(--brand-soft); border-color: var(--brand); }
+  .danger .t { color: var(--brand); }
+  .info .t { color: var(--field); }
+  .os { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin: 2mm 0 3mm; }
+  .os > div { border: 1px solid var(--line); border-radius: 2mm; padding: 3mm; break-inside: avoid; }
+  .os h4 { margin-top: 0; display: flex; align-items: center; gap: 2mm; }
+  .tag { font-size: 7.5pt; font-weight: 700; color: #fff; background: var(--brand); border-radius: 1mm; padding: 0.5mm 1.5mm; }
+  .tag.mac { background: #3d3a40; }
+  .tag.pi { background: var(--field); }
+  .tag.pc { background: #2b5a8a; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9.5pt; break-inside: avoid; }
+  th { text-align: left; background: #f3f0f4; font-weight: 700; }
+  th, td { border: 1px solid var(--line); padding: 1.6mm 2.4mm; vertical-align: top; }
+  table.trouble td:first-child { width: 33%; }
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 9mm; margin-bottom: 3mm; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 6mm; height: 6mm; border-radius: 50%;
+                        background: var(--brand); color: #fff; font-weight: 700; font-size: 8.5pt; display: flex; align-items: center; justify-content: center; }
+  .shot { display: block; max-width: 100%; border: 1px solid var(--line); border-radius: 2mm; margin: 2mm auto 1mm; break-inside: avoid; }
+  .shot.small { max-width: 52%; }
+  figure { margin: 0; break-inside: avoid; }
+  .caption { text-align: center; color: var(--muted); font-size: 8.5pt; margin-bottom: 4mm; }
+  .check { list-style: none; padding-left: 0; }
+  .check li::before { content: "☐"; margin-right: 2mm; color: var(--brand); }
+  kbd { font-family: inherit; font-size: 8.5pt; border: 1px solid #c9c4cc; border-bottom-width: 2px; border-radius: 1mm; padding: 0 1.2mm; background: #fff; }
+  .where { font-size: 8.5pt; color: var(--muted); margin: -1mm 0 2mm; }
+
+  /* Portada */
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .logo { width: 70mm; height: calc(70mm * 388 / 1175); overflow: hidden; position: relative; }
+  .logo img { position: absolute; width: calc(70mm * 1536 / 1175); left: calc(-70mm * 180 / 1175); top: calc(-70mm * 242 / 1175); }
+  .cover h1 { font-size: 30pt; margin: 18mm 0 4mm; color: var(--brand); }
+  .cover .sub { font-size: 13pt; color: var(--muted); max-width: 150mm; }
+  .cover .meta { font-size: 9.5pt; color: var(--muted); border-top: 1px solid var(--line); padding-top: 3mm; }
+  .toc { margin-top: 12mm; }
+  .toc ol { padding-left: 0; list-style: none; columns: 1; }
+  .toc li { padding: 1.4mm 0; border-bottom: 1px dotted var(--line); }
+  .toc .n { display: inline-block; width: 8mm; color: var(--brand); font-weight: 700; }
+  .diagram { margin: 3mm 0 4mm; break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ===================================================== PORTADA -->
+<section class="cover">
+  <div>
+    <div class="logo"><img src="img/logo.png" alt="MooPing"></div>
+    <h1>Probar la Raspberry Pi<br>con MooPing</h1>
+    <p class="sub">Paso a paso para levantar MooPing en tu PC con Docker, preparar la Raspberry Pi con el
+      receptor LoRa y ver los datos de un collar en la app.</p>
+    <div class="toc">
+      <ol>
+        <li><span class="n">1</span>Qué vamos a armar</li>
+        <li><span class="n">2</span>PC: instalar Docker, Git y Python</li>
+        <li><span class="n">3</span>PC: bajar MooPing y correr <code>start.py</code></li>
+        <li><span class="n">4</span>PC: dejar que la Raspberry llegue</li>
+        <li><span class="n">5</span>Raspberry Pi: sistema, SPI y conexión de la placa</li>
+        <li><span class="n">6</span>Raspberry Pi: compilar el receptor</li>
+        <li><span class="n">7</span>Prueba sin radio: ¿llega la red?</li>
+        <li><span class="n">8</span>Prueba real: receptor y collar</li>
+        <li><span class="n">9</span>Problemas frecuentes</li>
+        <li><span class="n">10</span>Apagar, actualizar y comandos útiles</li>
+      </ol>
+    </div>
+  </div>
+  <div class="meta">
+    Equipo AgroNomad · Octubre 2026 · Repositorio: <code>github.com/Nossva/MooPing</code> (rama <code>main</code>)<br>
+    Las etiquetas <span class="tag pc">PC</span> <span class="tag pi">Pi</span> <span class="tag">Windows</span> <span class="tag mac">macOS</span>
+    indican en qué máquina va cada comando.
+  </div>
+</section>
+
+<!-- ===================================================== 1 -->
+<h2 class="np"><span class="num">1</span>Qué vamos a armar</h2>
+
+<p>El collar <b>AgroNeck</b> manda su posición y temperatura por radio LoRa. La <b>Raspberry Pi</b> la
+recibe con la placa SX1278, la convierte a JSON y la reenvía por la red a <b>MooPing</b>, que corre en
+tu PC dentro de Docker. MooPing la guarda, calcula alertas y la muestra en la web.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 700 175" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Segoe UI, Helvetica, Arial" font-size="12">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5f5b63"/></marker></defs>
+  <rect x="5" y="45" width="120" height="70" rx="10" fill="#fbe9ec" stroke="#670626"/>
+  <text x="65" y="74" text-anchor="middle" font-weight="700" fill="#670626">Collar</text>
+  <text x="65" y="92" text-anchor="middle" fill="#1c1b1f">AgroNeck</text>
+  <text x="65" y="107" text-anchor="middle" fill="#5f5b63" font-size="10">id 122</text>
+  <line x1="127" y1="80" x2="205" y2="80" stroke="#5f5b63" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#a)"/>
+  <text x="166" y="70" text-anchor="middle" fill="#5f5b63" font-size="10.5">LoRa 433 MHz</text>
+  <rect x="208" y="35" width="170" height="90" rx="10" fill="#eef6e3" stroke="#4d6631"/>
+  <text x="293" y="62" text-anchor="middle" font-weight="700" fill="#4d6631">Raspberry Pi</text>
+  <text x="293" y="80" text-anchor="middle" fill="#1c1b1f">+ placa SX1278</text>
+  <text x="293" y="98" text-anchor="middle" fill="#5f5b63" font-size="10">agrobot-lora-receiver</text>
+  <text x="293" y="113" text-anchor="middle" fill="#5f5b63" font-size="10">GATEWAY_ID = AGROBOT-01</text>
+  <line x1="380" y1="80" x2="455" y2="80" stroke="#5f5b63" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="417" y="70" text-anchor="middle" fill="#5f5b63" font-size="10.5">WiFi · TCP 4001</text>
+  <text x="417" y="97" text-anchor="middle" fill="#5f5b63" font-size="10">JSON</text>
+  <rect x="458" y="10" width="237" height="155" rx="10" fill="#f3f6fb" stroke="#2b5a8a"/>
+  <text x="576" y="32" text-anchor="middle" font-weight="700" fill="#2b5a8a">Tu PC · Docker</text>
+  <rect x="472" y="44" width="100" height="34" rx="6" fill="#fff" stroke="#c9d3e0"/><text x="522" y="65" text-anchor="middle">telemetry :4001</text>
+  <rect x="582" y="44" width="100" height="34" rx="6" fill="#fff" stroke="#c9d3e0"/><text x="632" y="65" text-anchor="middle">db (base)</text>
+  <rect x="472" y="86" width="100" height="34" rx="6" fill="#fff" stroke="#c9d3e0"/><text x="522" y="107" text-anchor="middle">backend :8000</text>
+  <rect x="582" y="86" width="100" height="34" rx="6" fill="#fff" stroke="#c9d3e0"/><text x="632" y="107" text-anchor="middle">frontend :5173</text>
+  <text x="576" y="146" text-anchor="middle" fill="#5f5b63" font-size="10.5">Navegador → http://localhost:5173</text>
+</svg>
+</div>
+
+<h3>Qué necesitás</h3>
+<table>
+  <tr><th>Qué</th><th>Detalle</th></tr>
+  <tr><td>Una PC</td><td>Windows 10/11 o macOS, con 8 GB de RAM o más y unos 10 GB libres. Ahí corre MooPing.</td></tr>
+  <tr><td>Raspberry Pi</td><td>Pi Zero 2 W con la placa AgroBot (radio SX1278), tarjeta microSD de 16 GB o más y su fuente.</td></tr>
+  <tr><td>Collar AgroNeck</td><td>Ya flasheado (si no, ver <code>firmware/AgroBot/Setup.md</code>, paso 6). Para la primera prueba no hace falta: la sección 7 simula una lectura.</td></tr>
+  <tr><td>Una red WiFi</td><td><b>La PC y la Pi tienen que estar en la misma red.</b> La Pi Zero 2 W solo usa WiFi de 2,4 GHz.</td></tr>
+</table>
+
+<div class="box warn"><span class="t">Antes de empezar</span>
+<p>Esta guía describe el código que está en la rama <code>main</code> del repositorio. Si ya tenías el
+proyecto clonado, hacé <code>git pull</code> antes de seguir (en la PC y en la Pi).</p></div>
+
+<h3>Checklist</h3>
+<ul class="check">
+  <li>Docker Desktop instalado y abierto, con "Engine running" (sección 2).</li>
+  <li>MooPing andando en <code>http://localhost:5173</code> con la demo cargada (sección 3).</li>
+  <li>IP de la PC anotada y puerto 4001 permitido en el firewall (sección 4).</li>
+  <li>Pi con SPI habilitado y el receptor compilado (secciones 5 y 6).</li>
+  <li>Lectura simulada visible en MooPing (sección 7).</li>
+  <li>Collar real visible en el mapa (sección 8).</li>
+</ul>
+
+<!-- ===================================================== 2 -->
+<h2><span class="num">2</span>PC: instalar Docker, Git y Python</h2>
+
+<p>MooPing corre en 4 contenedores de Docker. <code>start.py</code> es un script de Python que los
+levanta, y Git sirve para bajar el código. Instalá las tres cosas según tu sistema.</p>
+
+<div class="os">
+<div>
+<h4><span class="tag">Windows</span> 10 / 11</h4>
+<ol>
+  <li><b>WSL2</b> (Docker lo necesita). Abrí <b>PowerShell como administrador</b>
+    (clic derecho → "Ejecutar como administrador") y corré:
+<pre><code>wsl --install</code></pre>
+    Reiniciá la PC cuando termine.</li>
+  <li><b>Docker Desktop</b>: bajalo de <code>docker.com/products/docker-desktop</code> e instalalo con la
+    opción <b>"Use WSL 2 instead of Hyper-V"</b> tildada. Reiniciá si te lo pide.</li>
+  <li><b>Git</b>: <code>git-scm.com/download/win</code>, con las opciones por defecto.</li>
+  <li><b>Python 3.12 o más</b>: <code>python.org/downloads</code>. En la primera pantalla del instalador
+    tildá <b>"Add python.exe to PATH"</b>.</li>
+</ol>
+</div>
+<div>
+<h4><span class="tag mac">macOS</span> 13 o más</h4>
+<ol>
+  <li><b>Docker Desktop</b>: <code>docker.com/products/docker-desktop</code>. Elegí la versión de tu chip:
+    <b>Apple Silicon</b> (M1/M2/M3/M4) o <b>Intel</b> (lo ves en  → Acerca de esta Mac).
+    Arrastralo a Aplicaciones y abrilo.</li>
+  <li><b>Git</b>: en la Terminal corré
+<pre><code>xcode-select --install</code></pre>
+    y aceptá la instalación.</li>
+  <li><b>Python 3</b>: <code>python.org/downloads</code> (instalador .pkg) o, si usás Homebrew,
+    <code>brew install python</code>.</li>
+</ol>
+</div>
+</div>
+
+<h3>Abrir Docker y verificar</h3>
+<p>Abrí <b>Docker Desktop</b> y esperá a que abajo a la izquierda diga <b>"Engine running"</b> (la primera
+vez tarda un poco y puede pedirte aceptar los términos). Docker tiene que estar abierto cada vez que uses
+MooPing.</p>
+<p>Después abrí una terminal (<b>PowerShell</b> en Windows, <b>Terminal</b> en macOS) y verificá:</p>
+<pre><code>docker --version
+docker compose version
+git --version
+python --version      <span class="c"># en macOS: python3 --version</span></code></pre>
+<p>Los cuatro tienen que responder con un número de versión. Si alguno dice "no se reconoce" o
+"command not found", cerrá y volvé a abrir la terminal; si sigue igual, reinstalalo (en Windows,
+revisá que Python tenga tildado "Add to PATH").</p>
+
+<!-- ===================================================== 3 -->
+<h2><span class="num">3</span>PC: bajar MooPing y correr <code>start.py</code></h2>
+
+<h3>Clonar el repositorio</h3>
+<p>En la terminal, andá a la carpeta donde quieras guardar el proyecto (por ejemplo Documentos) y corré:</p>
+<pre><code>git clone https://github.com/Nossva/MooPing.git
+cd MooPing/mooping       <span class="c"># en Windows también funciona: cd MooPing\mooping</span></code></pre>
+
+<h3>Levantar todo</h3>
+<pre><code>python start.py          <span class="c"># en macOS: python3 start.py</span></code></pre>
+<p><code>start.py</code> hace, en orden:</p>
+<ol class="steps">
+  <li>Revisa que Docker esté instalado y corriendo.</li>
+  <li>Corre <code>docker compose up -d --build</code>: construye y levanta los 4 contenedores.</li>
+  <li>Aplica a la base los scripts <code>db/upgrade-*.sql</code> (actualizaciones del esquema).</li>
+  <li>Espera a que respondan la API (<code>/api/health/</code>) y la web.</li>
+  <li>Abre <code>http://localhost:5173</code> en el navegador.</li>
+</ol>
+<div class="box info"><span class="t">La primera vez tarda</span>
+<p>Entre 3 y 10 minutos: Docker baja las imágenes e instala las dependencias. Las siguientes veces
+arranca en segundos. Mientras tanto vas a ver mensajes como "Esperando a que responda…". Es normal.</p></div>
+<p>Cuando termina, muestra:</p>
+<pre class="out"><code>MooPing está andando: http://localhost:5173/  (API: http://localhost:8000/api/health/)</code></pre>
+
+<h3>Cargar los datos de demostración</h3>
+<p>La base arranca vacía. Cargá el establecimiento de demo "El Ombú" (12 animales, collares, gateways y
+alertas):</p>
+<pre><code>docker compose exec backend python manage.py seed_demo</code></pre>
+<pre class="out"><code>Demo lista: 12 animales, 14 collares, 1072 lecturas, 4 alertas abiertas.
+Login: demo@mooping.app / mooping123</code></pre>
+<p>Si dice <i>Ya existe "El Ombú"</i>, la demo ya estaba cargada: no hace falta hacer nada. Para
+dejarla como nueva: <code>docker compose exec backend python manage.py seed_demo --reset</code>.</p>
+
+<h3>Entrar</h3>
+<p>En <code>http://localhost:5173</code> tocá <b>"Probar con Establecimiento Demo"</b>, o entrá con
+<code>demo@mooping.app</code> / <code>mooping123</code> (usuario <b>Dueño</b>, puede editar todo).</p>
+<figure><img class="shot small" src="img/login.png" alt="Pantalla de login">
+<div class="caption">Login de MooPing</div></figure>
+
+<h3>Los 4 contenedores</h3>
+<p>Para ver que estén corriendo: <code>docker compose ps</code> (desde la carpeta <code>mooping</code>).</p>
+<table>
+  <tr><th>Contenedor</th><th>Puerto</th><th>Qué hace</th></tr>
+  <tr><td><code>mooping-db</code></td><td>5432 (solo esta PC)</td><td>Base de datos PostgreSQL + PostGIS.</td></tr>
+  <tr><td><code>mooping-backend</code></td><td>8000</td><td>La API que usa la web.</td></tr>
+  <tr><td><code>mooping-telemetry</code></td><td><b>4001</b></td><td>Recibe las lecturas de la Raspberry Pi por TCP y genera alertas.</td></tr>
+  <tr><td><code>mooping-frontend</code></td><td>5173</td><td>La página web (React).</td></tr>
+</table>
+
+<!-- ===================================================== 4 -->
+<h2><span class="num">4</span>PC: dejar que la Raspberry llegue</h2>
+
+<p>La Pi le va a mandar los datos a tu PC al puerto <b>4001</b>. Para eso necesitás la IP de la PC en la
+red WiFi y que el firewall deje pasar ese puerto.</p>
+
+<h3>La IP de tu PC</h3>
+<div class="os">
+<div>
+<h4><span class="tag">Windows</span></h4>
+<pre><code>ipconfig</code></pre>
+<p>Buscá el bloque <b>"Adaptador de LAN inalámbrica Wi-Fi"</b> y anotá la <b>Dirección IPv4</b>
+(por ejemplo <code>192.168.1.50</code>).</p>
+</div>
+<div>
+<h4><span class="tag mac">macOS</span></h4>
+<pre><code>ipconfig getifaddr en0</code></pre>
+<p>Devuelve la IP directamente. Si no muestra nada, probá con <code>en1</code>, o mirala en
+Configuración → Wi-Fi → Detalles.</p>
+</div>
+</div>
+<div class="box warn"><span class="t">En esta guía usamos <code>192.168.1.50</code> como ejemplo</span>
+<p>Reemplazala siempre por la IP real de tu PC. Si la PC cambia de red, la IP cambia.</p></div>
+
+<h3>Firewall</h3>
+<div class="os">
+<div>
+<h4><span class="tag">Windows</span></h4>
+<p>En <b>PowerShell como administrador</b>:</p>
+<pre><code>New-NetFirewallRule `
+  -DisplayName "MooPing telemetria" `
+  -Direction Inbound -Protocol TCP `
+  -LocalPort 4001 -Action Allow `
+  -Profile Private</code></pre>
+<p>La regla vale para redes <b>privadas</b>: en Configuración → Red e Internet → Wi-Fi → (tu red),
+marcala como <b>"Red privada"</b>. Si Windows muestra un aviso del firewall para Docker, tocá
+<b>Permitir</b>.</p>
+</div>
+<div>
+<h4><span class="tag mac">macOS</span></h4>
+<p>Configuración del Sistema → Red → <b>Firewall</b>. Si está desactivado, no hay que hacer nada.
+Si está activado: <b>Opciones…</b> → agregá <b>Docker</b> y elegí <b>"Permitir conexiones entrantes"</b>.
+También podés tocar <b>Permitir</b> cuando macOS lo pregunte.</p>
+</div>
+</div>
+
+<h3>Opcional (recomendado): clave de telemetría</h3>
+<p>Sin clave, MooPing acepta lecturas de cualquiera en la red. Con una clave, solo de la Pi que la
+conoce. Generá una:</p>
+<pre><code>python -c "import secrets; print(secrets.token_urlsafe(24))"   <span class="c"># macOS: python3</span></code></pre>
+<p>Abrí <code>mooping/backend/.env</code> con un editor de texto (lo crea MooPing la primera vez), agregá
+al final la línea con tu clave y reiniciá la telemetría:</p>
+<pre><code>TELEMETRY_API_KEY=&lt;la-clave-que-generaste&gt;</code></pre>
+<pre><code>docker compose restart telemetry</code></pre>
+<p>Anotá la clave: la vas a pasar a la Pi como <code>TELEMETRY_KEY</code>. No la subas a git ni la
+pegues en grupos (<code>.env</code> ya está en <code>.gitignore</code>).</p>
+
+<!-- ===================================================== 5 -->
+<h2 class="np"><span class="num">5</span>Raspberry Pi: sistema, SPI y conexión de la placa</h2>
+
+<h3>Instalar Raspberry Pi OS</h3>
+<ol class="steps">
+  <li>En la PC instalá <b>Raspberry Pi Imager</b> (<code>raspberrypi.com/software</code>) y poné la
+    microSD.</li>
+  <li>Elegí: dispositivo <b>Raspberry Pi Zero 2 W</b>, sistema <b>Raspberry Pi OS Lite (64-bit)</b>, y tu
+    tarjeta.</li>
+  <li>Cuando pregunte por la personalización, tocá <b>"Editar ajustes"</b> y completá:
+    <ul>
+      <li>Nombre de host: <code>agrobot</code></li>
+      <li>Usuario y contraseña (anotalos).</li>
+      <li>WiFi: <b>la misma red que la PC</b> (2,4 GHz) y el país <b>AR</b>.</li>
+      <li>Pestaña Servicios: <b>Habilitar SSH</b> con contraseña.</li>
+    </ul></li>
+  <li>Grabá la tarjeta, ponela en la Pi y enchufala. Esperá 2 o 3 minutos a que arranque.</li>
+</ol>
+
+<h3>Entrar a la Pi desde la PC</h3>
+<pre><code>ssh &lt;tu-usuario&gt;@agrobot.local</code></pre>
+<p>La primera vez pregunta si confiás en el equipo: escribí <code>yes</code>. Si <code>agrobot.local</code>
+no funciona (pasa en algunas redes), buscá la IP de la Pi en la página del router y usá
+<code>ssh &lt;tu-usuario&gt;@&lt;ip-de-la-pi&gt;</code>.</p>
+<p class="where"><span class="tag pi">Pi</span> Desde acá, todos los comandos de las secciones 5 a 8 que digan "Pi" se corren dentro de esta sesión SSH.</p>
+
+<h3>Instalar herramientas</h3>
+<pre><code>sudo apt update
+sudo apt install -y git cmake build-essential netcat-openbsd</code></pre>
+
+<h3>Habilitar SPI (la radio se comunica por SPI)</h3>
+<pre><code>sudo raspi-config</code></pre>
+<p>Andá a <b>Interface Options → SPI → Yes</b>, salí con <b>Finish</b> y reiniciá:</p>
+<pre><code>sudo reboot</code></pre>
+<p>Volvé a entrar por SSH y verificá que existan los dos dispositivos:</p>
+<pre><code>ls -l /dev/spidev0.0 /dev/gpiochip0</code></pre>
+<p>Si dice <i>No such file or directory</i> para <code>spidev0.0</code>, SPI no quedó habilitado: repetí
+el paso.</p>
+
+<h3>Conexión de la placa SX1278</h3>
+<p>Si usás la placa AgroBot ya armada, viene conectada así. Si cableás a mano, seguí esta tabla
+(numeración BCM y pin físico del header de 40 pines):</p>
+<table>
+  <tr><th>Señal SX1278</th><th>GPIO (BCM)</th><th>Pin físico</th></tr>
+  <tr><td>MOSI</td><td>10</td><td>19</td></tr>
+  <tr><td>MISO</td><td>9</td><td>21</td></tr>
+  <tr><td>SCLK</td><td>11</td><td>23</td></tr>
+  <tr><td>CS</td><td>8</td><td>24</td></tr>
+  <tr><td>RESET</td><td>25</td><td>22</td></tr>
+  <tr><td>DIO0</td><td>24</td><td>18</td></tr>
+</table>
+<div class="box danger"><span class="t">Conectá la antena antes de encender</span>
+<p>Usar la radio sin antena puede dañar el módulo. El receptor y el collar trabajan en <b>433 MHz</b>:
+la antena tiene que ser para esa frecuencia.</p></div>
+
+<!-- ===================================================== 6 -->
+<h2><span class="num">6</span>Raspberry Pi: compilar el receptor</h2>
+<p class="where"><span class="tag pi">Pi</span></p>
+<pre><code>git clone https://github.com/Nossva/MooPing.git
+cd MooPing/firmware/AgroBot/firmware
+cmake -S . -B build
+cmake --build build -j2</code></pre>
+<p>En la Pi Zero tarda uno o dos minutos. Al final tienen que existir dos programas:</p>
+<pre><code>ls build/agrobot-lora-receiver build/agro-neck-client</code></pre>
+<p><code>agrobot-lora-receiver</code> es el que usamos: escucha la radio y reenvía cada lectura.
+(<code>agro-neck-client</code> es un simulador del sistema AgroBot, no lo necesitamos para MooPing.)</p>
+
+<div style="break-inside: avoid"><h3>Cómo se configura el receptor</h3>
+<p>No hay que tocar el código: todo se pasa con variables al arrancarlo.</p>
+<table>
+  <tr><th>Variable</th><th>Para qué</th><th>Ejemplo</th></tr>
+  <tr><td><code>TELEMETRY_TARGETS</code></td><td>A quién le manda cada lectura: <code>ip:puerto</code>, hasta 4 separados por coma. Sin la variable usa <code>127.0.0.1:4001</code>.</td><td><code>192.168.1.50:4001</code></td></tr>
+  <tr><td><code>GATEWAY_ID</code></td><td>Qué gateway recibió el paquete. Tiene que existir en MooPing: la demo trae <code>AGROBOT-01</code> ("Molino Sur") y <code>AGROBOT-02</code> ("Casco").</td><td><code>AGROBOT-01</code></td></tr>
+  <tr><td><code>TELEMETRY_KEY</code></td><td>La clave de la sección 4, si la configuraste. Si no, no la pongas.</td><td><code>&lt;tu-clave&gt;</code></td></tr>
+</table></div>
+<div class="box warn"><span class="t">Las variables van <u>después</u> de <code>sudo</code></span>
+<p><code>sudo</code> borra las variables de entorno. Por eso se escribe
+<code>sudo TELEMETRY_TARGETS=… ./build/agrobot-lora-receiver</code> y no al revés.</p></div>
+
+<!-- ===================================================== 7 -->
+<h2><span class="num">7</span>Prueba sin radio: ¿llega la red?</h2>
+<p>Antes de sumar la radio y el collar, comprobamos que la Pi llegue a MooPing mandando una lectura
+inventada a mano. Si esto funciona, cualquier problema posterior es de la radio, no de la red.</p>
+
+<h4><span class="tag pc">PC</span> Dejá mirando el log de la telemetría</h4>
+<pre><code>docker compose logs -f telemetry</code></pre>
+<p>(Desde la carpeta <code>mooping</code>. Para salir: <kbd>Ctrl</kbd>+<kbd>C</kbd>.)</p>
+
+<h4><span class="tag pi">Pi</span> Mandá una lectura de prueba</h4>
+<p>Reemplazá la IP por la de tu PC:</p>
+<pre><code>printf '%s\n' '{"ID":"COLLAR-999", "LAT":-34.70, "LONG":-58.24,
+  "TEMP":"38.5", "GW":"AGROBOT-01"}' | nc -N -w 3 192.168.1.50 4001</code></pre>
+<p>Es un solo comando de dos líneas: copialo entero. Si configuraste clave, agregá
+<code>, "KEY":"&lt;tu-clave&gt;"</code> antes de la última llave:</p>
+<pre><code>printf '%s\n' '{"ID":"COLLAR-999", "LAT":-34.70, "LONG":-58.24,
+  "TEMP":"38.5", "GW":"AGROBOT-01", "KEY":"&lt;tu-clave&gt;"}' | nc -N -w 3 192.168.1.50 4001</code></pre>
+
+<h4><span class="tag pc">PC</span> Qué tenés que ver</h4>
+<p>En el log de la telemetría aparece una línea así (la IP entre corchetes y los números cambian):</p>
+<pre class="out"><code>mooping-telemetry  | [192.168.65.1] lectura 1090 collar 33</code></pre>
+<p>Y en la web, en <b>Equipos</b>, aparece la tarjeta <b>"Detectados sin vincular"</b> con el collar de
+prueba recibido por "Molino Sur":</p>
+<figure><img class="shot small" src="img/detectados.png" alt="Detectados sin vincular">
+<div class="caption">Equipos → Detectados sin vincular</div></figure>
+<p>Si no aparece nada en el log, la lectura no llegó: mirá la sección 9 (IP, firewall, misma red).
+Si aparece <i>descartada: falta KEY…</i>, la clave no coincide.</p>
+<div class="box info"><span class="t">Limpiar la prueba</span>
+<p><code>COLLAR-999</code> no existe en la realidad. No lo vincules; desaparece solo de la lista a los 7
+días. Para borrarlo ya:
+<code>docker compose exec db psql -U mooping -d mooping -c "DELETE FROM devices WHERE device_uid='COLLAR-999'"</code></p></div>
+
+<!-- ===================================================== 8 -->
+<h2><span class="num">8</span>Prueba real: receptor y collar</h2>
+
+<h3><span class="tag pi">Pi</span> Arrancar el receptor</h3>
+<pre><code>cd ~/MooPing/firmware/AgroBot/firmware
+sudo TELEMETRY_TARGETS=192.168.1.50:4001 \
+     GATEWAY_ID=AGROBOT-01 \
+     ./build/agrobot-lora-receiver</code></pre>
+<p>Con clave:</p>
+<pre><code>sudo TELEMETRY_TARGETS=192.168.1.50:4001 \
+     GATEWAY_ID=AGROBOT-01 \
+     TELEMETRY_KEY=&lt;tu-clave&gt; \
+     ./build/agrobot-lora-receiver</code></pre>
+<pre class="out"><code>Forwarding telemetry to 192.168.1.50:4001
+Gateway ID: AGROBOT-01
+Telemetry key: not set (backends must accept any sender)
+SX1278 version: 0x12
+Listening for AgroNeck LoRa packets at 433 MHz</code></pre>
+<ul>
+  <li><code>Telemetry key: set</code> si pasaste la clave.</li>
+  <li><b>SX1278 version</b> tiene que ser <code>0x12</code>. Si da <code>0x00</code> o <code>0xFF</code>, la Pi no
+    está hablando con la radio: revisá el cableado y que SPI esté habilitado.</li>
+  <li>El receptor queda escuchando. No cierres esta terminal; para pararlo, <kbd>Ctrl</kbd>+<kbd>C</kbd>.</li>
+</ul>
+
+<h3>Despertar el collar</h3>
+<p>El AgroNeck duerme hasta que detecta movimiento: <b>movelo</b>. Con cada transmisión la Pi muestra (los valores cambian):</p>
+<pre class="out"><code>Raw LoRa packet (14 bytes): 7A 00 9A 99 19 42 ...
+Received collar=122 temperature=38.40 C latitude=-34.707652 longitude=-58.242300
+Signal RSSI=-88 dBm SNR=7.25 dB</code></pre>
+<p>Si aparece <code>connect to telemetry backend …</code> después de cada paquete, la lectura no le está
+llegando a MooPing: volvé a la sección 7. El GPS puede tardar varios minutos en conseguir señal al
+aire libre; mientras tanto el collar manda latitud y longitud en 0 y MooPing guarda la lectura sin
+posición.</p>
+
+<h3><span class="tag pc">PC</span> Vincular el collar en MooPing</h3>
+<ol class="steps">
+  <li>En <b>Equipos</b>, el collar aparece en <b>"Detectados sin vincular"</b> como <code>COLLAR-122</code>.
+    Tocá <b>Vincular</b>: el número y la etiqueta (<code>C-122</code>) ya vienen cargados. Confirmá con
+    <b>Vincular</b>.
+    <img class="shot small" src="img/vincular.png" alt="Vincular collar"></li>
+  <li>Para verlo en el mapa tiene que estar en un animal. En la demo todos los animales ya tienen collar, así
+    que liberamos uno: en <b>Collares en campo</b> buscá <code>C-305</code>, tocá <b>Configurar</b> y después
+    <b>"Desvincular de Novillo #305"</b> (pide confirmación).
+    <img class="shot small" src="img/desvincular.png" alt="Desvincular collar"></li>
+  <li>Buscá <code>C-122</code> (o usá el filtro <b>Sin asignar</b>), tocá <b>"Vincular a un animal"</b>,
+    elegí <b>Novillo #305</b> y confirmá.
+    <img class="shot small" src="img/asignar.png" alt="Asignar a un animal"></li>
+  <li>Volvé a mover el collar para que mande otra lectura. En <b>Monitoreo</b>, el Novillo #305 muestra
+    <b>Collar #C-122</b>, la señal y su posición en el mapa.</li>
+</ol>
+<div class="box info"><span class="t">¿Por qué hay que esperar otra lectura?</span>
+<p>Las lecturas que llegaron antes de asignar el collar no tenían animal. La posición del animal se
+actualiza con la primera lectura que llega <b>después</b> de asignarlo.</p></div>
+<figure><img class="shot" src="img/monitoreo.png" alt="Monitoreo con el collar C-122">
+<div class="caption">Monitoreo: el Novillo #305 con el collar C-122 (señal −88 dBm, recibido hace 25 s)</div></figure>
+<p>Además, en <b>Equipos</b> y en <b>Soporte</b> el gateway <b>Molino Sur</b> pasa a figurar conectado
+mientras lleguen lecturas.</p>
+<p><b>Al terminar</b>, para dejar la demo como estaba: <code>docker compose exec backend python manage.py seed_demo --reset</code>.</p>
+
+<h3>Opcional: mandar también a AgroBot</h3>
+<p>Si en la Pi corre el servidor AgroBot (ver <code>firmware/AgroBot/Setup.md</code>), el receptor puede
+mandar cada lectura a los dos sistemas a la vez:</p>
+<pre><code>sudo TELEMETRY_TARGETS=127.0.0.1:4001,192.168.1.50:4001 \
+     GATEWAY_ID=AGROBOT-01 \
+     ./build/agrobot-lora-receiver</code></pre>
+<p>Si uno de los dos está apagado, el otro sigue recibiendo: cada envío corta a los 2 segundos.</p>
+
+<!-- ===================================================== 9 -->
+<h2 class="np"><span class="num">9</span>Problemas frecuentes</h2>
+
+<h3>En la PC</h3>
+<table class="trouble">
+  <tr><th>Síntoma</th><th>Qué hacer</th></tr>
+  <tr><td><code>start.py</code>: "No encontré Docker"</td><td>Docker Desktop no está instalado, o la terminal se abrió antes de instalarlo: cerrala y abrí una nueva.</td></tr>
+  <tr><td><code>start.py</code>: "Docker no está corriendo"</td><td>Abrí Docker Desktop y esperá "Engine running".</td></tr>
+  <tr><td>"python" no se reconoce (Windows)</td><td>Reinstalá Python tildando "Add python.exe to PATH", o usá <code>py start.py</code>.</td></tr>
+  <tr><td><code>port is already allocated</code> / puerto ocupado</td><td>Otro programa usa 5432, 8000, 4001 o 5173. Creá <code>mooping/.env</code> con, por ejemplo, <code>DB_PORT=5433</code>, <code>BACKEND_PORT=8001</code>, <code>TELEMETRY_PORT=4002</code> y volvé a correr <code>start.py</code>. Si cambiás <code>TELEMETRY_PORT</code>, usá ese puerto en la Pi.</td></tr>
+  <tr><td>La web dice "No se pudo cargar"</td><td>El backend se está reiniciando: esperá unos segundos. Si sigue: <code>docker compose logs --tail 40 backend</code>.</td></tr>
+  <tr><td>Login: "Email o contraseña incorrectos" con la demo</td><td>Falta cargar la demo: <code>docker compose exec backend python manage.py seed_demo</code>.</td></tr>
+  <tr><td>"Demasiados intentos"</td><td>Hay un límite de intentos de login: esperá un minuto.</td></tr>
+  <tr><td>Después de actualizar, la web pide entrar de nuevo</td><td>Normal: la sesión ahora usa una cookie segura. Volvé a entrar.</td></tr>
+</table>
+
+<h3>En la Raspberry Pi</h3>
+<table class="trouble">
+  <tr><th>Síntoma</th><th>Qué hacer</th></tr>
+  <tr><td><code>open SPI device: No such file or directory</code></td><td>SPI no está habilitado: <code>sudo raspi-config</code> → Interface Options → SPI → Yes, y reiniciá.</td></tr>
+  <tr><td><code>open SPI device: Permission denied</code></td><td>Falta <code>sudo</code> adelante del comando.</td></tr>
+  <tr><td><code>SX1278 version: 0x00</code> o <code>0xFF</code></td><td>La Pi no ve la radio: cableado, placa mal asentada o SPI apagado.</td></tr>
+  <tr><td><code>connect to telemetry backend 192.168.1.50:4001: Connection refused</code></td><td>La IP es de la PC pero MooPing no escucha: ¿está corriendo? (<code>docker compose ps</code>) ¿Cambiaste <code>TELEMETRY_PORT</code>?</td></tr>
+  <tr><td><code>… Connection timed out</code> o <code>No route to host</code></td><td>La Pi no llega a la PC: IP equivocada, firewall (sección 4), o la PC y la Pi en redes distintas (ojo con redes de "invitados", que aíslan los equipos).</td></tr>
+  <tr><td><code>Discarded LoRa packet with CRC error</code></td><td>El paquete llegó dañado: acercá el collar, revisá las antenas.</td></tr>
+  <tr><td>No aparece nada al mover el collar</td><td>Collar sin batería o dormido; las dos radios tienen que estar en 433 MHz.</td></tr>
+  <tr><td><code>Invalid telemetry target '…' (expected host:port)</code></td><td>Falta el puerto: <code>192.168.1.50:4001</code>, no <code>192.168.1.50</code>.</td></tr>
+  <tr><td><code>Ignoring GATEWAY_ID</code> / <code>TELEMETRY_KEY: use up to …</code></td><td>Usá solo letras, números, <code>-</code>, <code>_</code> y <code>.</code>, sin espacios ni comillas.</td></tr>
+</table>
+
+<h3>En MooPing (log de <code>telemetry</code>)</h3>
+<table class="trouble">
+  <tr><th>Síntoma</th><th>Qué hacer</th></tr>
+  <tr><td><code>descartada: falta KEY o no coincide con TELEMETRY_API_KEY</code></td><td>La clave de la Pi (<code>TELEMETRY_KEY</code>) no es igual a la de <code>backend/.env</code>, o se cambió <code>.env</code> y falta <code>docker compose restart telemetry</code>.</td></tr>
+  <tr><td>Llega la lectura pero no aparece en "Detectados"</td><td>Falta <code>GATEWAY_ID</code>, o el gateway no existe en MooPing (con la demo: <code>AGROBOT-01</code> o <code>AGROBOT-02</code>). Si el collar ya estaba vinculado, no aparece ahí: buscalo en Collares en campo.</td></tr>
+  <tr><td>El collar figura "Sin señal"</td><td>No llegan lecturas hace más de 30 minutos. Revisá que el receptor siga corriendo.</td></tr>
+</table>
+
+<!-- ===================================================== 10 -->
+<h2><span class="num">10</span>Apagar, actualizar y comandos útiles</h2>
+<p class="where"><span class="tag pc">PC</span> Todos desde la carpeta <code>mooping</code>.</p>
+<table>
+  <tr><th>Para</th><th>Comando</th></tr>
+  <tr><td>Apagar MooPing (los datos se guardan)</td><td><code>docker compose down</code></td></tr>
+  <tr><td>Volver a levantarlo</td><td><code>python start.py</code></td></tr>
+  <tr><td>Traer la última versión del código</td><td><code>git pull</code> y después <code>python start.py</code></td></tr>
+  <tr><td>Ver qué contenedores corren</td><td><code>docker compose ps</code></td></tr>
+  <tr><td>Ver lo que llega de la Pi</td><td><code>docker compose logs -f telemetry</code></td></tr>
+  <tr><td>Ver errores del backend</td><td><code>docker compose logs --tail 40 backend</code></td></tr>
+  <tr><td>Reiniciar la telemetría (después de cambiar <code>.env</code>)</td><td><code>docker compose restart telemetry</code></td></tr>
+  <tr><td>Dejar la demo como nueva</td><td><code>docker compose exec backend python manage.py seed_demo --reset</code></td></tr>
+  <tr><td>Borrar <b>toda</b> la base y empezar de cero</td><td><code>docker compose down -v</code> (después <code>start.py</code> y <code>seed_demo</code>)</td></tr>
+</table>
+
+<p class="where"><span class="tag pi">Pi</span></p>
+<table>
+  <tr><th>Para</th><th>Comando</th></tr>
+  <tr><td>Parar el receptor</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> en su terminal</td></tr>
+  <tr><td>Actualizar y recompilar</td><td><code>cd ~/MooPing</code>, <code>git pull</code>, <code>cd firmware/AgroBot/firmware</code> y <code>cmake --build build -j2</code></td></tr>
+  <tr><td>Apagar la Pi sin dañar la tarjeta</td><td><code>sudo shutdown now</code> (esperá a que se apague la luz antes de desenchufar)</td></tr>
+</table>
+
+<div class="box info"><span class="t">Más información</span>
+<ul>
+  <li><code>mooping/README.md</code>: cómo funciona MooPing, puertos y producción con HTTPS.</li>
+  <li><code>mooping/backend/ENDPOINTS.md</code>: la API y la autenticación.</li>
+  <li><code>firmware/AgroBot/firmware/README.md</code>: el receptor y el formato del JSON.</li>
+  <li><code>firmware/AgroBot/Setup.md</code>: AgroBot y el flasheo del collar AgroNeck.</li>
+</ul></div>
+
+</body>
+</html>

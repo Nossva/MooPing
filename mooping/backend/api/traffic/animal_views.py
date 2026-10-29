@@ -73,7 +73,3 @@ def animal_photo_file(request, name):
     response['Cache-Control'] = 'private, max-age=31536000, immutable'  # a new photo gets a new name
     return response
 
-
-@api_view(['POST'])
-def animal_alarm(request, animal_id):
-    return respond(animal_service.trigger_alarm(organization_id(request), animal_id, request.user), status=202)

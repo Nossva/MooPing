@@ -9,11 +9,9 @@ from api.dto.response.animal_response import (
     TrackPointResponse,
     TrackResponse,
 )
-from api.dto.response.command_response import CommandQueuedResponse
 from api.repositories import (
     alert_repository,
     animal_repository,
-    device_repository,
     organization_repository,
     photo_repository,
     yard_repository,
@@ -150,14 +148,3 @@ def get_track(organization_id, animal_id, request, scope=None):
     points = animal_repository.track(organization_id, animal_id, request.hours)
     return TrackResponse(animal_id, request.hours, [TrackPointResponse.from_record(p) for p in points])
 
-
-def trigger_alarm(organization_id, animal_id, user):
-    """'Alarma sonora': queues a command for the animal's collar."""
-    if animal_repository.get(organization_id, animal_id) is None:
-        raise NotFound('Animal no encontrado.')
-    assignment = device_repository.active_assignment_for_animal(animal_id)
-    if assignment is None:
-        raise Conflict('El animal no tiene un collar asignado.')
-    return CommandQueuedResponse.from_entity(
-        device_repository.queue_command(assignment.device_id, 'alarm_on', user.id)
-    )

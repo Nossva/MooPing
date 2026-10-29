@@ -30,7 +30,7 @@ function markerIcon(p, selected) {
 
 function FitBounds({ yards, positions }) {
   const map = useMap()
-  const key = `${yards.map((y) => y.id).join(',')}|${positions.length}`
+  const key = `${yards.map((y) => `${y.id}:${JSON.stringify(y.boundary)}`).join(',')}|${positions.length}`
   useEffect(() => {
     const layers = yards.filter((y) => y.boundary).map((y) => L.geoJSON(y.boundary))
     let bounds = layers.length ? L.featureGroup(layers).getBounds() : null
@@ -38,7 +38,7 @@ function FitBounds({ yards, positions }) {
       bounds = bounds ? bounds.extend([p.lat, p.lng]) : L.latLngBounds([[p.lat, p.lng]])
     }
     if (bounds?.isValid()) map.fitBounds(bounds, { padding: [24, 24] })
-    // solo cuando cambian potreros o cantidad de animales
+    // solo cuando cambian potreros (o sus perímetros) o cantidad de animales
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, map])
   return null
@@ -69,7 +69,8 @@ export default function HerdMap({ yards, positions, selectedId, onSelect, track,
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {yards.map((y) => y.boundary && <GeoJSON key={y.id} data={y.boundary} style={YARD_STYLE} />)}
+      {/* GeoJSON ignora cambios de `data`: la key con el perímetro lo vuelve a montar al editarlo */}
+      {yards.map((y) => y.boundary && <GeoJSON key={`${y.id}:${JSON.stringify(y.boundary)}`} data={y.boundary} style={YARD_STYLE} />)}
       {track?.length > 1 && (
         <Polyline positions={track.map((p) => [p.lat, p.lng])} pathOptions={{ color: '#670626', weight: 3, opacity: 0.8 }} />
       )}

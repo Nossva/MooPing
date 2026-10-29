@@ -258,6 +258,19 @@ function CollarCard({ device: d, onChange }) {
           </Button>
         </div>
       )}
+      {mode === 'config' && d.animal && (
+        <Button
+          variant="outline"
+          className="w-full py-2"
+          busy={busy}
+          onClick={() => {
+            if (!window.confirm(`¿Desvincular el collar #${d.label} de ${d.animal.name}? El animal deja de tener rastreo.`)) return
+            run(() => api(`devices/${d.id}/unassign/`, { method: 'POST', body: {} }))
+          }}
+        >
+          Desvincular de {d.animal.name}
+        </Button>
+      )}
 
       {mode === 'assign' && (
         <div className="flex items-end gap-2">
@@ -290,7 +303,7 @@ function CollarCard({ device: d, onChange }) {
         </div>
       )}
       {mode === 'assign' && animals.data && animals.data.filter((a) => !a.device).length === 0 && (
-        <p className="text-xs text-muted">Todos los animales ya tienen collar. Dá de alta uno nuevo primero.</p>
+        <p className="text-xs text-muted">Todos los animales ya tienen collar. Para pasarle este, desvinculá el suyo desde Configurar en su tarjeta.</p>
       )}
       {error && <p className="text-xs text-brand">{error}</p>}
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class CommandQueuedResponse:
-    """'Alarma sonora' / 'Enviar ping forzado': command waiting for the Pi."""
+    """'Enviar ping forzado': command waiting for the Pi."""
     command_id: int
     device_id: int
     status: str

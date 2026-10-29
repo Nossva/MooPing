@@ -365,7 +365,7 @@ const PERMISSIONS = [
   ['Recibir alarmas', true, true],
   ['Asignar alertas a otros', true, false],
   ['Alta y edición de animales, potreros y collares', true, false],
-  ['Alarma sonora, ping y mantenimiento', true, false],
+  ['Ping y mantenimiento de collares', true, false],
   ['Usuarios y configuración del establecimiento', true, false],
 ]
 

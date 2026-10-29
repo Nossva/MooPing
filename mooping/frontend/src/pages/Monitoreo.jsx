@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  Check, ChevronRight, ClipboardPlus, Footprints, Grid3x3, History, ImageUp, LocateFixed, MapPinned, Pencil, Radio, Search,
-  ShieldCheck, Siren, Thermometer, Volume2, X,
+  Check, ChevronDown, ChevronRight, ClipboardPlus, Footprints, Grid3x3, History, ImageUp, LocateFixed, MapPinned, Pencil, Plus, Radio, Search,
+  ShieldCheck, Siren, Thermometer, X,
 } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
 import { usePagedApi } from '@/api/usePagedApi'
 import HerdMap from '@/components/HerdMap'
+import YardEditor from '@/components/YardEditor'
 import { Button, Card, ErrorBox, Loading, MoreButton, OwnerOnly, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { ALERT_TYPES } from '@/lib/alerts'
@@ -36,11 +37,18 @@ export default function Monitoreo() {
   const [geofence, setGeofence] = useState('')
   const [search, setSearch] = useState('')
   const [track, setTrack] = useState(null)
+  // null = cerrado, 'new' = alta, o el potrero que se edita
+  const [editingYard, setEditingYard] = useState(null)
 
   const yards = useApi('yards/')
   const summary = useApi('monitoring/summary/', { params: { yard_id: yardId }, refreshMs: 30000 })
   const positions = useApi('animals/positions/', { params: { yard_id: yardId, geofence }, refreshMs: 30000 })
-  const results = usePagedApi(search.trim() ? 'animals/' : null, { params: { search: search.trim(), yard_id: yardId }, pageSize: 10 })
+  // Listado bajo el mapa: siempre visible, con los mismos filtros que el mapa más la búsqueda.
+  const results = usePagedApi('animals/', {
+    params: { search: search.trim(), yard_id: yardId, geofence },
+    refreshMs: 30000,
+    pageSize: 10,
+  })
   const seesAlerts = useAuth().can('alertas')
   const alerts = usePagedApi(seesAlerts ? 'alerts/' : null, { params: { status: 'open', sort: 'urgency' }, refreshMs: 30000, pageSize: 10 })
 
@@ -56,34 +64,33 @@ export default function Monitoreo() {
   }
 
   const yardList = yards.data ?? []
+  const currentYard = yardList.find((y) => String(y.id) === yardId)
   const s = summary.data
   const fieldAlerts = (alerts.items ?? []).filter((a) => a.category !== 'equipment')
 
   return (
     <div className="space-y-4">
       {/* Establecimiento / potrero */}
-      <Card className="flex items-center gap-3 bg-surface-low p-3">
-        <div className="flex size-11 items-center justify-center rounded-lg bg-brand text-white">
-          <Grid3x3 className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] uppercase tracking-wide text-muted">Establecimiento</p>
-          <select
-            value={yardId}
-            onChange={(e) => {
-              setYardId(e.target.value)
-              select(null)
-            }}
-            className="w-full bg-transparent font-display text-lg font-bold text-ink outline-none"
-          >
-            <option value="">Todos los potreros</option>
-            {yardList.map((y) => (
-              <option key={y.id} value={y.id}>
-                {y.name} · {num(y.area_ha)} ha
-              </option>
-            ))}
-          </select>
-        </div>
+      <Card className="flex items-center gap-2 bg-surface-low p-2">
+        <YardPicker
+          yards={yardList}
+          current={currentYard}
+          onChange={(id) => {
+            setYardId(id)
+            setEditingYard(null) // el editor quedaría apuntando al potrero anterior
+            select(null)
+          }}
+        />
+        <OwnerOnly>
+          {currentYard && (
+            <Button variant="soft" icon={Pencil} className="py-2" title="Editar potrero" onClick={() => setEditingYard(currentYard)}>
+              <span className="hidden sm:inline">Editar</span>
+            </Button>
+          )}
+          <Button variant="soft" icon={Plus} className="py-2" title="Nuevo potrero" onClick={() => setEditingYard('new')}>
+            <span className="hidden sm:inline">Nuevo potrero</span>
+          </Button>
+        </OwnerOnly>
       </Card>
 
       <div className="grid grid-cols-3 gap-2">
@@ -104,25 +111,42 @@ export default function Monitoreo() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
         <div className="space-y-4">
-          <div className="relative overflow-hidden rounded-2xl border border-black/5 shadow-sm">
-            {positions.error ? (
-              <ErrorBox error={positions.error} onRetry={positions.reload} />
-            ) : (
-              <HerdMap
-                yards={yardId ? yardList.filter((y) => String(y.id) === yardId) : yardList}
-                positions={points}
-                selectedId={selectedId}
-                onSelect={select}
-                track={track}
-                className="h-[380px] w-full lg:h-[520px]"
-              />
-            )}
-            {s && (
-              <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-field shadow">
-                {num(s.herd.safe_pct, 1)}% del rodeo dentro de la geocerca
-              </div>
-            )}
-          </div>
+          {/* Mientras se edita un potrero, el editor ocupa el lugar del mapa: un solo mapa en pantalla. */}
+          {editingYard ? (
+            <YardEditor
+              key={editingYard === 'new' ? 'new' : editingYard.id}
+              yard={editingYard === 'new' ? null : editingYard}
+              yards={yardList}
+              onCancel={() => setEditingYard(null)}
+              onSaved={(saved) => {
+                setEditingYard(null)
+                setYardId(saved ? String(saved.id) : '')
+                yards.reload()
+                summary.reload()
+                positions.reload()
+              }}
+            />
+          ) : (
+            <div className="relative overflow-hidden rounded-2xl border border-black/5 shadow-sm">
+              {positions.error ? (
+                <ErrorBox error={positions.error} onRetry={positions.reload} />
+              ) : (
+                <HerdMap
+                  yards={yardId ? yardList.filter((y) => String(y.id) === yardId) : yardList}
+                  positions={points}
+                  selectedId={selectedId}
+                  onSelect={select}
+                  track={track}
+                  className="h-[380px] w-full lg:h-[520px]"
+                />
+              )}
+              {s && (
+                <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-field shadow">
+                  {num(s.herd.safe_pct, 1)}% del rodeo dentro de la geocerca
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Buscador */}
           <Card className="space-y-3">
@@ -159,33 +183,21 @@ export default function Monitoreo() {
                 )
               })}
             </div>
-            {search.trim() && (
+            {results.loading && !results.items ? (
+              <Loading />
+            ) : (
               <ul className="divide-y divide-black/5">
                 {(results.items ?? []).map((a) => (
-                  <li key={a.id}>
-                    <button
-                      onClick={() => {
-                        select(a.id)
-                        setSearch('')
-                      }}
-                      className="flex w-full items-center justify-between py-2 text-left text-sm"
-                    >
-                      <span>
-                        <span className="font-semibold">{a.name}</span>{' '}
-                        <span className="text-muted">
-                          · {a.tag_number} · {a.device ? `#${a.device.label}` : 'sin collar'} · {a.lot}
-                        </span>
-                      </span>
-                      <ChevronRight className="size-4 text-muted" />
-                    </button>
-                  </li>
+                  <AnimalRow key={a.id} animal={a} selected={a.id === selectedId} onSelect={() => select(a.id)} />
                 ))}
-                {results.items?.length === 0 && <li className="py-2 text-sm text-muted">Sin resultados.</li>}
+                {results.items?.length === 0 && (
+                  <li className="py-3 text-center text-sm text-muted">
+                    {search.trim() ? 'Sin resultados.' : 'No hay animales con este filtro.'}
+                  </li>
+                )}
               </ul>
             )}
-            {search.trim() && (
-              <MoreButton list={results}>Ver más resultados</MoreButton>
-            )}
+            <MoreButton list={results}>Ver más animales</MoreButton>
           </Card>
         </div>
 
@@ -219,6 +231,125 @@ export default function Monitoreo() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function AnimalRow({ animal: a, selected, onSelect }) {
+  const outside = a.geofence_status === 'outside'
+  const details = [a.tag_number, a.device ? `#${a.device.label}` : 'sin collar', a.lot].filter(Boolean).join(' · ')
+  return (
+    <li>
+      <button
+        onClick={onSelect}
+        className={cx(
+          'flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm',
+          selected ? 'bg-brand-soft/40' : 'hover:bg-surface-low',
+        )}
+      >
+        <span
+          className={cx(
+            'size-2.5 shrink-0 rounded-full',
+            outside ? 'bg-brand' : a.geofence_status === 'inside' ? 'bg-field' : 'bg-black/20',
+          )}
+        />
+        <span className="min-w-0 flex-1">
+          <span className={cx('block truncate font-semibold', selected ? 'text-brand' : 'text-ink')}>{a.name}</span>
+          <span className="block truncate text-xs text-muted">{details}</span>
+        </span>
+        {a.open_alerts > 0 && !outside && <Pill className="bg-field-soft text-field">En alerta</Pill>}
+        <span className={cx('shrink-0 text-xs font-semibold', outside ? 'text-brand' : 'text-muted')}>
+          {outside ? `Fuera ${num(a.distance_outside_m)} m` : a.geofence_status === 'inside' ? 'En geocerca' : 'Sin posición'}
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted" />
+      </button>
+    </li>
+  )
+}
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
+
+// Selector de potrero: botón con el elegido y un panel con todos.
+// Se cierra al elegir, al tocar afuera o con Escape (como HeaderMenus).
+function YardPicker({ yards, current, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e) => ref.current?.contains(e.target) || setOpen(false)
+    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const totalHa = yards.reduce((sum, y) => sum + (y.area_ha ?? 0), 0)
+  const totalAnimals = yards.reduce((sum, y) => sum + (y.animal_count ?? 0), 0)
+  const options = [
+    { id: '', name: 'Todos los potreros', detail: `${plural(yards.length, 'potrero', 'potreros')} · ${num(totalHa)} ha`, animals: totalAnimals },
+    ...yards.map((y) => ({ id: String(y.id), name: y.name, detail: `${num(y.area_ha)} ha`, animals: y.animal_count })),
+  ]
+  const selected = options.find((o) => o.id === (current ? String(current.id) : '')) ?? options[0]
+  const pick = (id) => {
+    setOpen(false)
+    onChange(id)
+  }
+
+  return (
+    <div ref={ref} className="relative min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-surface-high/60"
+      >
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
+          <Grid3x3 className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] uppercase tracking-wide text-muted">Establecimiento</p>
+          <p className="truncate font-display text-lg font-bold text-ink">
+            {selected.name} <span className="text-sm font-medium text-muted">· {selected.detail}</span>
+          </p>
+        </div>
+        <ChevronDown className={cx('size-5 shrink-0 text-muted transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <ul className="absolute left-0 top-full z-[1000] mt-2 max-h-80 w-full min-w-64 overflow-y-auto rounded-xl border border-black/5 bg-white p-1.5 shadow-lg">
+          {options.map((o) => {
+            const active = o.id === selected.id
+            return (
+              <li key={o.id}>
+                <button
+                  type="button"
+                  onClick={() => pick(o.id)}
+                  className={cx(
+                    'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left',
+                    active ? 'bg-brand-soft/40' : 'hover:bg-surface-low',
+                  )}
+                >
+                  <span className={cx('flex size-8 shrink-0 items-center justify-center rounded-md', active ? 'bg-brand text-white' : 'bg-surface-high text-brand')}>
+                    {o.id ? <MapPinned className="size-4" /> : <Grid3x3 className="size-4" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cx('block truncate text-sm font-semibold', active ? 'text-brand' : 'text-ink')}>{o.name}</span>
+                    <span className="block text-xs text-muted">
+                      {o.detail} · {plural(o.animals ?? 0, 'animal', 'animales')}
+                    </span>
+                  </span>
+                  {active && <Check className="size-4 shrink-0 text-brand" />}
+                </button>
+              </li>
+            )
+          })}
+          {yards.length === 0 && <li className="px-3 py-2 text-xs text-muted">Todavía no hay potreros cargados.</li>}
+        </ul>
+      )}
     </div>
   )
 }
@@ -292,11 +423,6 @@ function AnimalPanel({ animalId, yards, onTrack, hasTrack, onChanged }) {
       const t = await api(`animals/${animalId}/track/`, { params: { hours: 24 } })
       onTrack(t.points)
       setMsg(`${t.points.length} puntos en las últimas 24 h.`)
-    })
-  const alarm = () =>
-    run('alarm', async () => {
-      await api(`animals/${animalId}/alarm/`, { method: 'POST' })
-      setMsg('Alarma en cola: se envía cuando el gateway pueda hablar con el collar.')
     })
   const saveNotes = () =>
     run('notes', async () => {
@@ -432,21 +558,17 @@ function AnimalPanel({ animalId, yards, onTrack, hasTrack, onChanged }) {
         {hasTrack ? 'Ocultar recorrido' : 'Ver historial de recorrido 24h'}
       </Button>
       <OwnerOnly>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="field" icon={Volume2} busy={busy === 'alarm'} disabled={!a.device} onClick={alarm}>
-            Alarma sonora
-          </Button>
-          <Button
-            variant="soft"
-            icon={ClipboardPlus}
-            onClick={() => {
-              setNotes(a.notes ?? '')
-              setEditing((v) => !v)
-            }}
-          >
-            Ficha sanitaria
-          </Button>
-        </div>
+        <Button
+          variant="soft"
+          icon={ClipboardPlus}
+          className="w-full"
+          onClick={() => {
+            setNotes(a.notes ?? '')
+            setEditing((v) => !v)
+          }}
+        >
+          Ficha sanitaria
+        </Button>
       </OwnerOnly>
     </Card>
   )

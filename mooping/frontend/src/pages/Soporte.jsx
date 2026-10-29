@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronDown, Clock, HelpCircle, History, LifeBuoy, MessageCircle, Phone, Send, Stethoscope } from 'lucide-react'
+import { Check, ChevronDown, Clock, HelpCircle, History, LifeBuoy, MessageCircle, Phone, Send } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
@@ -7,9 +7,8 @@ import { Button, Card, ErrorBox, Loading, Pill, SectionTitle } from '@/component
 import { cx } from '@/lib/cx'
 import { timeAgo } from '@/lib/format'
 
-// Para todos los roles: formulario de reclamo (support/requests/), estado del sistema (support/) y preguntas frecuentes.
-
-const COLLAR_STATE = { no_signal: 'Sin señal', low_battery: 'Batería baja', alert: 'Fuera del perímetro' }
+// Para todos los roles: formulario de reclamo (support/requests/) y preguntas frecuentes.
+// support/ trae contactos y el diagnóstico que se usa para sugerir la categoría (ya no se muestra).
 
 const FAQ = [
   {
@@ -71,13 +70,8 @@ export default function Soporte() {
         <p className="text-sm text-muted">Contanos qué pasa: el reclamo nos llega con el estado del sistema, así no hace falta explicarlo.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 md:items-start">
-        <div className="space-y-4">
-          <SupportForm contacts={data.contacts} diagnostic={data.diagnostic} onSent={requests.reload} />
-          <MyRequests list={requests} />
-        </div>
-        <Diagnostic d={data.diagnostic} />
-      </div>
+      <SupportForm contacts={data.contacts} diagnostic={data.diagnostic} onSent={requests.reload} />
+      <MyRequests list={requests} />
 
       <Faq />
     </div>
@@ -94,88 +88,6 @@ function issues(d) {
   if (d.collars.no_signal) list.push(`${d.collars.no_signal} collares sin señal`)
   if (d.collars.low_battery) list.push(`${d.collars.low_battery} collares con batería baja`)
   return list
-}
-
-function Diagnostic({ d }) {
-  const problems = issues(d)
-  const gateways = d.gateways.filter((g) => g.kind === 'gateway')
-  const repeaters = d.gateways.filter((g) => g.kind === 'repeater')
-
-  return (
-    <Card className="space-y-4">
-      <SectionTitle icon={Stethoscope}>Estado del sistema</SectionTitle>
-      <div className={cx('rounded-lg px-3 py-2 text-sm font-semibold', problems.length ? 'bg-brand-soft/40 text-brand' : 'bg-field-soft/60 text-field')}>
-        {problems.length ? `${problems.length} ${problems.length === 1 ? 'cosa' : 'cosas'} para revisar` : 'Todo en orden'}
-      </div>
-
-      <ul className="space-y-2 text-sm">
-        <StatusRow ok label="Servidor" value={d.server.name} />
-        <StatusRow ok={d.link.online} label={`Enlace ${d.link.radio ?? 'LoRa'}`} value={`Último dato ${timeAgo(d.link.last_packet_at)}`} />
-        <StatusRow
-          ok={gateways.every((g) => g.online)}
-          label="Gateways"
-          value={`${gateways.filter((g) => g.online).length} de ${gateways.length} conectados`}
-        />
-        {repeaters.length > 0 && (
-          <StatusRow
-            ok={repeaters.every((g) => g.online)}
-            label="Repetidores"
-            value={`${repeaters.filter((g) => g.online).length} de ${repeaters.length} conectados`}
-          />
-        )}
-        <StatusRow ok={!d.collars.no_signal} label="Collares sin señal" value={`${d.collars.no_signal} de ${d.collars.assigned}`} />
-        <StatusRow ok={!d.collars.low_battery} label="Batería baja" value={d.collars.low_battery} />
-      </ul>
-
-      {d.gateways.some((g) => !g.online) && (
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Gateways sin conexión</p>
-          <ul className="space-y-1 text-sm">
-            {d.gateways
-              .filter((g) => !g.online)
-              .map((g) => (
-                <li key={g.gateway_uid} className="flex justify-between gap-3">
-                  <span className="text-ink">
-                    {g.name} <span className="text-muted">· {g.gateway_uid}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted">{timeAgo(g.last_seen_at)}</span>
-                </li>
-              ))}
-          </ul>
-        </div>
-      )}
-
-      {d.problem_collars.length > 0 && (
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Collares para revisar</p>
-          <ul className="space-y-1 text-sm">
-            {d.problem_collars.map((c) => (
-              <li key={c.device_uid} className="flex items-center justify-between gap-3">
-                <span className="min-w-0 truncate text-ink">
-                  #{c.label ?? c.device_uid} <span className="text-muted">· {c.animal_name ?? 'sin animal'}</span>
-                </span>
-                <Pill className={c.state === 'low_battery' ? 'bg-warn-soft text-warn-ink' : 'bg-brand-soft text-brand'}>
-                  {COLLAR_STATE[c.state] ?? c.state}
-                </Pill>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </Card>
-  )
-}
-
-function StatusRow({ ok, label, value }) {
-  return (
-    <li className="flex items-center justify-between gap-3">
-      <span className="flex items-center gap-2 text-ink">
-        <span className={cx('size-2 rounded-full', ok ? 'bg-field' : 'bg-brand')} />
-        {label}
-      </span>
-      <span className={cx('text-right text-xs', ok ? 'text-muted' : 'font-semibold text-brand')}>{value}</span>
-    </li>
-  )
 }
 
 const CATEGORIES = [
@@ -302,19 +214,12 @@ function MyRequests({ list }) {
               <span>
                 <span className="font-semibold text-ink">#{r.id}</span> · {CATEGORY_LABEL[r.category] ?? r.category} · {timeAgo(r.created_at)}
               </span>
-              {r.emailed ? (
-                <Pill className="bg-field-soft text-field">Enviado</Pill>
-              ) : (
-                <Pill className="bg-warn-soft text-warn-ink">Guardado</Pill>
-              )}
+              {r.emailed && <Pill className="bg-field-soft text-field">Enviado</Pill>}
             </div>
             <p className="mt-1 line-clamp-2 text-sm text-ink">{r.message}</p>
           </li>
         ))}
       </ul>
-      {items.some((r) => !r.emailed) && (
-        <p className="text-[11px] text-muted">"Guardado": quedó registrado pero el email a soporte no salió. Lo vemos igual.</p>
-      )}
     </Card>
   )
 }

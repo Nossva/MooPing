@@ -51,7 +51,6 @@ urlpatterns = [
     path('animals/positions/', animal_views.animal_positions),
     path('animals/<int:animal_id>/', animal_views.animal_detail),
     path('animals/<int:animal_id>/track/', animal_views.animal_track),
-    path('animals/<int:animal_id>/alarm/', animal_views.animal_alarm),
     path('animals/<int:animal_id>/photo/', animal_views.animal_photo),
     path('media/animals/<str:name>', animal_views.animal_photo_file),
 

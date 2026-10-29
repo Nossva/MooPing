@@ -110,7 +110,6 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | GET | `animals/?search=&yard_id=&geofence=` | Buscador "caravana, collar #C o lote" (formato animal) |
 | GET | `animals/{id}/` | Ficha (formato animal + `temp_range_c`, `temp_in_range`, `activity_today_km`, `rumination_4h_min`, `notes`, `open_alerts`) |
 | GET | `animals/{id}/track/?hours=24` | "Ver historial de recorrido": `{points: [{recorded_at, lat, lng, speed_kmh, heading_deg, temp_body_c}]}` |
-| POST | `animals/{id}/alarm/` | "Alarma sonora" → 202 `{command_id, device_id, status: "queued"}` |
 | PATCH | `animals/{id}/` | "Editar ficha" / "Ficha sanitaria" |
 | POST | `animals/{id}/photo/` | Subir foto: multipart con el archivo en `photo` (JPG, PNG, WEBP o GIF, hasta 5 MB). Reemplaza la anterior → el animal |
 | DELETE | `animals/{id}/photo/` | Quitar la foto → el animal |
