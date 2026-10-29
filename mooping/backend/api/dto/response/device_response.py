@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 
 from api.dto.response.base import geofence_status
-from api.entities import battery_days_left, default_collar_label, device_state
+from api.entities import default_collar_label, device_state
 
 
 @dataclass
@@ -23,10 +23,7 @@ class DeviceResponse:
     state: str
     hardware_version: str | None
     firmware_version: str | None
-    battery_pct: float | None
-    battery_days_left: int | None
     battery_model: str | None
-    rssi_dbm: int | None
     tx_interval_s: int
     last_seen_at: datetime | None
     storage_location: str | None
@@ -37,11 +34,9 @@ class DeviceResponse:
     def from_record(cls, r):
         return cls(
             id=r.id, device_uid=r.device_uid, label=r.label,
-            state=device_state(r.animal_id is not None, r.no_signal, r.geofence_alert_since is not None,
-                               r.low_battery),
+            state=device_state(r.animal_id is not None, r.no_signal, r.geofence_alert_since is not None),
             hardware_version=r.hardware_version, firmware_version=r.firmware_version,
-            battery_pct=r.battery_pct, battery_days_left=battery_days_left(r.battery_pct),
-            battery_model=r.battery_model, rssi_dbm=r.last_rssi_dbm, tx_interval_s=r.tx_interval_s,
+            battery_model=r.battery_model, tx_interval_s=r.tx_interval_s,
             last_seen_at=r.last_seen_at, storage_location=r.storage_location,
             geofence_alert_since=r.geofence_alert_since,
             animal=DeviceAnimalResponse(r.animal_id, r.animal_name, r.animal_breed, r.animal_lot,
@@ -55,14 +50,11 @@ class DetectedDeviceResponse:
     device_uid: str
     suggested_label: str
     last_seen_at: datetime | None
-    battery_pct: float | None
-    rssi_dbm: int | None
     gateway_name: str
 
     @classmethod
     def from_record(cls, r):
-        return cls(r.device_uid, default_collar_label(r.device_uid), r.last_seen_at, r.battery_pct,
-                   r.last_rssi_dbm, r.gateway_name)
+        return cls(r.device_uid, default_collar_label(r.device_uid), r.last_seen_at, r.gateway_name)
 
 
 @dataclass

@@ -574,7 +574,7 @@ const SECTIONS = [
   { key: 'inicio', label: 'Inicio', icon: Compass, text: 'Resumen del día y salud del rodeo.' },
   { key: 'monitoreo', label: 'Monitoreo', icon: Radar, text: 'Mapa, posición y ficha de cada animal.' },
   { key: 'alertas', label: 'Alertas', icon: TriangleAlert, text: 'Ver y atender alertas, recibir alarmas.' },
-  { key: 'equipos', label: 'Equipos', icon: Router, text: 'Collares, baterías y gateways.' },
+  { key: 'equipos', label: 'Equipos', icon: Router, text: 'Collares y gateways.' },
 ]
 const SECTION_LABEL = Object.fromEntries(SECTIONS.map((s) => [s.key, s.label]))
 
@@ -962,7 +962,6 @@ function OrganizationFields({ org, onSaved }) {
     name: org.name,
     vet_phone: org.vet_phone ?? '',
     fever_threshold_c: org.fever_threshold_c,
-    low_battery_pct: org.low_battery_pct,
     no_signal_minutes: org.no_signal_minutes,
   })
   const [busy, setBusy] = useState(false)
@@ -985,7 +984,6 @@ function OrganizationFields({ org, onSaved }) {
           name: form.name.trim(),
           vet_phone: form.vet_phone.trim() || null,
           fever_threshold_c: Number(form.fever_threshold_c),
-          low_battery_pct: Number(form.low_battery_pct),
           no_signal_minutes: Number(form.no_signal_minutes),
         },
       })
@@ -1014,7 +1012,7 @@ function OrganizationFields({ org, onSaved }) {
         </div>
 
         <p className="pt-2 font-display text-base font-bold text-ink">Umbrales de alertas</p>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2">
           <label className="text-xs text-muted">
             Fiebre desde (°C, 37–42)
             <input
@@ -1024,17 +1022,6 @@ function OrganizationFields({ org, onSaved }) {
               max={42}
               value={form.fever_threshold_c}
               onChange={set('fever_threshold_c')}
-              className={INPUT}
-            />
-          </label>
-          <label className="text-xs text-muted">
-            Batería baja por debajo de (%, 5–50)
-            <input
-              type="number"
-              min={5}
-              max={50}
-              value={form.low_battery_pct}
-              onChange={set('low_battery_pct')}
               className={INPUT}
             />
           </label>

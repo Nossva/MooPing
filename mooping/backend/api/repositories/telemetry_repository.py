@@ -18,7 +18,7 @@ def motion_since_last(device_id, lng, lat, recorded_at):
 
 
 def insert(device_id, animal_id, gateway_id, recorded_at, lng, lat, **values):
-    """values: optional telemetry columns (temp_body_c, battery_pct, rssi_dbm, ...)."""
+    """values: optional telemetry columns (temp_body_c, activity, ...)."""
     columns = ['device_id', 'animal_id', 'gateway_id', 'recorded_at']
     params = [device_id, animal_id, gateway_id, recorded_at]
     placeholders = ['%s'] * 4

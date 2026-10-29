@@ -1,7 +1,6 @@
 from django.conf import settings
 
 from api.dto.response.summary_response import (
-    BatteriesCardResponse,
     CollarsCardResponse,
     GatewaysCardResponse,
     InfrastructureResponse,
@@ -17,7 +16,6 @@ def summary(organization_id, scope=None):
     devices = device_repository.list_rows(organization_id, scope=scope)
     assigned = [d for d in devices if d.animal_id is not None]
     reporting = [d for d in assigned if not d.no_signal]
-    batteries = [d.battery_pct for d in assigned if d.battery_pct is not None]
     gateways = gateway_repository.list_by_org(organization_id)
     bases = [g for g in gateways if g.kind == 'gateway']
     repeaters = [g for g in gateways if g.kind == 'repeater']
@@ -37,10 +35,6 @@ def summary(organization_id, scope=None):
         gateways=GatewaysCardResponse(total=len(bases), online=sum(g.online for g in bases), coverage_ha=coverage),
         repeaters=RepeatersCardResponse(
             total=len(repeaters), online=sum(g.online for g in repeaters), names=[g.name for g in repeaters],
-        ),
-        batteries=BatteriesCardResponse(
-            average_pct=round(sum(batteries) / len(batteries)) if batteries else None,
-            low_count=sum(1 for d in assigned if d.low_battery),
         ),
         server=ServerCardResponse(name=settings.MOOPING_SERVER_NAME, status='connected'),
         last_sync_at=last_sync,

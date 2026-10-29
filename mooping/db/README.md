@@ -36,6 +36,7 @@ puede romper nada.
 | [upgrade-member-permissions.sql](upgrade-member-permissions.sql) | Permisos por usuario: `memberships.sections` / `all_yards`, `member_yards`, `member_animals` |
 | [upgrade-support-requests.sql](upgrade-support-requests.sql) | `support_requests`: reclamos enviados desde la pestaña Soporte |
 | [upgrade-telemetry-nan.sql](upgrade-telemetry-nan.sql) | Pasa a NULL los NaN / Infinity de telemetría guardados antes de validarlos |
+| [upgrade-sin-bateria-ni-rssi.sql](upgrade-sin-bateria-ni-rssi.sql) | Saca la batería del collar, RSSI/SNR, la alerta `low_battery` y `low_battery_pct` (borra esas alertas) |
 | [upgrade-telemetry-future.sql](upgrade-telemetry-future.sql) | Recalcula `last_seen_at` y la última posición que quedaron congelados por lecturas con fecha futura |
 
 Si levantás con `docker compose up` directo, aplicalos a mano (desde `mooping/`):
@@ -44,6 +45,7 @@ Si levantás con `docker compose up` directo, aplicalos a mano (desde `mooping/`
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-roles.sql
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-member-access.sql
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-member-permissions.sql
+docker compose exec -T db psql -U mooping -d mooping < db/upgrade-sin-bateria-ni-rssi.sql
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-telemetry-nan.sql
 docker compose exec -T db psql -U mooping -d mooping < db/upgrade-telemetry-future.sql
 ```
@@ -60,7 +62,7 @@ docker compose exec -T db psql -U mooping -d mooping < db/upgrade-telemetry-futu
 | `telemetry_readings` | Cada lectura recibida (posición, temperatura, etc.) |
 | `animal_last_position` | Última posición de cada animal; la actualiza un trigger |
 | `animal_daily_statistics` | Resumen diario por animal (lo calcula un job) |
-| `alerts` | Salida de potrero, fiebre, sin señal, batería baja |
+| `alerts` | Salida de potrero, fiebre, sin señal |
 
 ## Insertar una lectura
 

@@ -89,7 +89,7 @@ class TrackQuery(serializers.Serializer):
 
 class DeviceListQuery(serializers.Serializer):
     search = serializers.CharField(required=False, allow_blank=True)
-    filter = serializers.ChoiceField(['low_battery', 'alert', 'stock', 'no_signal', 'needs_attention'],
+    filter = serializers.ChoiceField(['alert', 'stock', 'no_signal', 'needs_attention'],
                                      required=False)
     # "Ver más": the client asks for one more than it shows to know if there are more.
     limit = serializers.IntegerField(min_value=1, max_value=MAX_LIST_LIMIT, required=False)
@@ -166,5 +166,4 @@ class OrganizationUpdateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=200, required=False)
     vet_phone = serializers.CharField(max_length=50, required=False, allow_null=True, allow_blank=True)
     fever_threshold_c = serializers.FloatField(required=False)
-    low_battery_pct = serializers.FloatField(required=False)
     no_signal_minutes = serializers.IntegerField(required=False)

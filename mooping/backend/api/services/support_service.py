@@ -30,7 +30,7 @@ RECENT_REQUESTS = 10
 
 CATEGORY_LABEL = {'collar': 'Collar', 'gateway': 'Gateway / conexión', 'app': 'App / cuenta', 'other': 'Otro'}
 ROLE_LABEL = {'owner': 'Dueño', 'user': 'Usuario'}
-COLLAR_STATE = {'no_signal': 'Sin señal', 'low_battery': 'Batería baja', 'alert': 'Fuera del perímetro'}
+COLLAR_STATE = {'no_signal': 'Sin señal', 'alert': 'Fuera del perímetro'}
 
 
 def contacts():
@@ -59,7 +59,6 @@ def diagnostic(organization_id, scope=None):
             total=infra.collars.total,
             assigned=infra.collars.assigned,
             no_signal=infra.collars.no_signal,
-            low_battery=infra.batteries.low_count,
         ),
         problem_collars=[SupportProblemCollarResponse.from_device(d) for d in problems],
         open_alerts=alert_service.summary(organization_id, scope).by_category,
@@ -118,7 +117,6 @@ def _email_body(saved, user, role, message, d, user_agent):
     gateways = [f'  - {g.name} ({g.gateway_uid}): ' + ('conectado' if g.online else f'desconectado, visto {_when(g.last_seen_at)}')
                 for g in d.gateways]
     collars = [f'  - #{c.label or c.device_uid} ({c.animal_name or "sin animal"}): {COLLAR_STATE.get(c.state, c.state)}'
-               + (f', batería {round(c.battery_pct)}%' if c.battery_pct is not None else '')
                + f', último dato {_when(c.last_seen_at)}'
                for c in d.problem_collars]
     alerts = d.open_alerts
@@ -138,8 +136,7 @@ def _email_body(saved, user, role, message, d, user_agent):
         + f', último dato {_when(d.link.last_packet_at)}',
         'Gateways:',
         *(gateways or ['  (ninguno)']),
-        f'Collares: {d.collars.assigned} en uso de {d.collars.total}, {d.collars.no_signal} sin señal, '
-        f'{d.collars.low_battery} con batería baja',
+        f'Collares: {d.collars.assigned} en uso de {d.collars.total}, {d.collars.no_signal} sin señal',
         *(['Para revisar:', *collars] if collars else []),
         f'Alertas abiertas: {alerts["critical"]} críticas, {alerts["sanitary"]} sanitarias, '
         f'{alerts["equipment"]} de equipos',

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from api.dto.response.base import LatLng, Ref, age_months, compass, kmh, ref
-from api.entities import CATEGORY_BY_TYPE, battery_days_left
+from api.entities import CATEGORY_BY_TYPE
 
 
 @dataclass
@@ -20,9 +20,6 @@ class AlertDeviceResponse:
     id: int
     label: str | None
     device_uid: str
-    battery_pct: float | None
-    battery_days_left: int | None
-    rssi_dbm: int | None
     last_seen_at: datetime | None
 
 
@@ -54,8 +51,7 @@ class AlertResponse:
             triggered_at=r.triggered_at, resolved_at=r.resolved_at,
             animal=AlertAnimalResponse(r.animal_id, r.animal_name, r.animal_tag, r.animal_breed,
                                        r.animal_lot, age_months(r.animal_birth_date)) if r.animal_id else None,
-            device=AlertDeviceResponse(r.device_id, r.device_label, r.device_uid, r.device_battery_pct,
-                                       battery_days_left(r.device_battery_pct), r.device_rssi_dbm,
+            device=AlertDeviceResponse(r.device_id, r.device_label, r.device_uid,
                                        r.device_last_seen_at) if r.device_id else None,
             yard=ref(r.yard_id, r.yard_name),
             assigned_to=ref(r.assigned_to_id, r.assigned_to_name),

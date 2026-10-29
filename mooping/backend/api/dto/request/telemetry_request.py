@@ -8,14 +8,12 @@ from django.utils.dateparse import parse_datetime
 from api.dto.request.base import DtoValidationError
 
 # Accepted spellings for each field; today the Pi sends ID, LAT, LONG, TEMP.
+# Anything else in the JSON (RSSI, SNR, BAT, KEY...) is ignored.
 _ALIASES = {
     'device_uid': ('ID', 'id', 'Id', 'device_uid'),
     'lat': ('LAT', 'lat', 'latitude', 'Lat', 'Latitude'),
     'lng': ('LONG', 'long', 'lng', 'lon', 'longitude', 'Long', 'Longitude'),
     'temp_body_c': ('TEMP', 'temp', 'temperature', 'temp_body_c'),
-    'battery_pct': ('BAT', 'battery', 'battery_pct'),
-    'rssi_dbm': ('RSSI', 'rssi', 'rssi_dbm'),
-    'snr_db': ('SNR', 'snr', 'snr_db'),
     'activity': ('ACT', 'activity'),
     'rumination_min': ('RUM', 'rumination', 'rumination_min'),
     'speed_mps': ('SPEED', 'speed_mps'),
@@ -23,16 +21,12 @@ _ALIASES = {
     'recorded_at': ('TS', 'ts', 'recorded_at'),
     'gateway_uid': ('GW', 'gateway', 'gateway_uid'),
 }
-_NUMERIC = ('lat', 'lng', 'temp_body_c', 'battery_pct', 'rssi_dbm', 'snr_db', 'activity',
-            'rumination_min', 'speed_mps', 'heading_deg')
+_NUMERIC = ('lat', 'lng', 'temp_body_c', 'activity', 'rumination_min', 'speed_mps', 'heading_deg')
 # Plausible values per sensor field. A value outside (or NaN/inf, e.g. a failed
 # sensor) is dropped: the rest of the reading, position included, is kept.
 # NaN in the database would break every screen that serializes it (strict JSON).
 _RANGES = {
     'temp_body_c': (0, 60),       # LM35/MLX glitches (85, 127...) must not open fever alerts
-    'battery_pct': (0, 100),
-    'rssi_dbm': (-200, 20),       # SMALLINT column
-    'snr_db': (-50, 50),
     'activity': (0, None),
     'rumination_min': (0, None),
     'speed_mps': (0, 100),
@@ -103,9 +97,6 @@ class TelemetryReadingRequest:
     lat: float | None = None
     lng: float | None = None
     temp_body_c: float | None = None
-    battery_pct: float | None = None
-    rssi_dbm: float | None = None
-    snr_db: float | None = None
     activity: float | None = None
     rumination_min: float | None = None
     speed_mps: float | None = None

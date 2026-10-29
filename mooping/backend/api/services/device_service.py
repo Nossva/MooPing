@@ -14,7 +14,7 @@ from api.entities import collar_uid, default_collar_label
 from api.repositories import animal_repository, device_repository
 from api.services.errors import Conflict, InvalidInput, NotFound
 
-FILTERS = ('low_battery', 'alert', 'stock', 'no_signal', 'needs_attention')
+FILTERS = ('alert', 'stock', 'no_signal', 'needs_attention')
 MAINTENANCE_KINDS = ('battery_replacement', 'repair', 'inspection')
 # "Detectados sin vincular": collars heard in the last DETECTED_DAYS days.
 DETECTED_DAYS = 7
@@ -25,14 +25,12 @@ def _matches(record, filter_):
     assigned = record.animal_id is not None
     if filter_ == 'stock':
         return not assigned
-    if filter_ == 'low_battery':
-        return assigned and record.low_battery
     if filter_ == 'no_signal':
         return assigned and record.no_signal
     if filter_ == 'alert':
         return assigned and record.geofence_alert_since is not None
     # needs_attention: what the "Para revisar" cards show.
-    return assigned and (record.low_battery or record.no_signal)
+    return assigned and record.no_signal
 
 
 def list_devices(organization_id, request, scope=None):

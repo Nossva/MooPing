@@ -7,7 +7,7 @@ from api.dto.request.base import UNSET, PatchRequest
 @dataclass
 class DeviceListRequest:
     search: str | None = None
-    filter: str | None = None          # low_battery | alert | stock | no_signal | needs_attention
+    filter: str | None = None          # alert | stock | no_signal | needs_attention
     limit: int | None = None
 
 

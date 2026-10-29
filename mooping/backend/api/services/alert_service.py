@@ -6,7 +6,7 @@ from api.dto.response.alert_response import (
     AlertSummaryResponse,
     NoteResponse,
 )
-from api.entities import CATEGORY_BY_TYPE, battery_days_left
+from api.entities import CATEGORY_BY_TYPE
 from api.repositories import (
     alert_repository,
     device_repository,
@@ -129,7 +129,7 @@ def add_note(organization_id, alert_id, user, request, scope=None):
 
 # ---------------------------------------------------------------- rules
 
-def evaluate_reading(animal, device, recorded_at, lng, lat, temp_body_c, battery_pct):
+def evaluate_reading(animal, device, recorded_at, lng, lat, temp_body_c):
     """Opens/closes alerts after a new reading. Returns created alert ids."""
     org = organization_repository.get(animal.organization_id)
     created = []
@@ -168,17 +168,6 @@ def evaluate_reading(animal, device, recorded_at, lng, lat, temp_body_c, battery
             alert_repository.update(open_fever, message=message, metadata={**open_fever.metadata, **metadata})
         else:
             open_alert('fever', 'warning', message, metadata)
-
-    if battery_pct is not None:
-        open_battery = alert_repository.find_open('low_battery', device_id=device.id)
-        days_left = battery_days_left(battery_pct)
-        if battery_pct < org.low_battery_pct and open_battery is None:
-            open_alert('low_battery', 'warning',
-                       f'Batería al {round(battery_pct)}%, alcanza para unos {days_left} días.',
-                       {'battery_pct': battery_pct, 'days_left': days_left})
-        elif battery_pct >= org.low_battery_pct and open_battery:
-            alert_repository.resolve(open_battery, metadata={'resolution': 'battery_replaced'},
-                                     resolved_at=recorded_at)
 
     return created
 

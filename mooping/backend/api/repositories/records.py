@@ -88,8 +88,6 @@ class AnimalRecord:
     device_id: int | None
     device_label: str | None
     device_uid: str | None
-    battery_pct: float | None
-    last_rssi_dbm: int | None
     last_seen_at: datetime | None
     tx_interval_s: int | None
     firmware_version: str | None
@@ -131,8 +129,6 @@ class DeviceRecord:
     battery_model: str | None
     tx_interval_s: int
     storage_location: str | None
-    battery_pct: float | None
-    last_rssi_dbm: int | None
     last_seen_at: datetime | None
     created_at: datetime
     animal_id: int | None
@@ -143,7 +139,6 @@ class DeviceRecord:
     inside_geofence: bool | None
     geofence_alert_since: datetime | None
     no_signal: bool
-    low_battery: bool
 
 
 @dataclass
@@ -151,8 +146,6 @@ class DetectedDeviceRecord:
     id: int
     device_uid: str
     last_seen_at: datetime | None
-    battery_pct: float | None
-    last_rssi_dbm: int | None
     gateway_name: str
 
 
@@ -215,8 +208,6 @@ class AlertRecord:
     device_id: int | None
     device_label: str | None
     device_uid: str | None
-    device_battery_pct: float | None
-    device_rssi_dbm: int | None
     device_last_seen_at: datetime | None
     yard_id: int | None
     yard_name: str | None

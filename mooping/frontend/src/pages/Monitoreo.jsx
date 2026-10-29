@@ -521,14 +521,12 @@ function AnimalPanel({ animalId, yards, onTrack, hasTrack, onChanged }) {
           <p className="mt-1 text-xs text-muted">{timeAgo(a.position?.recorded_at)}</p>
         </Tile>
         <Tile label={a.device ? `Collar #${a.device.label}` : 'Sin collar'} icon={Radio}>
-          <p className="font-display text-3xl font-bold">
-            {a.device?.battery_pct != null ? `${num(a.device.battery_pct)}%` : '—'}{' '}
-            <span className="text-sm font-medium text-field">Batería</span>
+          <p className="font-display text-xl font-bold">
+            {a.device ? (a.device.last_seen_at ? timeAgo(a.device.last_seen_at) : 'Nunca transmitió') : '—'}
           </p>
-          <div className="mt-1 flex justify-between text-xs text-muted">
-            <span>{a.device?.rssi_dbm != null ? `${a.device.rssi_dbm} dBm` : '—'}</span>
-            <span>{timeAgo(a.device?.last_seen_at)}</span>
-          </div>
+          <p className="mt-1 text-xs text-muted">
+            {a.device ? `Último dato · envía cada ${a.device.tx_interval_s ?? '—'} s` : 'Vinculalo desde Equipos'}
+          </p>
         </Tile>
       </div>
 

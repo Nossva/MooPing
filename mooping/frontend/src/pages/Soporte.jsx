@@ -15,16 +15,9 @@ const FAQ = [
     q: 'Un collar figura "Sin señal"',
     a: [
       'El collar no manda datos desde hace más de lo configurado en Admin > Establecimiento (por defecto 30 min).',
-      'Fijate en Equipos si la batería estaba baja y si el gateway de esa zona está conectado.',
+      'Fijate en Equipos si el gateway de esa zona está conectado.',
       'Probá "Enviar ping forzado" desde Equipos > Para revisar.',
       'Si el animal está lejos del gateway o detrás de un cerro, puede volver solo cuando se acerque.',
-    ],
-  },
-  {
-    q: 'Batería baja: ¿cuándo la cambio?',
-    a: [
-      'En Equipos > Para revisar figuran los collares con batería baja y los días estimados que les quedan.',
-      'Conviene cambiarla antes de que llegue a 0: sin batería el collar deja de reportar la posición.',
     ],
   },
   {
@@ -86,7 +79,6 @@ function issues(d) {
   if (!d.link.online) list.push('No llegan datos del campo')
   if (down) list.push(`${down} de ${gateways.length} gateways desconectados`)
   if (d.collars.no_signal) list.push(`${d.collars.no_signal} collares sin señal`)
-  if (d.collars.low_battery) list.push(`${d.collars.low_battery} collares con batería baja`)
   return list
 }
 

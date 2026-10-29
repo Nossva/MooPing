@@ -17,9 +17,6 @@ class TelemetryReading(models.Model):
     temp_ambient_c = models.FloatField(null=True)
     activity = models.FloatField(null=True)
     rumination_min = models.FloatField(null=True)
-    battery_pct = models.FloatField(null=True)
-    rssi_dbm = models.SmallIntegerField(null=True)
-    snr_db = models.FloatField(null=True)
 
     class Meta:
         managed = False
@@ -35,8 +32,6 @@ class AnimalLastPosition(models.Model):
     heading_deg = models.FloatField(null=True)
     temp_body_c = models.FloatField(null=True)
     activity = models.FloatField(null=True)
-    battery_pct = models.FloatField(null=True)
-    rssi_dbm = models.SmallIntegerField(null=True)
 
     class Meta:
         managed = False

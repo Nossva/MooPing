@@ -1,11 +1,10 @@
-import { BatteryLow, MapPinOff, WifiOff, Thermometer, Activity } from 'lucide-react'
+import { MapPinOff, WifiOff, Thermometer, Activity } from 'lucide-react'
 
 // Textos e íconos por tipo de alerta del backend.
 export const ALERT_TYPES = {
   geofence_exit: { title: 'Fuera del perímetro', icon: MapPinOff },
   fever: { title: 'Fiebre probable', icon: Thermometer },
   low_activity: { title: 'Baja actividad', icon: Activity },
-  low_battery: { title: 'Batería baja', icon: BatteryLow },
   no_signal: { title: 'Sin señal', icon: WifiOff },
 }
 

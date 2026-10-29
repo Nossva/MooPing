@@ -10,8 +10,6 @@ class AnimalDeviceResponse:
     id: int
     label: str | None
     device_uid: str
-    battery_pct: float | None
-    rssi_dbm: int | None
     last_seen_at: datetime | None
     tx_interval_s: int | None
     firmware_version: str | None
@@ -55,8 +53,7 @@ class AnimalResponse:
             position=PositionResponse(r.lat, r.lng, r.position_at) if r.lat is not None else None,
             speed_kmh=kmh(r.speed_mps), heading_deg=r.heading_deg, heading_label=compass(r.heading_deg),
             temp_body_c=r.temp_body_c,
-            device=AnimalDeviceResponse(r.device_id, r.device_label, r.device_uid, r.battery_pct,
-                                        r.last_rssi_dbm, r.last_seen_at,
+            device=AnimalDeviceResponse(r.device_id, r.device_label, r.device_uid, r.last_seen_at,
                                         r.tx_interval_s, r.firmware_version) if r.device_id else None,
         )
 

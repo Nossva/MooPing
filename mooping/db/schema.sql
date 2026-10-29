@@ -33,7 +33,6 @@ CREATE TABLE organizations (
   name                 TEXT NOT NULL,
   vet_phone            TEXT,                      -- "Llamar Veterinario"
   fever_threshold_c    REAL NOT NULL DEFAULT 39.2,
-  low_battery_pct      REAL NOT NULL DEFAULT 20,
   no_signal_minutes    INTEGER NOT NULL DEFAULT 30,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -142,8 +141,6 @@ CREATE TABLE devices (
   battery_model     TEXT,                     -- e.g. 'ER34615 (3.6V D)'
   tx_interval_s     INTEGER NOT NULL DEFAULT 60,
   storage_location  TEXT,                     -- where an unassigned collar is kept
-  battery_pct       REAL,
-  last_rssi_dbm     SMALLINT,
   last_seen_at      TIMESTAMPTZ,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -232,11 +229,7 @@ CREATE TABLE telemetry_readings (
   temp_body_c      REAL,                    -- "TEMP" in today's payload
   temp_ambient_c   REAL,
   activity         REAL,                    -- MPU6050 derived index, 0..1
-  rumination_min   REAL,                    -- rumination minutes since the previous reading
-  battery_pct      REAL,
-
-  rssi_dbm         SMALLINT,                -- LoRa link quality at the Pi
-  snr_db           REAL
+  rumination_min   REAL                     -- rumination minutes since the previous reading
 );
 
 CREATE INDEX telemetry_animal_time_idx ON telemetry_readings (animal_id, recorded_at DESC);
@@ -253,9 +246,7 @@ CREATE TABLE animal_last_position (
   speed_mps    REAL,
   heading_deg  REAL,
   temp_body_c  REAL,
-  activity     REAL,
-  battery_pct  REAL,
-  rssi_dbm     SMALLINT
+  activity     REAL
 );
 
 CREATE INDEX animal_last_position_gix ON animal_last_position USING GIST (location);
@@ -264,9 +255,7 @@ CREATE INDEX animal_last_position_gix ON animal_last_position USING GIST (locati
 CREATE OR REPLACE FUNCTION telemetry_after_insert() RETURNS trigger AS $$
 BEGIN
   UPDATE devices
-     SET last_seen_at  = GREATEST(COALESCE(last_seen_at, NEW.recorded_at), NEW.recorded_at),
-         battery_pct   = COALESCE(NEW.battery_pct, battery_pct),
-         last_rssi_dbm = COALESCE(NEW.rssi_dbm, last_rssi_dbm)
+     SET last_seen_at = GREATEST(COALESCE(last_seen_at, NEW.recorded_at), NEW.recorded_at)
    WHERE id = NEW.device_id;
 
   IF NEW.gateway_id IS NOT NULL THEN
@@ -276,10 +265,10 @@ BEGIN
   IF NEW.animal_id IS NOT NULL AND NEW.location IS NOT NULL THEN
     INSERT INTO animal_last_position AS alp
       (animal_id, device_id, recorded_at, location, speed_mps, heading_deg,
-       temp_body_c, activity, battery_pct, rssi_dbm)
+       temp_body_c, activity)
     VALUES
       (NEW.animal_id, NEW.device_id, NEW.recorded_at, NEW.location, NEW.speed_mps,
-       NEW.heading_deg, NEW.temp_body_c, NEW.activity, NEW.battery_pct, NEW.rssi_dbm)
+       NEW.heading_deg, NEW.temp_body_c, NEW.activity)
     ON CONFLICT (animal_id) DO UPDATE
       SET device_id   = EXCLUDED.device_id,
           recorded_at = EXCLUDED.recorded_at,
@@ -287,9 +276,7 @@ BEGIN
           speed_mps   = EXCLUDED.speed_mps,
           heading_deg = EXCLUDED.heading_deg,
           temp_body_c = EXCLUDED.temp_body_c,
-          activity    = EXCLUDED.activity,
-          battery_pct = EXCLUDED.battery_pct,
-          rssi_dbm    = EXCLUDED.rssi_dbm
+          activity    = EXCLUDED.activity
       WHERE alp.recorded_at <= EXCLUDED.recorded_at;
   END IF;
 
@@ -307,7 +294,7 @@ CREATE TRIGGER telemetry_after_insert_trg
 
 -- category is derived from type in the backend:
 --   geofence_exit -> critical | fever, low_activity -> sanitary
---   low_battery, no_signal -> equipment
+--   no_signal -> equipment
 CREATE TABLE alerts (
   id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   organization_id  BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -315,8 +302,7 @@ CREATE TABLE alerts (
   device_id        BIGINT REFERENCES devices(id) ON DELETE SET NULL,
   yard_id          BIGINT REFERENCES yards(id) ON DELETE SET NULL,
   type             TEXT NOT NULL
-                   CHECK (type IN ('geofence_exit', 'fever', 'no_signal',
-                                   'low_battery', 'low_activity')),
+                   CHECK (type IN ('geofence_exit', 'fever', 'no_signal', 'low_activity')),
   severity         TEXT NOT NULL DEFAULT 'warning'
                    CHECK (severity IN ('info', 'warning', 'critical')),
   status           TEXT NOT NULL DEFAULT 'pending'

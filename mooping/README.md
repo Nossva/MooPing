@@ -45,7 +45,6 @@ Crea el establecimiento "El Ombú" con los mismos casos del Figma:
 - 12 animales en 2 potreros, con 7 días de lecturas.
 - Vaca #084 fuera del perímetro.
 - Vaca #215 con fiebre.
-- Collar C-114 con batería baja.
 - Collar C-098 sin señal.
 - 2 collares en stock.
 

@@ -9,8 +9,8 @@ from api.repositories.scope import animal_sql
 # One row per collar with the animal it is on and its open alerts.
 _DEVICE_ROWS = """
     SELECT d.id, d.device_uid, d.label, d.hardware_version, d.firmware_version,
-           d.battery_model, d.tx_interval_s, d.storage_location, d.battery_pct,
-           d.last_rssi_dbm, d.last_seen_at, d.created_at,
+           d.battery_model, d.tx_interval_s, d.storage_location,
+           d.last_seen_at, d.created_at,
            a.id AS animal_id, a.name AS animal_name, a.breed AS animal_breed,
            a.lot AS animal_lot, y.name AS yard_name,
            CASE WHEN alp.location IS NULL OR y.id IS NULL THEN NULL
@@ -20,8 +20,7 @@ _DEVICE_ROWS = """
            -- a collar just put on an animal gets no_signal_minutes before counting as silent.
            (GREATEST(d.last_seen_at, ad.assigned_at) IS NULL
             OR GREATEST(d.last_seen_at, ad.assigned_at) < now() - make_interval(mins => o.no_signal_minutes))
-               AS no_signal,
-           (d.battery_pct IS NOT NULL AND d.battery_pct < o.low_battery_pct) AS low_battery
+               AS no_signal
     FROM devices d
     JOIN organizations o ON o.id = d.organization_id
     LEFT JOIN animal_devices ad ON ad.device_id = d.id AND ad.unassigned_at IS NULL
@@ -69,7 +68,7 @@ def list_detected(organization_id, days, limit):
     """Collars without an establecimiento whose last reading came in through one
     of this establecimiento's gateways (the Pi sends "GW"), seen in the last `days`."""
     return fetch_all(
-        """SELECT d.id, d.device_uid, d.last_seen_at, d.battery_pct, d.last_rssi_dbm, g.name AS gateway_name
+        """SELECT d.id, d.device_uid, d.last_seen_at, g.name AS gateway_name
            FROM devices d
            JOIN LATERAL (
                SELECT r.gateway_id FROM telemetry_readings r
@@ -121,6 +120,13 @@ def active_assignment_for_animal(animal_id):
 
 def assign(device_id, animal_id):
     return AnimalDevice.objects.create(device_id=device_id, animal_id=animal_id)
+
+
+def backdate_assignments(organization_id, assigned_at):
+    """Demo seed only: its readings are back-dated, so the collars must have
+    been put on before them (no_signal counts from the assignment)."""
+    AnimalDevice.objects.filter(device__organization_id=organization_id, unassigned_at__isnull=True) \
+        .update(assigned_at=assigned_at)
 
 
 def unassign(assignment):

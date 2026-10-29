@@ -20,9 +20,7 @@ UPDATE animal_last_position alp
        speed_mps   = r.speed_mps,
        heading_deg = r.heading_deg,
        temp_body_c = r.temp_body_c,
-       activity    = r.activity,
-       battery_pct = r.battery_pct,
-       rssi_dbm    = r.rssi_dbm
+       activity    = r.activity
   FROM (SELECT DISTINCT ON (t.animal_id) t.*
           FROM telemetry_readings t
          WHERE t.location IS NOT NULL AND t.recorded_at <= now()

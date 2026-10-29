@@ -15,20 +15,18 @@ function metricsFor(alert) {
       return [
         { value: `${num(m.temp_c, 1)} °C`, label: `Límite ${num(m.limit_c, 1)}`, tone: 'text-brand' },
         { value: alert.speed_kmh != null ? `${num(alert.speed_kmh, 1)} km/h` : '—', label: 'Velocidad' },
-        { value: alert.device?.battery_pct != null ? `${num(alert.device.battery_pct)}%` : '—', label: 'Batería' },
+        { value: timeAgo(alert.device?.last_seen_at).replace('hace ', ''), label: 'Último dato' },
       ]
-    case 'low_battery':
     case 'no_signal':
       return [
-        { value: alert.device?.battery_pct != null ? `${num(alert.device.battery_pct)}%` : '—', label: 'Batería' },
-        { value: alert.device?.rssi_dbm != null ? `${alert.device.rssi_dbm} dBm` : '—', label: 'Señal' },
+        { value: alert.device?.label ?? '—', label: 'Collar' },
         { value: timeAgo(alert.device?.last_seen_at).replace('hace ', ''), label: 'Último dato' },
       ]
     default:
       return [
         { value: alert.speed_kmh != null ? `${num(alert.speed_kmh, 1)} km/h` : '—', label: 'Velocidad' },
         { value: alert.heading_label ?? '—', label: 'Rumbo' },
-        { value: alert.device?.battery_pct != null ? `${num(alert.device.battery_pct)}%` : '—', label: 'Batería' },
+        { value: timeAgo(alert.device?.last_seen_at).replace('hace ', ''), label: 'Último dato' },
       ]
   }
 }

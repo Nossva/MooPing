@@ -181,7 +181,7 @@ function AlarmToggle() {
 const SETTINGS = [
   ['notify_geofence', 'Salidas de geocerca'],
   ['notify_health', 'Salud (fiebre, actividad)'],
-  ['notify_equipment', 'Equipos (batería, señal)'],
+  ['notify_equipment', 'Equipos (collares sin señal)'],
   ['channel_push', 'Notificación push'],
   ['channel_email', 'Email'],
   ['channel_sms', 'SMS'],

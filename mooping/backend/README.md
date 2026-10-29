@@ -58,7 +58,7 @@ HTTP ─► traffic ──RequestDTO──► services ──► repositories �
 | `dto/` | Define cada request y response. Los responses se arman con `from_record` / `from_entity` / `build`, y ahí vive la presentación (km/h, "Este 94°", edad en meses) | Lógica de negocio, consultas |
 | `services/` | Reciben RequestDTO, aplican las reglas de negocio y devuelven ResponseDTO | Tocar `request`/`Response`, consultar la base directamente |
 | `repositories/` | Todas las consultas (ORM o SQL). Devuelven entities o records tipados (`repositories/records.py`) | Reglas de negocio, HTTP, DTOs |
-| `entities/` | Modelos Django de las tablas de `db/schema.sql` y reglas de dominio puras (`rules.py`: categoría de alerta, días de batería, estado del collar) | I/O |
+| `entities/` | Modelos Django de las tablas de `db/schema.sql` y reglas de dominio puras (`rules.py`: categoría de alerta, estado del collar, id del collar) | I/O |
 
 Dependencias permitidas (de arriba hacia abajo):
 `traffic → dto, services` · `services → dto, repositories, entities` ·

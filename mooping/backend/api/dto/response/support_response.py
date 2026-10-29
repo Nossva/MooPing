@@ -42,7 +42,6 @@ class SupportCollarsResponse:
     total: int
     assigned: int
     no_signal: int
-    low_battery: int
 
 
 @dataclass
@@ -50,15 +49,13 @@ class SupportProblemCollarResponse:
     label: str | None
     device_uid: str
     animal_name: str | None
-    state: str                         # low_battery | alert | no_signal
-    battery_pct: float | None
+    state: str                         # alert | no_signal
     last_seen_at: datetime | None
 
     @classmethod
     def from_device(cls, d):
         """d: DeviceResponse"""
-        return cls(d.label, d.device_uid, d.animal.name if d.animal else None, d.state, d.battery_pct,
-                   d.last_seen_at)
+        return cls(d.label, d.device_uid, d.animal.name if d.animal else None, d.state, d.last_seen_at)
 
 
 @dataclass

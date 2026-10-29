@@ -82,7 +82,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | POST | `me/password/` | `{current_password, new_password (ver Contraseñas)}` → 204. Cualquier usuario cambia la suya; se cierran sus otras sesiones. |
 | GET | `me/` | `{user: {id, name, email, phone, initials}, organizations: [{id, name, role, sections}]}` |
 | GET | `status/` | `{online, last_packet_at, radio, gateways_online, gateways_total, open_alerts, server_time}` |
-| GET | `support/` | Pantalla Soporte: `{contacts: {whatsapp, email, phone, hours}, diagnostic: {organization, server: {name, server_time}, link: {online, last_packet_at, radio}, gateways: [{name, gateway_uid, kind, online, last_seen_at}], collars: {total, assigned, no_signal, low_battery}, problem_collars: [{label, device_uid, animal_name, state, battery_pct, last_seen_at}] (hasta 10), open_alerts: {critical, sanitary, equipment}}}`. Los contactos salen de `SUPPORT_*` en `backend/.env` (`null` si no están) |
+| GET | `support/` | Pantalla Soporte: `{contacts: {whatsapp, email, phone, hours}, diagnostic: {organization, server: {name, server_time}, link: {online, last_packet_at, radio}, gateways: [{name, gateway_uid, kind, online, last_seen_at}], collars: {total, assigned, no_signal}, problem_collars: [{label, device_uid, animal_name, state, last_seen_at}] (hasta 10), open_alerts: {critical, sanitary, equipment}}}`. Los contactos salen de `SUPPORT_*` en `backend/.env` (`null` si no están) |
 | GET | `support/requests/` | Mis reclamos (los 10 últimos del usuario): `[{id, category, message, created_at, emailed}]` |
 | POST | `support/requests/` | Enviar reclamo `{category: collar\|gateway\|app\|other, message}` (hasta 2000 caracteres) → 201 con el reclamo. Se guarda con el diagnóstico y se manda por email a `SUPPORT_EMAIL` (responder le escribe al usuario). Si el email no sale, queda guardado con `emailed: false`. Cualquier miembro; límite `SUPPORT_RATE` (5/hora) → 429 |
 
@@ -131,10 +131,10 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 
 | Método | Ruta | Devuelve |
 |---|---|---|
-| GET | `infrastructure/summary/` | `{collars: {total, active, assigned, no_signal, in_stock, operative_pct}, gateways: {total, online, coverage_ha}, repeaters: {total, online, names}, batteries: {average_pct, low_count}, server: {name, status}, last_sync_at}` |
-| GET | `devices/?search=&filter=low_battery\|alert\|stock\|no_signal\|needs_attention` | `{counts: {all, low_battery, alert, stock, no_signal, needs_attention}, items: [collar]}` |
+| GET | `infrastructure/summary/` | `{collars: {total, active, assigned, no_signal, in_stock, operative_pct}, gateways: {total, online, coverage_ha}, repeaters: {total, online, names}, server: {name, status}, last_sync_at}` |
+| GET | `devices/?search=&filter=alert\|stock\|no_signal\|needs_attention` | `{counts: {all, alert, stock, no_signal, needs_attention}, items: [collar]}` |
 | GET | `devices/{id}/` | Collar + `maintenance` + `pending_commands` |
-| GET | `devices/detected/` | "Detectados sin vincular": collares sin establecimiento cuya última lectura entró por un gateway propio (campo `GW` del JSON), vistos en los últimos 7 días: `[{device_uid, suggested_label, last_seen_at, battery_pct, rssi_dbm, gateway_name}]` |
+| GET | `devices/detected/` | "Detectados sin vincular": collares sin establecimiento cuya última lectura entró por un gateway propio (campo `GW` del JSON), vistos en los últimos 7 días: `[{device_uid, suggested_label, last_seen_at, gateway_name}]` |
 | POST | `devices/` | "Vincular collar": `{device_uid, label?, ...}`. `device_uid` es el número del collar en cualquier formato (`84`, `084`, `C-084`, `COLLAR-84`) y se guarda como lo manda la Pi: `COLLAR-84`. Sin `label`, queda `C-084`. Si el collar ya transmitía sin dueño, se lo adopta con sus lecturas |
 | PATCH | `devices/{id}/` | "Configurar": `label`, `tx_interval_s` (10–3600), `battery_model`, `storage_location`, ... |
 | POST | `devices/{id}/assign/` | "Vincular a un animal": `{animal_id}` |
@@ -145,7 +145,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 
 | Método | Ruta | Devuelve |
 |---|---|---|
-| GET · PATCH | `organization/` | `{id, name, vet_phone, fever_threshold_c (37–42), low_battery_pct (5–50), no_signal_minutes (5–1440)}` |
+| GET · PATCH | `organization/` | `{id, name, vet_phone, fever_threshold_c (37–42), no_signal_minutes (5–1440)}` |
 | GET | `organization/members/` | `[{user_id, name, email, phone, role, active, access: {sections, all_yards, yard_ids, animal_ids}, created_at}]` (dueños primero) |
 | PUT | `organization/members/{user_id}/access/` | `{sections: [...] (al menos una), all_yards, yard_ids?, animal_ids?}` → el miembro. Solo para rol `user` (a un dueño, 400). Con todas las secciones marcadas se guarda "todas", así incluye las que se agreguen después. |
 | POST | `organization/members/` | `{name, email, password (ver Contraseñas), role: owner\|user, phone?}` → 201. Si el email ya tiene cuenta, se la suma sin cambiar su contraseña; si ya es miembro, 409. |
@@ -161,10 +161,11 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | TCP | puerto `4001` | Lo mismo por TCP (servicio `telemetry`), para `lora_receiver.c` sin cambios: solo apuntar `BACKEND_IP` a esta PC. |
 
 Payload que manda la Pi hoy: `{"ID":"COLLAR-3","LAT":-34.70,"LONG":-58.24,"TEMP":"38.40"}`.
-Campos opcionales que ya se aceptan: `BAT` (%), `RSSI`, `SNR`, `ACT`, `RUM`
+Campos opcionales que ya se aceptan: `ACT`, `RUM`
 (minutos de rumia desde la lectura anterior), `SPEED` (m/s), `HEADING`, `TS`
 (hora de la medición), `GW` (id del gateway). Si no vienen velocidad y rumbo, se
 calculan con la lectura anterior. `LAT`/`LONG` en 0 (GPS sin fix) se guarda sin posición.
+Cualquier otro campo se ignora: `RSSI`/`SNR` (los agrega la Pi) y `BAT` no se guardan.
 
 ## Formatos
 
@@ -177,14 +178,14 @@ calculan con la lectura anterior. `LAT`/`LONG` en 0 (GPS sin fix) se guarda sin 
   "metadata": {"distance_m": 297, "lat": -34.25, "lng": -59.43},
   "triggered_at": "...", "resolved_at": null,
   "animal": {"id": 1, "name": "Vaca #084", "tag_number": "AR-039-994", "breed": "...", "lot": "...", "age_months": 40},
-  "device": {"id": 1, "label": "C-084", "device_uid": "COLLAR-84", "battery_pct": 74, "battery_days_left": 24, "rssi_dbm": -98, "last_seen_at": "..."},
+  "device": {"id": 1, "label": "C-084", "device_uid": "COLLAR-84", "last_seen_at": "..."},
   "yard": {"id": 1, "name": "Potrero 4 (Sur)"},
   "assigned_to": null, "resolved_by": null,
   "position": {"lat": -34.25, "lng": -59.43}, "speed_kmh": 1.0, "heading_label": "Este 90°"
 }
 ```
 
-- `type`: `geofence_exit`, `fever`, `low_activity`, `low_battery`, `no_signal`
+- `type`: `geofence_exit`, `fever`, `low_activity`, `no_signal`
 - `category`: `critical`, `sanitary`, `equipment`
 - `status`: `pending` → `assigned` → `in_progress` → `resolved`
 
@@ -194,18 +195,18 @@ asignás una alerta pendiente sin mandar `status`, pasa sola a `assigned`.
 Reglas automáticas al llegar una lectura:
 - Fuera del potrero → `geofence_exit`. Se resuelve sola cuando vuelve.
 - Temperatura ≥ `fever_threshold_c` (39.2) → `fever`.
-- Batería < 20 % → `low_battery`.
 - Sin datos por más de 30 min → `no_signal`, que revisa el servicio `telemetry` cada minuto. Se resuelve sola al volver la señal.
 
 ### Animal
 
-`{id, name, tag_number, lot, species, sex, breed, birth_date, age_months, photo_url, status, yard, geofence_status: inside|outside|unknown, distance_outside_m, health_status: optimal|alert, open_alerts, position: {lat, lng, recorded_at}, speed_kmh, heading_deg, heading_label, temp_body_c, device: {id, label, device_uid, battery_pct, rssi_dbm, last_seen_at, tx_interval_s, firmware_version}}`
+`{id, name, tag_number, lot, species, sex, breed, birth_date, age_months, photo_url, status, yard, geofence_status: inside|outside|unknown, distance_outside_m, health_status: optimal|alert, open_alerts, position: {lat, lng, recorded_at}, speed_kmh, heading_deg, heading_label, temp_body_c, device: {id, label, device_uid, last_seen_at, tx_interval_s, firmware_version}}`
 
 ### Collar
 
-`{id, device_uid, label, state: optimal|low_battery|alert|no_signal|stock, hardware_version, firmware_version, battery_pct, battery_days_left, battery_model, rssi_dbm, tx_interval_s, last_seen_at, storage_location, geofence_alert_since, animal: {id, name, breed, lot, yard_name, geofence_status}}`
+`{id, device_uid, label, state: optimal|alert|no_signal|stock, hardware_version, firmware_version, battery_model, tx_interval_s, last_seen_at, storage_location, geofence_alert_since, animal: {id, name, breed, lot, yard_name, geofence_status}}`
 
 ## Limitaciones actuales
 
-- **Batería, rumia, actividad y señal:** el collar hoy no las manda. Los campos quedan en `null` hasta que el firmware las envíe (`BAT`, `RUM`, `ACT`). La señal (`RSSI`) la puede agregar la Pi.
+- **Rumia y actividad:** el collar hoy no las manda. Los campos quedan en `null` hasta que el firmware las envíe (`RUM`, `ACT`).
+- **Batería del collar y señal LoRa:** no se guardan (no hay columnas). Si el firmware empieza a mandar batería, hay que volver a agregarla en `db/schema.sql`, el trigger y el backend.
 - **Ping forzado, alarma sonora y cambio de intervalo:** se guardan en `device_commands` con estado `queued`. Falta que la Pi pueda enviar mensajes al collar.

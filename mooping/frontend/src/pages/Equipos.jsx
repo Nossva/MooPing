@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  BatteryMedium, Check, CirclePlus, Link2, LocateFixed, Package, Radar, Radio, RadioTower, Search, ShoppingCart,
+  Check, CirclePlus, Link2, LocateFixed, Package, Radar, Radio, RadioTower, Search, ShoppingCart,
   Signal, TriangleAlert, X,
 } from 'lucide-react'
 import { api } from '@/api/client'
@@ -14,7 +14,6 @@ import { num, timeAgo } from '@/lib/format'
 
 const FILTERS = [
   { key: '', count: 'all', label: 'Todos' },
-  { key: 'low_battery', count: 'low_battery', label: 'Batería baja' },
   { key: 'alert', count: 'alert', label: 'En alerta' },
   { key: 'no_signal', count: 'no_signal', label: 'Sin señal' },
   { key: 'stock', count: 'stock', label: 'Sin asignar' },
@@ -22,7 +21,6 @@ const FILTERS = [
 
 const STATE = {
   optimal: { label: 'Óptimo', className: 'bg-field-soft text-field' },
-  low_battery: { label: 'Batería baja', className: 'bg-warn-soft text-warn-ink' },
   alert: { label: 'Fuga', className: 'bg-brand text-white' },
   no_signal: { label: 'Sin señal', className: 'bg-surface-high text-ink' },
   stock: { label: 'En stock', className: 'bg-surface-high text-muted' },
@@ -56,7 +54,7 @@ export default function Equipos() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard icon={Radar} label="Collares" value={s.collars.active} unit="activos">
           De {s.collars.total}: {s.collars.no_signal} sin señal y {s.collars.in_stock} en stock
         </StatCard>
@@ -65,9 +63,6 @@ export default function Equipos() {
         </StatCard>
         <StatCard icon={Signal} label="Repetidores" value={s.repeaters.online} unit="en línea" good>
           {s.repeaters.names.join(', ') || 'Sin repetidores'}
-        </StatCard>
-        <StatCard icon={BatteryMedium} label="Baterías" value={`${num(s.batteries.average_pct)}%`} unit="promedio">
-          <span className="font-semibold text-field">{s.batteries.low_count} collares bajo 20%</span>
         </StatCard>
       </div>
 
@@ -189,7 +184,6 @@ function CollarCard({ device: d, onChange }) {
   const freeAnimals = (animals.data ?? []).filter((a) => !a.device)
   const state = STATE[d.state] ?? STATE.optimal
   const alert = d.state === 'alert'
-  const weakSignal = d.rssi_dbm != null && d.rssi_dbm <= -95
 
   async function run(fn) {
     setBusy(true)
@@ -226,12 +220,11 @@ function CollarCard({ device: d, onChange }) {
       {d.state === 'stock' ? (
         <div className="flex justify-between rounded-lg bg-surface-low px-3 py-2 text-xs">
           <span>Falta ponérselo a un animal · {d.device_uid}</span>
-          <span className="font-semibold">Batería {d.battery_pct != null ? `${num(d.battery_pct)}%` : '—'}</span>
+          <span className="font-semibold">{d.last_seen_at ? `Último dato ${timeAgo(d.last_seen_at)}` : 'Nunca transmitió'}</span>
         </div>
       ) : (
         <div className="flex gap-2">
-          <Metric value={d.rssi_dbm != null ? `${d.rssi_dbm} dBm` : '—'} label={weakSignal ? 'Señal débil' : 'Señal LoRa'} tone={weakSignal ? 'text-brand' : undefined} />
-          <Metric value={d.battery_pct != null ? `${num(d.battery_pct)}%` : '—'} label="Batería" />
+          <Metric value={d.last_seen_at ? timeAgo(d.last_seen_at).replace('hace ', '') : '—'} label="Último dato" />
           <Metric value={d.tx_interval_s ? `Cada ${d.tx_interval_s} s` : '—'} label="Envío" />
         </div>
       )}
@@ -479,8 +472,6 @@ function PairCollar({ onDone }) {
                   <p className="font-mono text-sm font-semibold text-ink">{d.device_uid}</p>
                   <p className="truncate text-xs text-muted">
                     {d.gateway_name} · {timeAgo(d.last_seen_at)}
-                    {d.rssi_dbm != null && ` · ${d.rssi_dbm} dBm`}
-                    {d.battery_pct != null && ` · ${num(d.battery_pct)}%`}
                   </p>
                 </div>
                 <Button variant="soft" icon={CirclePlus} className="shrink-0 px-3 py-2" onClick={() => start(d)}>

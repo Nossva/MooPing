@@ -36,5 +36,4 @@ class OrganizationUpdateRequest(PatchRequest):
     name: str = UNSET
     vet_phone: str | None = UNSET
     fever_threshold_c: float = UNSET
-    low_battery_pct: float = UNSET
     no_signal_minutes: int = UNSET

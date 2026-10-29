@@ -5,7 +5,6 @@ from api.services.errors import InvalidInput, NotFound
 # Alert thresholds: field -> (min, max, error message)
 _LIMITS = {
     'fever_threshold_c': (37, 42, 'El límite de fiebre debe estar entre 37 y 42 °C.'),
-    'low_battery_pct': (5, 50, 'La batería baja debe estar entre 5 y 50 %.'),
     'no_signal_minutes': (5, 1440, 'Los minutos sin señal deben estar entre 5 y 1440.'),
 }
 

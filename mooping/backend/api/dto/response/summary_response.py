@@ -106,12 +106,6 @@ class RepeatersCardResponse:
 
 
 @dataclass
-class BatteriesCardResponse:
-    average_pct: int | None
-    low_count: int
-
-
-@dataclass
 class ServerCardResponse:
     name: str
     status: str
@@ -122,6 +116,5 @@ class InfrastructureResponse:
     collars: CollarsCardResponse
     gateways: GatewaysCardResponse
     repeaters: RepeatersCardResponse
-    batteries: BatteriesCardResponse
     server: ServerCardResponse
     last_sync_at: datetime | None

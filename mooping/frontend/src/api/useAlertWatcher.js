@@ -14,7 +14,6 @@ const PREF_BY_TYPE = {
   geofence_exit: 'notify_geofence',
   fever: 'notify_health',
   low_activity: 'notify_health',
-  low_battery: 'notify_equipment',
   no_signal: 'notify_equipment',
 }
 

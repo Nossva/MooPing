@@ -11,8 +11,6 @@ class Device(models.Model):
     battery_model = models.TextField(null=True)
     tx_interval_s = models.IntegerField(default=60)
     storage_location = models.TextField(null=True)
-    battery_pct = models.FloatField(null=True)
-    last_rssi_dbm = models.SmallIntegerField(null=True)
     last_seen_at = models.DateTimeField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

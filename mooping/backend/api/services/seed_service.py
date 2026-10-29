@@ -1,5 +1,5 @@
 """Demo establecimiento matching the Figma screens (El Ombú, Vaca #084 fuera
-del perímetro, Vaca #215 con fiebre, C-114 batería baja, C-098 sin señal...).
+del perímetro, Vaca #215 con fiebre, C-098 sin señal...).
 Readings go through telemetry_service.ingest, so alerts are produced by the
 same rules the Pi data uses."""
 import random
@@ -49,20 +49,20 @@ GATEWAYS = [
     ('REP-01', 'Nodo Cerro Vigía', 'repeater', 'solar', 81, 'LoRa 433 MHz', None),
 ]
 
-# name, tag, breed, sex, age_months, lot, yard, collar uid, label, battery, scenario
+# name, tag, breed, sex, age_months, lot, yard, collar uid, label, scenario
 ANIMALS = [
-    ('Vaca #084', 'AR-039-994', 'Aberdeen Angus', 'female', 40, 'Rodeo 3', 'sur', 'COLLAR-84', 'C-084', 74, 'outside'),
-    ('Vaca #215', 'AR-039-215', 'Aberdeen Angus', 'female', 18, 'Lote Inseminación', 'sur', 'COLLAR-215', 'C-215', 81, 'fever'),
-    ('Vaca #142', 'AR-039-142', 'Angus Negra', 'female', 52, 'Rodeo 3', 'sur', 'COLLAR-882', 'C-882', 88, 'normal'),
-    ('Toro #012', 'AR-039-012', 'Hereford', 'male', 60, 'Reproductores', 'sur', 'COLLAR-114', 'C-114', 12, 'normal'),
-    ('Ternero #441', 'AR-039-441', 'Brangus', 'male', 7, 'Recría', 'norte', 'COLLAR-98', 'C-098', 66, 'no_signal'),
-    ('Vaca #103', 'AR-039-103', 'Aberdeen Angus', 'female', 44, 'Rodeo 3', 'sur', 'COLLAR-103', 'C-103', 79, 'returned'),
-    ('Vaca #118', 'AR-039-118', 'Aberdeen Angus', 'female', 36, 'Rodeo 3', 'sur', 'COLLAR-118', 'C-118', 91, 'normal'),
-    ('Vaca #127', 'AR-039-127', 'Angus Negra', 'female', 48, 'Rodeo 3', 'sur', 'COLLAR-127', 'C-127', 85, 'normal'),
-    ('Vaca #156', 'AR-039-156', 'Hereford', 'female', 30, 'Lote Inseminación', 'sur', 'COLLAR-156', 'C-156', 77, 'normal'),
-    ('Vaquillona #201', 'AR-039-201', 'Brangus', 'female', 20, 'Recría', 'norte', 'COLLAR-201', 'C-201', 93, 'normal'),
-    ('Novillo #305', 'AR-039-305', 'Hereford', 'male', 22, 'Recría', 'norte', 'COLLAR-305', 'C-305', 72, 'normal'),
-    ('Vaca #330', 'AR-039-330', 'Angus Negra', 'female', 56, 'Rodeo 3', 'sur', 'COLLAR-330', 'C-330', 69, 'normal'),
+    ('Vaca #084', 'AR-039-994', 'Aberdeen Angus', 'female', 40, 'Rodeo 3', 'sur', 'COLLAR-84', 'C-084', 'outside'),
+    ('Vaca #215', 'AR-039-215', 'Aberdeen Angus', 'female', 18, 'Lote Inseminación', 'sur', 'COLLAR-215', 'C-215', 'fever'),
+    ('Vaca #142', 'AR-039-142', 'Angus Negra', 'female', 52, 'Rodeo 3', 'sur', 'COLLAR-882', 'C-882', 'normal'),
+    ('Toro #012', 'AR-039-012', 'Hereford', 'male', 60, 'Reproductores', 'sur', 'COLLAR-114', 'C-114', 'normal'),
+    ('Ternero #441', 'AR-039-441', 'Brangus', 'male', 7, 'Recría', 'norte', 'COLLAR-98', 'C-098', 'no_signal'),
+    ('Vaca #103', 'AR-039-103', 'Aberdeen Angus', 'female', 44, 'Rodeo 3', 'sur', 'COLLAR-103', 'C-103', 'returned'),
+    ('Vaca #118', 'AR-039-118', 'Aberdeen Angus', 'female', 36, 'Rodeo 3', 'sur', 'COLLAR-118', 'C-118', 'normal'),
+    ('Vaca #127', 'AR-039-127', 'Angus Negra', 'female', 48, 'Rodeo 3', 'sur', 'COLLAR-127', 'C-127', 'normal'),
+    ('Vaca #156', 'AR-039-156', 'Hereford', 'female', 30, 'Lote Inseminación', 'sur', 'COLLAR-156', 'C-156', 'normal'),
+    ('Vaquillona #201', 'AR-039-201', 'Brangus', 'female', 20, 'Recría', 'norte', 'COLLAR-201', 'C-201', 'normal'),
+    ('Novillo #305', 'AR-039-305', 'Hereford', 'male', 22, 'Recría', 'norte', 'COLLAR-305', 'C-305', 'normal'),
+    ('Vaca #330', 'AR-039-330', 'Angus Negra', 'female', 56, 'Rodeo 3', 'sur', 'COLLAR-330', 'C-330', 'normal'),
 ]
 STOCK_COLLARS = [('COLLAR-205', 'C-205'), ('COLLAR-206', 'C-206')]
 ALL_COLLAR_UIDS = [a[7] for a in ANIMALS] + [uid for uid, _ in STOCK_COLLARS]
@@ -79,19 +79,18 @@ def _birth_date(months):
     return today - timedelta(days=round(months * 30.4))
 
 
-def _reading(uid, when, lng, lat, temp, battery, rssi, rumination, gateway='AGROBOT-01'):
-    return {'ID': uid, 'LAT': lat, 'LONG': lng, 'TEMP': temp, 'BAT': battery,
-            'RSSI': rssi, 'RUM': rumination, 'TS': when.isoformat(), 'GW': gateway}
+def _reading(uid, when, lng, lat, temp, rumination, gateway='AGROBOT-01'):
+    return {'ID': uid, 'LAT': lat, 'LONG': lng, 'TEMP': temp, 'RUM': rumination,
+            'TS': when.isoformat(), 'GW': gateway}
 
 
 def _readings_for(rng, animal, now):
     """Chronological readings: 3 per day for the past 6 days, every 20 min for
     the last 24 h, plus the animal's scenario."""
-    _, _, _, _, _, _, yard, uid, _, battery, scenario = animal
+    _, _, _, _, _, _, yard, uid, _, scenario = animal
     box = SUR_BOX if yard == 'sur' else NORTE_BOX
     gateway = 'AGROBOT-01' if yard == 'sur' else 'AGROBOT-02'
     pos = (rng.uniform(box[0], box[1]), rng.uniform(box[2], box[3]))
-    rssi = rng.randint(-90, -72)
     readings = []
 
     local_midnight = timezone.localtime(now).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -102,7 +101,7 @@ def _readings_for(rng, animal, now):
             when = local_midnight - timedelta(days=days_ago) + timedelta(hours=hour)
             pos = _walk(rng, box, pos, 0.004)
             readings.append(_reading(uid, when, *pos, round(rng.uniform(38.2, 38.8), 1),
-                                     battery + days_ago * 0.5, rssi, rng.randint(6, 10), gateway))
+                                     rng.randint(6, 10), gateway))
 
     end = now - timedelta(minutes=rng.randint(1, 3))
     if scenario == 'no_signal':
@@ -118,7 +117,7 @@ def _readings_for(rng, animal, now):
             rumination = 0
         if scenario == 'returned' and 160 <= minutes_ago <= 180:
             point = (-59.437, -34.262)       # east of the boundary for 20 min
-        readings.append(_reading(uid, when, *point, temp, battery, rssi, rumination, gateway))
+        readings.append(_reading(uid, when, *point, temp, rumination, gateway))
         if not (scenario == 'returned' and 160 <= minutes_ago <= 180):
             pos = point
         when += timedelta(minutes=20)
@@ -127,7 +126,7 @@ def _readings_for(rng, animal, now):
         # Last 8 minutes: walking east out of the potrero towards the road.
         for minutes_ago, lng in ((12, -59.4425), (8, -59.4385), (4, -59.4378)):
             readings.append(_reading(uid, now - timedelta(minutes=minutes_ago), lng, -34.2522,
-                                     38.6, battery, -98, 4, gateway))
+                                     38.6, 4, gateway))
     return readings
 
 
@@ -160,7 +159,7 @@ def seed(reset=False):
     }
 
     animal_ids = {}
-    for name, tag, breed, sex, months, lot, yard, uid, label, _, _ in ANIMALS:
+    for name, tag, breed, sex, months, lot, yard, uid, label, _ in ANIMALS:
         animal = animal_service.create_animal(org.id, AnimalCreateRequest(
             name=name, tag_number=tag, breed=breed, sex=sex, birth_date=_birth_date(months), lot=lot,
             yard_id=yards[yard]))
@@ -172,11 +171,12 @@ def seed(reset=False):
     for uid, label in STOCK_COLLARS:
         device_service.pair_device(org.id, DevicePairRequest(
             uid, label=label, firmware_version='v2.4.1', storage_location='Stock en galpón de herramientas'))
-    device_repository.update(device_repository.get_by_uid('COLLAR-205'), battery_pct=100)
     device_repository.update(device_repository.get_by_uid('COLLAR-114'), tx_interval_s=120)
 
     rng = random.Random(42)
     now = timezone.now()
+    # Readings start 6 days ago: the collars were put on before that.
+    device_repository.backdate_assignments(org.id, now - timedelta(days=7))
     readings = sorted(
         (r for animal in ANIMALS for r in _readings_for(rng, animal, now)),
         key=lambda r: r['TS'],
