@@ -6,7 +6,7 @@ import { useApi } from '@/api/useApi'
 import { usePagedApi } from '@/api/usePagedApi'
 import AlertCard from '@/components/AlertCard'
 import HerdMap from '@/components/HerdMap'
-import { AccChevron, Card, Empty, ErrorBox, FilterChip, Freshness, Loading, MoreButton, Pill, SectionTitle } from '@/components/ui'
+import { AccChevron, Card, Empty, ErrorBox, FilterChip, Freshness, Loading, MoreButton, PageTitle, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { timeAgo } from '@/lib/format'
 import { useAuth } from '@/api/auth'
@@ -57,11 +57,9 @@ export default function Alertas() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 font-display text-2xl font-bold text-brand md:text-3xl">
-            <span aria-hidden className="size-2.5 rounded-full bg-brand" /> Centro de Alertas
-          </h2>
+          <PageTitle>Centro de Alertas</PageTitle>
           {orgName && (
-            <p className="flex items-center gap-1.5 text-sm text-muted">
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
               <Tractor className="size-4 text-field" /> Establecimiento {orgName}
             </p>
           )}
@@ -150,14 +148,13 @@ export default function Alertas() {
               <SectionTitle icon={Siren}>Atención inmediata</SectionTitle>
               {immediate.length === 0 && <Empty>{EMPTY_IMMEDIATE[category]}</Empty>}
               {immediate.map((a) => (
-                <div key={a.id}>
-                  {a.type === 'geofence_exit' && a.position && <MiniMap alert={a} yards={yards.data ?? []} />}
-                  <AlertCard
-                    alert={a}
-                    highlight={a.category === 'critical' && a.status === 'pending'}
-                    onChange={reload}
-                  />
-                </div>
+                <AlertCard
+                  key={a.id}
+                  alert={a}
+                  highlight={a.category === 'critical' && a.status === 'pending'}
+                  onChange={reload}
+                  media={a.type === 'geofence_exit' && a.position && <MiniMap alert={a} yards={yards.data ?? []} />}
+                />
               ))}
             </section>
           )}
@@ -220,7 +217,7 @@ function MiniMap({ alert, yards }) {
     <div
       role="img"
       aria-label={`Mapa: ${point.name} fuera del perímetro${alert.yard?.name ? ` de ${alert.yard.name}` : ''}`}
-      className="relative -mb-3 overflow-hidden rounded-t-xl"
+      className="relative border-b border-black/5"
     >
       <HerdMap
         yards={yards.filter((y) => y.id === alert.yard?.id)}
@@ -229,7 +226,7 @@ function MiniMap({ alert, yards }) {
         className="h-48 w-full"
         interactive={false}
       />
-      <span className="absolute bottom-5 left-3 z-[500] rounded-full bg-black/60 px-2 py-0.5 font-mono text-[11px] text-white">
+      <span className="absolute bottom-3 left-3 z-[500] rounded-full bg-black/60 px-2 py-0.5 font-mono text-[11px] tabular-nums text-white">
         {alert.position.lat.toFixed(4)}, {alert.position.lng.toFixed(4)}
       </span>
     </div>

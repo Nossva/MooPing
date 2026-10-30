@@ -96,6 +96,14 @@ export function Metric({ value, label, tone }) {
   )
 }
 
+// Título de una pantalla (el header de Layout ya lleva el h1 con el nombre de la sección).
+// Mismo tamaño y color en todas: el bordó queda para lo urgente.
+export function PageTitle({ children, className }) {
+  return (
+    <h2 className={cx('font-display text-2xl font-bold text-balance text-ink md:text-3xl', className)}>{children}</h2>
+  )
+}
+
 export function SectionTitle({ children, aside, icon: Icon }) {
   return (
     <div className="flex items-end justify-between pt-2">
@@ -207,9 +215,10 @@ export function AccChevron({ className }) {
 }
 
 // Chip de filtro con contador. Alto táctil de 44px.
-export function FilterChip({ active, onClick, count, dot, children }) {
+export function FilterChip({ active, onClick, count, dot, children, type = 'button' }) {
   return (
     <button
+      type={type}
       onClick={onClick}
       aria-pressed={active}
       className={cx(

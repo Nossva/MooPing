@@ -28,7 +28,7 @@ import {
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
 import { useAuth } from '@/api/auth'
-import { Button, Card, Empty, ErrorBox, Loading, Pill, SectionTitle } from '@/components/ui'
+import { Button, Card, Empty, ErrorBox, FilterChip, Loading, Pill, SectionTitle } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { ROLE_LABEL } from '@/lib/format'
 
@@ -79,7 +79,7 @@ function AdminHeader({ members }) {
     { label: 'Suspendidos', value: list.length - active.length },
   ]
   return (
-    <section className="space-y-3 rounded-xl bg-brand p-4 text-white shadow-md">
+    <section className="space-y-3 rounded-xl bg-brand p-4 text-white">
       <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-white/80">
         <Crown className="size-4" /> Panel del dueño · {me?.organizations?.[0]?.name}
       </div>
@@ -143,23 +143,20 @@ function Members({ data, error, loading, reload }) {
               className="w-full rounded-lg border border-black/10 bg-white py-2.5 pl-9 pr-3 text-sm text-ink"
             />
           </label>
-          <Button icon={UserPlus} className="py-2.5" onClick={() => setAdding(true)}>
+          <Button icon={UserPlus} onClick={() => setAdding(true)}>
             Nuevo usuario
           </Button>
         </div>
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((f) => (
-            <button
+            <FilterChip
               key={f.key}
+              active={filter === f.key}
               onClick={() => setFilter(f.key)}
-              className={cx(
-                'rounded-full px-3 py-1.5 text-xs font-semibold',
-                filter === f.key ? 'bg-ink text-white' : 'bg-surface-low text-muted',
-              )}
+              count={data.filter((m) => matches(m, f.key, '')).length}
             >
               {f.label}
-              <span className="ml-1.5 opacity-70">{data.filter((m) => matches(m, f.key, '')).length}</span>
-            </button>
+            </FilterChip>
           ))}
         </div>
 
@@ -489,10 +486,10 @@ function AddMemberDialog({ onClose, onDone }) {
           <p className="text-xs text-muted">Si el email ya tiene cuenta en MooPing, se suma con su contraseña actual.</p>
           {error && <p className="text-xs text-brand">{error}</p>}
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" className="py-2" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" icon={UserPlus} className="py-2" busy={busy}>
+            <Button type="submit" icon={UserPlus} busy={busy}>
               Crear {ROLE_LABEL[form.role].toLowerCase()}
             </Button>
           </div>
@@ -809,10 +806,10 @@ function PermissionsDialog({ member, onClose, onSaved }) {
 
         {error && <p className="text-xs text-brand">{error}</p>}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" className="py-2" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button icon={Check} className="py-2" busy={busy} disabled={sections.size === 0} onClick={save}>
+          <Button icon={Check} busy={busy} disabled={sections.size === 0} onClick={save}>
             Guardar permisos
           </Button>
         </div>
@@ -885,10 +882,10 @@ function ResetPasswordDialog({ member, onClose }) {
           <PasswordField label="Contraseña nueva (mín. 8)" value={password} onChange={setPassword} />
           {error && <p className="text-xs text-brand">{error}</p>}
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" className="py-2" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" icon={KeyRound} className="py-2" busy={busy}>
+            <Button type="submit" icon={KeyRound} busy={busy}>
               Cambiar contraseña
             </Button>
           </div>
@@ -935,10 +932,10 @@ function Credentials({ intro, email, password, onClose }) {
       <p className="text-sm text-muted">{intro}</p>
       <pre className="whitespace-pre-wrap rounded-lg bg-surface-low p-3 text-xs text-ink">{text}</pre>
       <div className="flex justify-end gap-2">
-        <Button variant="outline" icon={copied ? Check : Copy} className="py-2" onClick={copy}>
+        <Button variant="outline" icon={copied ? Check : Copy} onClick={copy}>
           {copied ? 'Copiado' : 'Copiar'}
         </Button>
-        <Button className="py-2" onClick={onClose}>
+        <Button onClick={onClose}>
           Listo
         </Button>
       </div>
@@ -1041,7 +1038,7 @@ function OrganizationFields({ org, onSaved }) {
         {error && <p className="text-xs text-brand">{error}</p>}
         <div className="flex items-center justify-end gap-3">
           {saved && <span className="text-xs font-semibold text-field">Guardado</span>}
-          <Button type="submit" icon={Check} className="py-2" busy={busy}>
+          <Button type="submit" icon={Check} busy={busy}>
             Guardar
           </Button>
         </div>

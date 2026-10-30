@@ -190,3 +190,45 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .t-toggle-thumb { animation: none !important; }
 }
+
+/* ------------------------------------------------------------------
+   Tabs sliding (transitions.dev 16): fondo de la pestaña activa de la
+   barra inferior del celular.
+   ------------------------------------------------------------------ */
+:root {
+  --tabs-dur: 250ms;
+  --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The pill: width + transform are written inline by JS so
+   the transition tweens between the previous and next
+   measured positions. */
+.t-tabs-pill {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  height: 30px;
+  width: 0;
+  background: var(--tabs-pill-bg);
+  border-radius: 48px;
+  transform: translateX(0);
+  transition:
+    transform var(--tabs-dur) var(--tabs-ease),
+    width     var(--tabs-dur) var(--tabs-ease);
+  will-change: transform, width;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-tabs-pill, .t-tab { transition: none !important; }
+}
+
+/* MooPing: en la barra inferior el fondo ocupa casi todo el alto (64px, 6px de aire)
+   y es bordó, como el ítem activo del menú lateral. */
+.t-tabs-pill.t-tabs-pill--nav {
+  top: 6px;
+  height: 52px;
+  border-radius: 12px;
+  background: var(--color-brand);
+}

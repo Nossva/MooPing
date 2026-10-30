@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Check, ChevronDown, Clock, HelpCircle, History, LifeBuoy, MessageCircle, Phone, Send } from 'lucide-react'
+import { Check, ChevronDown, Clock, HelpCircle, History, MessageCircle, Phone, Send } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
-import { Button, Card, ErrorBox, Loading, Pill, SectionTitle } from '@/components/ui'
-import { cx } from '@/lib/cx'
+import { Button, Card, ErrorBox, FilterChip, Loading, PageTitle, Pill, SectionTitle } from '@/components/ui'
 import { timeAgo } from '@/lib/format'
 
 // Para todos los roles: formulario de reclamo (support/requests/) y preguntas frecuentes.
@@ -57,10 +56,8 @@ export default function Soporte() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div>
-        <h2 className="flex items-center gap-2 font-display text-2xl font-bold text-ink md:text-3xl">
-          <LifeBuoy className="size-7 text-brand" /> Soporte técnico
-        </h2>
-        <p className="text-sm text-muted">Contanos qué pasa: el reclamo nos llega con el estado del sistema, así no hace falta explicarlo.</p>
+        <PageTitle>Soporte técnico</PageTitle>
+        <p className="mt-1 text-sm text-muted">Contanos qué pasa: el reclamo nos llega con el estado del sistema, así no hace falta explicarlo.</p>
       </div>
 
       <SupportForm contacts={data.contacts} diagnostic={data.diagnostic} onSent={requests.reload} />
@@ -124,17 +121,9 @@ function SupportForm({ contacts, diagnostic, onSent }) {
           <p className="text-xs text-muted">¿Sobre qué es?</p>
           <div className="mt-1 flex flex-wrap gap-2">
             {CATEGORIES.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => setCategory(c.key)}
-                className={cx(
-                  'rounded-full px-3 py-1.5 text-xs font-semibold',
-                  category === c.key ? 'bg-brand text-white' : 'bg-surface-low text-ink hover:bg-surface-high',
-                )}
-              >
+              <FilterChip key={c.key} type="button" active={category === c.key} onClick={() => setCategory(c.key)}>
                 {c.label}
-              </button>
+              </FilterChip>
             ))}
           </div>
         </div>

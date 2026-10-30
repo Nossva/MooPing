@@ -11,6 +11,7 @@ import { usePagedApi } from '@/api/usePagedApi'
 import DeviceAttentionCard from '@/components/DeviceAttentionCard'
 import {
   Button, Card, Empty, ErrorBox, FilterChip, Freshness, IconBubble, Loading, Metric, MoreButton, OwnerOnly, Pill,
+  PageTitle,
   SectionTitle,
 } from '@/components/ui'
 import { cx } from '@/lib/cx'
@@ -66,7 +67,7 @@ export default function Equipos() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="font-display text-3xl font-bold text-ink">Equipos y red</h2>
+        <PageTitle>Equipos y red</PageTitle>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
           <span className={cx('inline-flex items-center gap-1.5 font-semibold', connected ? 'text-field' : 'text-brand')}>
             <span aria-hidden className={cx('size-2 rounded-full', connected ? 'bg-field' : 'bg-brand')} />

@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BellRing, Compass, KeyRound, LifeBuoy, LogOut, Radar, Router, Settings, TriangleAlert, X } from 'lucide-react'
 import { useAuth } from '@/api/auth'
@@ -106,32 +107,84 @@ export default function Layout() {
         <Outlet context={{ status }} />
       </main>
 
-      {/* Nav inferior (mobile) */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-[1000] grid h-[calc(4rem+env(safe-area-inset-bottom))] border-t border-black/5 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
-        style={{ gridTemplateColumns: `repeat(${mobileNav.length}, minmax(0, 1fr))` }}
-      >
-        {mobileNav.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              cx('flex flex-col items-center justify-center gap-0.5 text-[11px]', isActive ? 'font-semibold text-brand' : 'text-muted')
-            }
-          >
-            <span className="relative">
-              <item.icon className="size-5" />
-              {item.badge && openAlerts > 0 && (
-                <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold leading-none tabular-nums text-white">
-                  {openAlerts}
-                </span>
-              )}
-            </span>
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
+      <MobileNav items={mobileNav} openAlerts={openAlerts} />
     </div>
+  )
+}
+
+// Barra inferior del celular. La pestaña activa va en bordó con letras blancas, como el
+// menú lateral; el fondo se desliza entre pestañas (tabs sliding de transitions.dev).
+function MobileNav({ items, openAlerts }) {
+  const location = useLocation()
+  const navRef = useRef(null)
+  const pillRef = useRef(null)
+  const placed = useRef(false)
+
+  useLayoutEffect(() => {
+    const nav = navRef.current
+    const pill = pillRef.current
+    if (!nav || !pill) return
+    const moveTo = (animate) => {
+      const tab = nav.querySelector('[aria-current="page"]')
+      // Soporte y Mi cuenta no están en la barra: sin pestaña activa, sin fondo.
+      pill.style.opacity = tab ? '1' : '0'
+      if (!tab) return
+      const prev = pill.style.transition
+      if (!animate) pill.style.transition = 'none'
+      pill.style.transform = `translateX(${tab.offsetLeft + 4}px)`
+      pill.style.width = `${tab.offsetWidth - 8}px`
+      if (!animate) {
+        void pill.offsetWidth
+        pill.style.transition = prev
+      }
+    }
+    moveTo(placed.current)
+    placed.current = true
+    const onResize = () => moveTo(false)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [location.pathname, items.length])
+
+  return (
+    <nav
+      ref={navRef}
+      className="fixed inset-x-0 bottom-0 z-[1000] grid h-[calc(4rem+env(safe-area-inset-bottom))] border-t border-black/5 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+    >
+      <span ref={pillRef} aria-hidden className="t-tabs-pill t-tabs-pill--nav" />
+      {items.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          className={({ isActive }) =>
+            cx(
+              'relative z-[1] flex flex-col items-center justify-center gap-0.5 text-[11px] transition-colors duration-[var(--tabs-dur)] ease-[var(--tabs-ease)]',
+              isActive ? 'font-semibold text-white' : 'text-muted active:text-ink',
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <span className="relative">
+                <item.icon className="size-5" />
+                {item.badge && openAlerts > 0 && (
+                  <span
+                    className={cx(
+                      'absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-bold leading-none tabular-nums',
+                      // Sobre el fondo bordó el contador se invierte para seguir viéndose.
+                      isActive ? 'bg-white text-brand' : 'bg-brand text-white',
+                    )}
+                  >
+                    {openAlerts}
+                  </span>
+                )}
+              </span>
+              {item.label}
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
   )
 }

@@ -232,13 +232,16 @@ Firmes y claros: buen tamaño táctil, sin efectos.
 
 ### Navigation
 - **PC:** menú lateral blanco; ítem activo con fondo bordó y texto blanco, inactivos en Tierra Muted con hover cielo bajo; el contador de alertas es una pill bordó suave.
-- **Celular:** barra inferior blanca, ícono 20px sobre etiqueta de 11px; el activo en bordó semibold; contador como círculo bordó sobre el ícono.
+- **Celular:** barra inferior blanca, ícono 20px sobre etiqueta de 11px. La pestaña activa lleva un fondo bordó (12px de esquina, 6px de aire arriba y abajo) con texto blanco, igual que el menú lateral, y el fondo se desliza entre pestañas (250ms). El contador de alertas es un círculo bordó; sobre la pestaña activa se invierte a blanco con número bordó.
+
+### Títulos de pantalla
+- Un solo formato para todas las pantallas: Plus Jakarta 700, 24px (30px en PC), en Tinta Noche, sin ícono ni punto de color. El bordó queda para lo urgente.
 
 ### Tarjeta de alerta (signature)
 Burbuja de ícono de 44px tintada según categoría, nombre del animal como Title, badge de categoría, tipo de alerta en 12px semibold, fila de métricas (valor en Plus Jakarta bold sobre fondo cielo bajo), y una barra de progreso de cuatro pasos (Pendiente → Asignada → En curso → Resuelta): bordó mientras está pendiente, verde una vez que alguien la tomó.
 
 ### Mapa del rodeo (signature)
-Leaflet con potreros verdes punteados. Marcadores circulares con borde blanco de 3px: verde si el animal está bien, ámbar si tiene alerta, bordó con pulso suave si está fuera del perímetro. El recorrido del animal es una línea bordó de 3px al 80%.
+Leaflet con potreros verdes punteados. En Alertas, el minimapa va dentro de la tarjeta de alerta, a sangre arriba, con las esquinas de la tarjeta. Marcadores circulares con borde blanco de 3px: verde si el animal está bien, ámbar si tiene alerta, bordó con pulso suave si está fuera del perímetro. El recorrido del animal es una línea bordó de 3px al 80%.
 
 ## Do's and Don'ts
 

@@ -67,7 +67,8 @@ export function StatusSteps({ status, assignee }) {
   )
 }
 
-export default function AlertCard({ alert, onChange, highlight }) {
+// media: contenido a sangre arriba de la tarjeta (ej. el minimapa de Alertas).
+export default function AlertCard({ alert, onChange, highlight, media }) {
   const navigate = useNavigate()
   const { me } = useAuth()
   const [busy, setBusy] = useState(null)
@@ -176,6 +177,10 @@ export default function AlertCard({ alert, onChange, highlight }) {
 
   return (
     <Card className={cx('space-y-4', highlight && (critical ? 'border-brand/30 ring-1 ring-brand/20' : alert.category === 'sanitary' && 'border-warn/40 ring-1 ring-warn/25'))}>
+      {media && (
+        // Card: radio 12px y borde 1px, así que la media va con 11px para ser concéntrica.
+        <div className="-mx-4 -mt-4 overflow-hidden rounded-t-[11px]">{media}</div>
+      )}
       <div className="flex items-start gap-3">
         <div
           className={cx(
