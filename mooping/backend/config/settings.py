@@ -140,6 +140,9 @@ DATABASES = {
     }
 }
 
+# Loads db/schema.sql into the test database (see config/test_runner.py).
+TEST_RUNNER = 'config.test_runner.SchemaTestRunner'
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators

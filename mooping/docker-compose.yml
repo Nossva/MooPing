@@ -46,6 +46,7 @@ services:
     volumes:
       - ./backend:/app        # cambios en el código se recargan solos
       - /app/.venv            # no pisar con el .venv de Windows
+      - ./db:/db:ro           # schema.sql para la base de los tests (manage.py test)
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py runserver 0.0.0.0:8000"
