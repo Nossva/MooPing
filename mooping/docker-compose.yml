@@ -19,7 +19,7 @@ services:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - mooping-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mooping -d mooping"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U mooping -d mooping"]
       interval: 3s
       timeout: 3s
       retries: 20

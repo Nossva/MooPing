@@ -58,7 +58,9 @@ def apply_db_upgrades():
     The scripts are idempotent: running them on every start is safe."""
     psql = ['docker', 'compose', 'exec', '-T', 'db']
     deadline = time.monotonic() + TIMEOUT_S
-    while subprocess.call(psql + ['pg_isready', '-U', 'mooping', '-d', 'mooping'], cwd=ROOT,
+    # Over TCP: on an empty volume the entrypoint first runs schema.sql on a temporary
+    # socket-only server and then shuts it down; that one must not count as ready.
+    while subprocess.call(psql + ['pg_isready', '-h', '127.0.0.1', '-U', 'mooping', '-d', 'mooping'], cwd=ROOT,
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
         if time.monotonic() > deadline:
             sys.exit('La base no respondió. Revisá `docker compose logs db`.')
