@@ -3,6 +3,7 @@
 export function timeAgo(iso, now = Date.now()) {
   if (!iso) return '—'
   const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000))
+  if (s < 10) return 'recién'
   if (s < 60) return `hace ${s} s`
   const m = Math.round(s / 60)
   if (m < 60) return `hace ${m} min`
@@ -10,6 +11,20 @@ export function timeAgo(iso, now = Date.now()) {
   if (h < 24) return `hace ${h} h`
   const d = Math.round(h / 24)
   return `hace ${d} d`
+}
+
+// "hace 5 min" -> "5 min", para celdas con etiqueta "Último dato".
+export function ageShort(iso, now = Date.now()) {
+  const text = timeAgo(iso, now)
+  return text.startsWith('hace ') ? text.slice(5) : text
+}
+
+// 60 -> "1 min", 90 -> "90 s", 3600 -> "1 h"
+export function seconds(value) {
+  if (value === null || value === undefined) return '—'
+  if (value % 3600 === 0) return `${value / 3600} h`
+  if (value % 60 === 0) return `${value / 60} min`
+  return `${value} s`
 }
 
 export function capitalize(text) {

@@ -55,7 +55,7 @@ export default function Layout() {
               <item.icon className="size-5" />
               {item.label}
               {item.badge && openAlerts > 0 && (
-                <span className="ml-auto rounded-full bg-brand-soft px-2 text-xs font-bold text-brand">{openAlerts}</span>
+                <span className="ml-auto rounded-full bg-brand-soft px-2 text-xs font-bold tabular-nums text-brand">{openAlerts}</span>
               )}
             </NavLink>
           ))}
@@ -76,7 +76,7 @@ export default function Layout() {
       </aside>
 
       {/* Header */}
-      <header className="sticky top-0 z-[1000] bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-[1000] bg-white/95 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="relative flex h-16 items-center justify-between px-4">
           <Logo width={108} className="md:hidden" />
           <h1 className="absolute left-1/2 -translate-x-1/2 font-display text-[15px] font-bold uppercase tracking-wide text-brand md:static md:translate-x-0 md:text-lg md:normal-case md:tracking-normal md:text-ink">
@@ -86,17 +86,21 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 md:pb-10">
+      <main className="mx-auto w-full max-w-5xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-4 md:pb-10">
         {seesAlerts && alarms.needsActivation && (
-          <div className="mb-4 flex items-center gap-3 rounded-xl border border-brand/20 bg-brand-soft/30 p-3 text-sm">
+          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-brand/20 bg-brand-soft/30 p-3 text-sm">
             <BellRing className="size-5 shrink-0 text-brand" />
-            <p className="flex-1 text-ink">Activá las alarmas para escuchar y ver las alertas nuevas aunque estés en otra pestaña.</p>
-            <button onClick={alarms.activate} className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white">
-              Activar alarmas
-            </button>
-            <button onClick={alarms.dismiss} className="text-muted" aria-label="Cerrar">
-              <X className="size-4" />
-            </button>
+            <p className="min-w-0 flex-1 basis-48 text-ink">
+              Activá las alarmas para escuchar y ver las alertas nuevas aunque estés en otra pestaña.
+            </p>
+            <div className="ml-auto flex items-center gap-1">
+              <button onClick={alarms.activate} className="rounded-lg bg-brand px-3 py-2.5 text-xs font-semibold text-white">
+                Activar alarmas
+              </button>
+              <button onClick={alarms.dismiss} className="rounded-lg p-2.5 text-muted hover:bg-brand-soft/40" aria-label="Cerrar">
+                <X className="size-4" />
+              </button>
+            </div>
           </div>
         )}
         <Outlet context={{ status }} />
@@ -104,7 +108,7 @@ export default function Layout() {
 
       {/* Nav inferior (mobile) */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-[1000] grid h-16 border-t border-black/5 bg-white md:hidden"
+        className="fixed inset-x-0 bottom-0 z-[1000] grid h-[calc(4rem+env(safe-area-inset-bottom))] border-t border-black/5 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
         style={{ gridTemplateColumns: `repeat(${mobileNav.length}, minmax(0, 1fr))` }}
       >
         {mobileNav.map((item) => (
@@ -119,7 +123,7 @@ export default function Layout() {
             <span className="relative">
               <item.icon className="size-5" />
               {item.badge && openAlerts > 0 && (
-                <span className="absolute -right-2.5 -top-2 flex size-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
+                <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold leading-none tabular-nums text-white">
                   {openAlerts}
                 </span>
               )}

@@ -17,7 +17,7 @@ export default function DeviceAttentionCard({ device, onChange }) {
     setError(null)
     try {
       await api(`devices/${device.id}/ping/`, { method: 'POST' })
-      setDone('Ping en cola. Se envía cuando el gateway pueda hablar con el collar.')
+      setDone('Pedido en cola: le llega al collar apenas el gateway lo alcance.')
       onChange?.()
     } catch (err) {
       setError(err.message)
@@ -31,13 +31,14 @@ export default function DeviceAttentionCard({ device, onChange }) {
       <div className="flex gap-3">
         <IconBubble icon={noSignal ? WifiOff : TriangleAlert} className="bg-surface-high text-ink" />
         <div className="min-w-0">
-          <h3 className="font-display text-base font-bold text-ink">{title}</h3>
+          <h3 className="break-words font-display text-base font-bold text-ink">{title}</h3>
           <p className="text-sm text-muted">
             {noSignal &&
               (device.last_seen_at
                 ? `Sin señal ${timeAgo(device.last_seen_at)}${device.animal?.yard_name ? ` en ${device.animal.yard_name}` : ''}. Última posición guardada.`
                 : 'Sin señal: el collar todavía no mandó ningún dato.')}
-            {!noSignal && `Estado: ${device.state}.`}
+            {device.state === 'alert' &&
+              `${device.animal ? device.animal.name : 'El animal'} está fuera del perímetro. Revisá el potrero.`}
           </p>
         </div>
       </div>
@@ -52,11 +53,15 @@ export default function DeviceAttentionCard({ device, onChange }) {
             className="w-full py-2.5"
             onClick={act}
           >
-            Enviar ping forzado
+            Pedir señal al collar
           </Button>
         </OwnerOnly>
       )}
-      {error && <p className="text-xs text-brand">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs font-medium text-brand">
+          {error}
+        </p>
+      )}
     </Card>
   )
 }

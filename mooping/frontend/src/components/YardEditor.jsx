@@ -4,17 +4,21 @@ import L from 'leaflet'
 import { Check, Eraser, Trash2, Undo2 } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button, Card } from '@/components/ui'
+import { token } from '@/lib/tokens'
 
 const INPUT = 'mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm text-ink'
-const OTHER_YARD_STYLE = { color: '#4d6631', weight: 1, dashArray: '4 4', fillOpacity: 0.08, interactive: false }
-const SHAPE_STYLE = { color: '#670626', weight: 2, fillColor: '#670626', fillOpacity: 0.15 }
+// Colores de los tokens: se leen al dibujar, cuando index.css ya está cargado.
+const otherYardStyle = () => ({ color: token('field'), weight: 1, dashArray: '4 4', fillOpacity: 0.08, interactive: false })
+const shapeStyle = () => ({ color: token('brand'), weight: 2, fillColor: token('brand'), fillOpacity: 0.15 })
 
-const vertexIcon = L.divIcon({
-  className: '',
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-  html: '<span style="display:block;width:14px;height:14px;border-radius:9999px;background:#fff;border:3px solid #670626;box-shadow:0 1px 3px rgba(0,0,0,.35)"></span>',
-})
+// Se ve un punto de 14px, pero el área para agarrarlo con el dedo es de 32px.
+const vertexIcon = () =>
+  L.divIcon({
+    className: '',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    html: `<span style="display:flex;width:32px;height:32px;align-items:center;justify-content:center"><span style="display:block;width:14px;height:14px;border-radius:9999px;background:#fff;border:3px solid ${token('brand')};box-shadow:0 1px 3px rgba(0,0,0,.35)"></span></span>`,
+  })
 
 // GeoJSON guarda [lng, lat] y repite el primer punto al final; Leaflet usa [lat, lng] abierto.
 const toPoints = (boundary) => (boundary?.coordinates?.[0] ?? []).slice(0, -1).map(([lng, lat]) => [lat, lng])
@@ -60,7 +64,10 @@ export default function YardEditor({ yard, yards, onCancel, onSaved }) {
   const [points, setPoints] = useState(() => toPoints(yard?.boundary))
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
+  // Confirmaciones en línea: 'delete' (borrar el potrero) o 'discard' (salir con cambios sin guardar)
+  const [confirm, setConfirm] = useState(null)
 
+  const dirty = name !== (yard?.name ?? '') || JSON.stringify(points) !== JSON.stringify(toPoints(yard?.boundary))
   const others = yards.filter((y) => y.id !== yard?.id)
   const crossed = selfIntersects(points)
   const move = (i) => (e) => {
@@ -92,13 +99,13 @@ export default function YardEditor({ yard, yards, onCancel, onSaved }) {
     })
   }
 
-  const remove = () => {
-    if (!window.confirm(`¿Borrar el potrero "${yard.name}"? Sus animales quedan sin potrero.`)) return
+  const cancel = () => (dirty ? setConfirm('discard') : onCancel())
+
+  const remove = () =>
     run('delete', async () => {
       await api(`yards/${yard.id}/`, { method: 'DELETE' })
       onSaved(null)
     })
-  }
 
   return (
     <Card className="space-y-3">
@@ -115,29 +122,29 @@ export default function YardEditor({ yard, yards, onCancel, onSaved }) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {others.map((y) => y.boundary && <GeoJSON key={y.id} data={y.boundary} style={OTHER_YARD_STYLE} />)}
+          {others.map((y) => y.boundary && <GeoJSON key={y.id} data={y.boundary} style={otherYardStyle()} />)}
           {points.length >= 3 ? (
-            <Polygon positions={points} pathOptions={crossed ? { ...SHAPE_STYLE, dashArray: '6 6' } : SHAPE_STYLE} interactive={false} />
+            <Polygon positions={points} pathOptions={crossed ? { ...shapeStyle(), dashArray: '6 6' } : shapeStyle()} interactive={false} />
           ) : (
-            points.length === 2 && <Polyline positions={points} pathOptions={SHAPE_STYLE} interactive={false} />
+            points.length === 2 && <Polyline positions={points} pathOptions={shapeStyle()} interactive={false} />
           )}
           {points.map((p, i) => (
-            <Marker key={i} position={p} icon={vertexIcon} draggable eventHandlers={{ dragend: move(i) }} />
+            <Marker key={i} position={p} icon={vertexIcon()} draggable eventHandlers={{ dragend: move(i) }} />
           ))}
           <ClickToAdd onAdd={(p) => setPoints((ps) => [...ps, p])} />
           <FitOnce yards={yard ? [yard] : others} />
         </MapContainer>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <span className="mr-auto text-xs text-muted">
           {points.length} {points.length === 1 ? 'punto' : 'puntos'}
           {points.length > 0 && points.length < 3 && ' · faltan ' + (3 - points.length)}
         </span>
-        <Button type="button" variant="soft" icon={Undo2} className="py-2" disabled={!points.length} onClick={() => setPoints((ps) => ps.slice(0, -1))}>
+        <Button type="button" variant="soft" icon={Undo2} disabled={!points.length} onClick={() => setPoints((ps) => ps.slice(0, -1))}>
           Deshacer
         </Button>
-        <Button type="button" variant="soft" icon={Eraser} className="py-2" disabled={!points.length} onClick={() => setPoints([])}>
+        <Button type="button" variant="soft" icon={Eraser} disabled={!points.length} onClick={() => setPoints([])}>
           Limpiar
         </Button>
       </div>
@@ -153,20 +160,51 @@ export default function YardEditor({ yard, yards, onCancel, onSaved }) {
           Nombre del potrero
           <input required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} className={INPUT} />
         </label>
-        {error && <p className="text-xs text-brand">{error}</p>}
-        <div className="flex items-center gap-2">
-          {yard && (
-            <Button type="button" variant="outline" icon={Trash2} className="py-2" busy={busy === 'delete'} onClick={remove}>
-              Borrar
-            </Button>
-          )}
-          <Button type="button" variant="outline" className="ml-auto py-2" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button type="submit" icon={Check} className="py-2" busy={busy === 'save'} disabled={points.length < 3 || crossed}>
-            Guardar potrero
-          </Button>
-        </div>
+        {error && (
+          <p role="alert" className="text-xs text-brand">
+            {error}
+          </p>
+        )}
+        {confirm ? (
+          <div role="alert" className="space-y-3 rounded-lg border border-brand/30 bg-brand-soft/40 p-3 text-sm text-brand">
+            <p>
+              {confirm === 'delete'
+                ? `¿Borrar el potrero "${yard.name}"? Sus animales quedan sin potrero y no se controla su perímetro.`
+                : 'Tenés cambios sin guardar en el potrero. ¿Los descartás?'}
+            </p>
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setConfirm(null)}>
+                {confirm === 'delete' ? 'No, dejarlo' : 'Seguir editando'}
+              </Button>
+              {confirm === 'delete' ? (
+                <Button type="button" icon={Trash2} busy={busy === 'delete'} onClick={remove}>
+                  Sí, borrar potrero
+                </Button>
+              ) : (
+                <Button type="button" onClick={onCancel}>
+                  Descartar cambios
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          // Borrar queda separado (a la izquierda) de Cancelar y Guardar.
+          <div className="flex flex-wrap items-center gap-3">
+            {yard && (
+              <Button type="button" variant="outline" icon={Trash2} className="mr-auto" onClick={() => setConfirm('delete')}>
+                Borrar
+              </Button>
+            )}
+            <div className="ml-auto flex gap-3">
+              <Button type="button" variant="outline" onClick={cancel}>
+                Cancelar
+              </Button>
+              <Button type="submit" icon={Check} busy={busy === 'save'} disabled={points.length < 3 || crossed}>
+                Guardar potrero
+              </Button>
+            </div>
+          </div>
+        )}
       </form>
     </Card>
   )

@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CircleAlert, FileText, LocateFixed, NotebookPen, UserPlus, CheckCheck } from 'lucide-react'
+import { CircleAlert, FileText, LocateFixed, Loader2, NotebookPen, UserPlus, CheckCheck } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuth } from '@/api/auth'
 import { ALERT_TYPES, CATEGORY_BADGE, STATUS_LABEL, STATUS_STEPS, nextStatus } from '@/lib/alerts'
 import { num, timeAgo } from '@/lib/format'
 import { Badge, Button, Card, Metric } from './ui'
 import { cx } from '@/lib/cx'
+
+const UNDO_MS = 5000
 
 function metricsFor(alert) {
   const m = alert.metadata || {}
@@ -45,13 +47,14 @@ export function StatusSteps({ status, assignee }) {
           </span>
         </span>
       </div>
-      <div className="grid grid-cols-4 gap-1.5">
+      {/* El estado ya se lee en el texto de arriba; la barra es solo visual. */}
+      <div aria-hidden className="grid grid-cols-4 gap-1.5">
         {STATUS_STEPS.map((step, i) => (
           <div key={step.key}>
             <div className={cx('h-1.5 rounded-full', i <= current ? color : 'bg-surface-high')} />
             <p
               className={cx(
-                'mt-1 text-[10px]',
+                'mt-1 text-[11px] leading-tight',
                 i === current ? cx('font-semibold', status === 'pending' ? 'text-brand' : 'text-field') : 'text-muted',
               )}
             >
@@ -89,10 +92,81 @@ export default function AlertCard({ alert, onChange, highlight }) {
     }
   }
 
+  // Los cambios de estado esperan UNDO_MS antes de mandarse, para poder deshacerlos
+  // (el backend no permite volver a "sin asignar"). Si la tarjeta se desmonta, se mandan ya.
+  const [queued, setQueued] = useState(null)
+  const queuedRef = useRef(null)
+  const onChangeRef = useRef(onChange)
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  useEffect(
+    () => () => {
+      const entry = queuedRef.current
+      if (!entry) return
+      clearTimeout(entry.timer)
+      queuedRef.current = null
+      entry.send().then(() => onChangeRef.current?.(), () => {})
+    },
+    [],
+  )
+
+  function queue(change) {
+    setError(null)
+    const entry = { ...change }
+    entry.timer = setTimeout(() => commit(entry), UNDO_MS)
+    queuedRef.current = entry
+    setQueued(entry)
+  }
+
+  async function commit(entry) {
+    if (queuedRef.current !== entry) return
+    queuedRef.current = null
+    setBusy('commit')
+    try {
+      await entry.send()
+      // Sigue mostrando el estado nuevo hasta que llegue la alerta recargada.
+      setQueued({ ...entry, done: true })
+      onChangeRef.current?.()
+    } catch (err) {
+      setError(err.message)
+      setQueued(null)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQueued((q) => (q?.done ? null : q))
+  }, [alert.status, alert.assigned_to?.id])
+
+  function undo() {
+    const entry = queuedRef.current
+    if (!entry) return
+    clearTimeout(entry.timer)
+    queuedRef.current = null
+    setQueued(null)
+  }
+
   const assign = () =>
-    run('assign', () => api(`alerts/${alert.id}/`, { method: 'PATCH', body: { assigned_to: me?.user?.id } }))
-  const advance = () =>
-    run('advance', () => api(`alerts/${alert.id}/`, { method: 'PATCH', body: { status: nextStatus(alert.status) } }))
+    queue({
+      status: 'assigned',
+      assignee: me?.user,
+      label: 'Quedó a tu cargo.',
+      send: () => api(`alerts/${alert.id}/`, { method: 'PATCH', body: { assigned_to: me?.user?.id } }),
+    })
+  const advance = () => {
+    const next = nextStatus(alert.status)
+    queue({
+      status: next,
+      label: next === 'resolved' ? 'Marcada como resuelta.' : 'Marcada en curso.',
+      send: () => api(`alerts/${alert.id}/`, { method: 'PATCH', body: { status: next } }),
+    })
+  }
+  const shownStatus = queued?.status ?? alert.status
+  const shownAssignee = queued?.assignee ?? alert.assigned_to
   const saveNote = () =>
     run('note', async () => {
       await api(`alerts/${alert.id}/notes/`, { method: 'POST', body: { body: note } })
@@ -101,7 +175,7 @@ export default function AlertCard({ alert, onChange, highlight }) {
     })
 
   return (
-    <Card className={cx('space-y-4', highlight && critical && 'border-brand/30 ring-1 ring-brand/20')}>
+    <Card className={cx('space-y-4', highlight && (critical ? 'border-brand/30 ring-1 ring-brand/20' : alert.category === 'sanitary' && 'border-warn/40 ring-1 ring-warn/25'))}>
       <div className="flex items-start gap-3">
         <div
           className={cx(
@@ -113,14 +187,14 @@ export default function AlertCard({ alert, onChange, highlight }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-lg font-bold text-ink">{alert.animal?.name ?? `Collar ${alert.device?.label}`}</h3>
+            <h3 className="break-words font-display text-lg font-bold text-ink">{alert.animal?.name ?? `Collar ${alert.device?.label}`}</h3>
             {badge && <Badge className={badge.className}>{badge.label}</Badge>}
           </div>
-          <p className={cx('text-xs font-semibold', critical ? 'text-brand' : 'text-warn-ink')}>{type.title}</p>
+          <p className={cx('text-xs font-semibold', critical ? 'text-brand' : alert.category === 'sanitary' ? 'text-warn-ink' : 'text-ink')}>{type.title}</p>
         </div>
       </div>
 
-      <p className="text-sm leading-relaxed text-muted">
+      <p className="text-sm leading-relaxed text-pretty text-muted">
         {alert.message}
         {alert.animal && alert.type !== 'geofence_exit' && (
           <> {[alert.animal.breed, alert.animal.age_months && `${alert.animal.age_months} meses`, alert.animal.lot].filter(Boolean).join(', ')}.</>
@@ -135,7 +209,7 @@ export default function AlertCard({ alert, onChange, highlight }) {
 
       <div>
         <div className="mb-1 flex justify-end text-xs text-muted">{timeAgo(alert.triggered_at)}</div>
-        <StatusSteps status={alert.status} assignee={alert.assigned_to} />
+        <StatusSteps status={shownStatus} assignee={shownAssignee} />
       </div>
 
       {noteOpen && (
@@ -145,9 +219,9 @@ export default function AlertCard({ alert, onChange, highlight }) {
             onChange={(e) => setNote(e.target.value)}
             rows={3}
             placeholder="Ej: la encontré en el bajo, la llevé al corral."
-            className="w-full rounded-lg border border-black/10 bg-surface-low p-3 text-sm outline-none focus:border-brand/40"
+            className="w-full rounded-lg border border-black/10 bg-surface-low p-3 text-sm outline-none focus:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/30"
           />
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-3">
             <Button variant="outline" className="py-2" onClick={() => setNoteOpen(false)}>
               Cancelar
             </Button>
@@ -158,9 +232,43 @@ export default function AlertCard({ alert, onChange, highlight }) {
         </div>
       )}
 
-      {error && <p className="text-xs text-brand">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs font-medium text-brand">
+          {error}
+        </p>
+      )}
 
-      <div className="flex gap-2">
+      {queued && !queued.done && (
+        <div
+          role="status"
+          // Entra suave (mismos tiempos que el acordeón); al irse, el estado nuevo ya se ve arriba.
+          className="relative overflow-hidden rounded-lg bg-surface-low transition-[opacity,translate,filter] duration-[var(--acc-expand)] ease-[var(--acc-ease)] starting:-translate-y-1 starting:opacity-0 starting:blur-[2px] motion-reduce:transition-none"
+        >
+          <div className="flex items-center gap-3 py-1 pl-3 pr-1">
+            <p className="flex-1 text-sm font-medium text-ink">{queued.label}</p>
+            {busy === 'commit' ? (
+              <span className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted">
+                <Loader2 className="size-4 animate-spin" /> Guardando…
+              </span>
+            ) : (
+              <button
+                onClick={undo}
+                className="rounded px-4 py-2.5 text-sm font-semibold text-brand transition-[background-color,scale] duration-150 hover:bg-surface-mid active:scale-[0.96]"
+              >
+                Deshacer
+              </button>
+            )}
+          </div>
+          {busy !== 'commit' && (
+            <div
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-brand/30 motion-safe:animate-[undo-countdown_5s_linear_forwards]"
+            />
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-3">
         {alert.type === 'geofence_exit' || alert.type === 'no_signal' ? (
           <Button
             icon={LocateFixed}
@@ -174,13 +282,13 @@ export default function AlertCard({ alert, onChange, highlight }) {
             Anotar
           </Button>
         )}
-        {alert.status === 'pending' ? (
+        {queued ? null : alert.status === 'pending' ? (
           <Button variant="outline" icon={UserPlus} className="flex-1" busy={busy === 'assign'} onClick={assign}>
-            Asignar
+            Me la llevo
           </Button>
         ) : alert.status !== 'resolved' ? (
           <Button variant="outline" icon={CheckCheck} className="flex-1" busy={busy === 'advance'} onClick={advance}>
-            {alert.status === 'in_progress' ? 'Resolver' : 'En curso'}
+            {alert.status === 'in_progress' ? 'Marcar resuelta' : 'Empezar'}
           </Button>
         ) : (
           <Button

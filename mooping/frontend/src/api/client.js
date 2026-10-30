@@ -14,7 +14,7 @@ try {
 
 export class ApiError extends Error {
   constructor(status, body) {
-    super(messageFrom(body) || `Error ${status}`)
+    super(messageFrom(body) || fallbackMessage(status))
     this.status = status
     this.body = body
   }
@@ -25,6 +25,12 @@ function messageFrom(body) {
   if (body.detail) return body.detail
   const first = Object.values(body)[0]
   return Array.isArray(first) ? first[0] : null
+}
+
+function fallbackMessage(status) {
+  if (status === 0) return 'No hay conexión con MooPing. Revisá la señal y probá de nuevo.'
+  if (status >= 500) return 'MooPing tuvo un problema y no pudo hacerlo. Probá de nuevo en un rato.'
+  return `No se pudo hacer (error ${status}). Probá de nuevo.`
 }
 
 let onUnauthorized = () => {}
@@ -51,12 +57,18 @@ export async function api(path, { method = 'GET', body, params } = {}) {
   const isForm = body instanceof FormData
   if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    credentials: 'same-origin',
-    body: body === undefined || isForm ? body : JSON.stringify(body),
-  })
+  let res
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      credentials: 'same-origin',
+      body: body === undefined || isForm ? body : JSON.stringify(body),
+    })
+  } catch {
+    // Sin red: fetch tira un TypeError en inglés ("Failed to fetch").
+    throw new ApiError(0, null)
+  }
   if (res.status === 204) return null
   const data = await res.json().catch(() => null)
   if (!res.ok) {

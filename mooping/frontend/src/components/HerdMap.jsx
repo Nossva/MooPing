@@ -2,29 +2,43 @@ import { useEffect, useMemo, useRef } from 'react'
 import { GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { shortTag } from '@/lib/format'
+import { token } from '@/lib/tokens'
 
-const YARD_STYLE = { color: '#4d6631', weight: 2, dashArray: '6 6', fillColor: '#cce9a8', fillOpacity: 0.25 }
+// Igual que la alerta "Sin señal" del backend: más de 30 min sin datos.
+const STALE_MS = 30 * 60 * 1000
+const HIT = 44 // área táctil de cada marcador
 
-function markerIcon(p, selected) {
-  const danger = p.geofence_status === 'outside' || p.has_alert
-  const color = p.geofence_status === 'outside' ? '#670626' : p.has_alert ? '#b45309' : '#4d6631'
+// El nombre lo carga el dueño y va dentro del HTML del divIcon.
+const escapeHtml = (text) =>
+  String(text ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+
+function markerIcon(p, selected, now) {
+  const outside = p.geofence_status === 'outside'
+  const stale = p.recorded_at && now - new Date(p.recorded_at).getTime() > STALE_MS
+  const danger = outside || p.has_alert
+  const color = outside ? token('brand') : p.has_alert ? token('warn') : token('field')
   const size = selected ? 34 : 22
-  const pulse = p.geofence_status === 'outside'
+  const pulse = outside && !stale
     ? `<span class="animate-ping-soft" style="position:absolute;inset:0;border-radius:9999px;background:${color}"></span>`
     : ''
   const label = selected || danger
     ? `<span style="position:absolute;left:50%;top:${size + 4}px;transform:translateX(-50%);white-space:nowrap;
-        background:${p.geofence_status === 'outside' ? '#670626' : '#fff'};color:${p.geofence_status === 'outside' ? '#fff' : '#111c2d'};
+        background:${outside ? token('brand') : '#fff'};color:${outside ? '#fff' : token('ink')};
         font:700 11px Inter Variable,sans-serif;padding:2px 8px;border-radius:9999px;box-shadow:0 1px 3px rgba(0,0,0,.2)">
-        ${shortTag(p.name)}${p.geofence_status === 'outside' ? ' FUERA' : ''}</span>`
+        ${escapeHtml(shortTag(p.name))}${outside ? ' FUERA' : ''}${stale ? ' · sin señal' : ''}</span>`
     : ''
+  const dot = `position:absolute;inset:0;border-radius:9999px;background:${color};
+    border:3px ${stale ? 'dashed' : 'solid'} #fff;opacity:${stale ? 0.5 : 1};
+    box-shadow:0 2px 6px rgba(0,0,0,.35)${selected ? `,0 0 0 4px ${token('field-soft')}` : ''}`
+  const box = Math.max(size, HIT)
+  const inset = (box - size) / 2
   return L.divIcon({
     className: '',
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    html: `<div style="position:relative;width:${size}px;height:${size}px">${pulse}
-      <span style="position:absolute;inset:0;border-radius:9999px;background:${color};border:3px solid #fff;
-        box-shadow:0 2px 6px rgba(0,0,0,.35)${selected ? ',0 0 0 4px rgba(204,233,168,.9)' : ''}"></span>${label}</div>`,
+    iconSize: [box, box],
+    iconAnchor: [box / 2, box / 2],
+    html: `<div title="${escapeHtml(p.name)}${stale ? ' (posición vieja)' : ''}" style="position:relative;width:${box}px;height:${box}px">
+      <div style="position:absolute;left:${inset}px;top:${inset}px;width:${size}px;height:${size}px">${pulse}
+      <span style="${dot}"></span>${label}</div></div>`,
   })
 }
 
@@ -61,24 +75,40 @@ function FlyTo({ point }) {
   return null
 }
 
-export default function HerdMap({ yards, positions, selectedId, onSelect, track, className }) {
+// interactive=false: mapa de referencia que no atrapa el scroll de la página (minimapas).
+export default function HerdMap({ yards, positions, selectedId, onSelect, track, className, interactive = true }) {
   const selected = useMemo(() => positions.find((p) => p.id === selectedId), [positions, selectedId])
+  // eslint-disable-next-line react-hooks/purity -- la antigüedad se recalcula en cada refresco de posiciones
+  const now = Date.now()
+  const yardStyle = { color: token('field'), weight: 2, dashArray: '6 6', fillColor: token('field-soft'), fillOpacity: 0.25 }
   return (
-    <MapContainer center={[-34.24, -59.47]} zoom={12} className={className} zoomControl={false} scrollWheelZoom>
+    <MapContainer
+      center={[-34.24, -59.47]}
+      zoom={12}
+      className={className}
+      zoomControl={interactive}
+      scrollWheelZoom={interactive}
+      dragging={interactive}
+      touchZoom={interactive}
+      doubleClickZoom={interactive}
+      keyboard={interactive}
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {/* GeoJSON ignora cambios de `data`: la key con el perímetro lo vuelve a montar al editarlo */}
-      {yards.map((y) => y.boundary && <GeoJSON key={`${y.id}:${JSON.stringify(y.boundary)}`} data={y.boundary} style={YARD_STYLE} />)}
+      {yards.map((y) => y.boundary && <GeoJSON key={`${y.id}:${JSON.stringify(y.boundary)}`} data={y.boundary} style={yardStyle} />)}
       {track?.length > 1 && (
-        <Polyline positions={track.map((p) => [p.lat, p.lng])} pathOptions={{ color: '#670626', weight: 3, opacity: 0.8 }} />
+        <Polyline positions={track.map((p) => [p.lat, p.lng])} pathOptions={{ color: token('brand'), weight: 3, opacity: 0.8 }} />
       )}
       {positions.map((p) => (
         <Marker
           key={p.id}
           position={[p.lat, p.lng]}
-          icon={markerIcon(p, p.id === selectedId)}
+          icon={markerIcon(p, p.id === selectedId, now)}
+          title={p.name}
+          alt={p.name}
           zIndexOffset={p.id === selectedId ? 1000 : p.geofence_status === 'outside' ? 500 : 0}
           eventHandlers={{ click: () => onSelect?.(p.id) }}
         />

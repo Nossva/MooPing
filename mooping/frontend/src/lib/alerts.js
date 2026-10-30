@@ -10,7 +10,7 @@ export const ALERT_TYPES = {
 
 export const CATEGORY_BADGE = {
   critical: { label: 'Urgente', className: 'bg-brand text-white' },
-  sanitary: { label: 'Revisión', className: 'bg-warn-soft text-warn-ink' },
+  sanitary: { label: 'Sanitaria', className: 'bg-warn-soft text-warn-ink' },
   equipment: { label: 'Equipo', className: 'bg-surface-high text-ink' },
 }
 

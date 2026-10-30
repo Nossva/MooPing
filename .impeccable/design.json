@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-30T16:10:00-03:00",
+  "title": "Design System: MooPing",
+  "extensions": {
+    "colorMeta": {
+      "bordo-tranquera": { "role": "primary", "displayName": "Bordó Tranquera", "canonical": "#670626", "tonalRamp": ["#2a0010", "#420014", "#670626", "#8a2340", "#b0546a", "#d68b98", "#ffd9dd", "#fff0f1"] },
+      "verde-potrero": { "role": "secondary", "displayName": "Verde Potrero", "canonical": "#4d6631", "tonalRamp": ["#1c2a0f", "#2f421c", "#4d6631", "#668245", "#86a364", "#a9c886", "#cce9a8", "#eaf6dc"] },
+      "ambar-revision": { "role": "tertiary", "displayName": "Ámbar Revisión", "canonical": "#f59e0b", "tonalRamp": ["#451a03", "#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fcd34d", "#fef3c7"] },
+      "tinta-noche": { "role": "neutral", "displayName": "Tinta Noche", "canonical": "#111c2d" },
+      "tierra-muted": { "role": "neutral", "displayName": "Tierra Muted", "canonical": "#564244" },
+      "tierra-outline": { "role": "neutral", "displayName": "Tierra Outline", "canonical": "#866e71" },
+      "cielo-surface": { "role": "neutral", "displayName": "Cielo", "canonical": "#f9f9ff", "tonalRamp": ["#f9f9ff", "#f0f3ff", "#e7eeff", "#dee8ff"] },
+      "pergamino": { "role": "neutral", "displayName": "Pergamino", "canonical": "#fff8f6" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Titular del login y cifras protagonistas." },
+      "headline": { "displayName": "Headline", "purpose": "Título de página dentro del contenido." },
+      "title": { "displayName": "Title", "purpose": "Títulos de sección y nombre del animal en tarjetas." },
+      "body": { "displayName": "Body", "purpose": "Texto general y botones." },
+      "body-small": { "displayName": "Body small", "purpose": "Metadatos y tiempos; el tamaño más usado." },
+      "label": { "displayName": "Label", "purpose": "Badges en mayúsculas y etiquetas de métricas." }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 1px 2px rgba(0,0,0,0.04)", "purpose": "Tarjetas: casi plana, la profundidad la da el fondo cielo." },
+      { "name": "floating", "value": "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)", "purpose": "Menús del header, popovers y marcadores del mapa." }
+    ],
+    "motion": [
+      { "name": "ping-soft", "value": "ping-soft 1.6s ease-out infinite", "purpose": "Pulso del marcador de un animal fuera del perímetro." },
+      { "name": "color-transition", "value": "color, background-color, border-color 150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Hover de botones e ítems de menú." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de una pantalla o tarjeta.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg>Tomar alerta</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 8px; background: #670626; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font: 600 14px/20px 'Inter Variable', system-ui, sans-serif; cursor: pointer; transition: background-color 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: #420014; } .ds-btn-primary:focus-visible { outline: 2px solid rgba(103,6,38,0.4); outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón outline",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Acción secundaria junto a una principal.",
+      "html": "<button class=\"ds-btn-outline\">Ver en el mapa</button>",
+      "css": ".ds-btn-outline { background: #fff; color: #670626; border: 1px solid rgba(103,6,38,0.4); border-radius: 8px; padding: 12px 16px; font: 600 14px/20px 'Inter Variable', system-ui, sans-serif; cursor: pointer; transition: background-color 150ms; } .ds-btn-outline:hover { background: rgba(255,217,221,0.4); } .ds-btn-outline:focus-visible { outline: 2px solid rgba(103,6,38,0.4); outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón verde",
+      "kind": "button",
+      "refersTo": "button-green",
+      "description": "Confirmar o resolver.",
+      "html": "<button class=\"ds-btn-green\">Marcar resuelta</button>",
+      "css": ".ds-btn-green { background: #4d6631; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font: 600 14px/20px 'Inter Variable', system-ui, sans-serif; cursor: pointer; transition: background-color 150ms; } .ds-btn-green:hover { background: rgba(77,102,49,0.9); } .ds-btn-green:focus-visible { outline: 2px solid rgba(77,102,49,0.5); outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "description": "Campo estándar de formularios.",
+      "html": "<label class=\"ds-field\"><span>Nombre del potrero</span><input class=\"ds-input\" placeholder=\"Potrero Norte\"></label>",
+      "css": ".ds-field { display: block; font: 500 14px/20px 'Inter Variable', system-ui, sans-serif; color: #111c2d; } .ds-input { display: block; margin-top: 4px; width: 100%; box-sizing: border-box; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 10px 12px; font: 400 14px/20px 'Inter Variable', system-ui, sans-serif; color: #111c2d; background: #fff; outline: none; } .ds-input:focus-visible { box-shadow: 0 0 0 2px rgba(103,6,38,0.4); }"
+    },
+    {
+      "name": "Badges de categoría",
+      "kind": "chip",
+      "description": "Urgente, Sanitaria y Equipo.",
+      "html": "<span class=\"ds-badge ds-badge-urgente\">Urgente</span> <span class=\"ds-badge ds-badge-revision\">Sanitaria</span> <span class=\"ds-badge ds-badge-equipo\">Equipo</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; border-radius: 6px; padding: 2px 8px; font: 700 11px/16px 'Inter Variable', system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.025em; } .ds-badge-urgente { background: #670626; color: #fff; } .ds-badge-revision { background: #fef3c7; color: #92400e; } .ds-badge-equipo { background: #dee8ff; color: #111c2d; }"
+    },
+    {
+      "name": "Tarjeta",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Contenedor base sobre el fondo cielo.",
+      "html": "<div class=\"ds-card\"><h3>Potrero Norte</h3><p>8 animales · último dato hace 3 min</p></div>",
+      "css": ".ds-card { background: #fff; border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); font-family: 'Inter Variable', system-ui, sans-serif; } .ds-card h3 { margin: 0; font: 700 18px/28px 'Plus Jakarta Sans Variable', sans-serif; color: #111c2d; } .ds-card p { margin: 4px 0 0; font-size: 12px; color: #564244; }"
+    },
+    {
+      "name": "Métrica",
+      "kind": "custom",
+      "refersTo": "metric",
+      "description": "Valor corto con etiqueta, en filas de 2 a 4.",
+      "html": "<div class=\"ds-metrics\"><div class=\"ds-metric\"><b class=\"hot\">40,1 °C</b><span>Límite 39,5</span></div><div class=\"ds-metric\"><b>0,4 km/h</b><span>Velocidad</span></div><div class=\"ds-metric\"><b>5 min</b><span>Último dato</span></div></div>",
+      "css": ".ds-metrics { display: flex; gap: 8px; } .ds-metric { flex: 1; display: flex; flex-direction: column; align-items: center; background: #f0f3ff; border-radius: 8px; padding: 10px 8px; text-align: center; } .ds-metric b { font: 700 18px/1.25 'Plus Jakarta Sans Variable', sans-serif; color: #111c2d; } .ds-metric b.hot { color: #670626; } .ds-metric span { font: 400 11px/16px 'Inter Variable', sans-serif; color: #564244; }"
+    },
+    {
+      "name": "Navegación lateral",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Menú lateral en PC; en celular se convierte en barra inferior.",
+      "html": "<nav class=\"ds-nav\"><a class=\"active\">Inicio</a><a>Monitoreo</a><a>Alertas <em>3</em></a><a>Equipos</a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; width: 232px; padding: 12px; background: #fff; font: 500 14px/20px 'Inter Variable', sans-serif; } .ds-nav a { display: flex; align-items: center; border-radius: 8px; padding: 10px 12px; color: #564244; cursor: pointer; } .ds-nav a:hover { background: #f0f3ff; } .ds-nav a.active { background: #670626; color: #fff; } .ds-nav em { margin-left: auto; font-style: normal; background: #ffd9dd; color: #670626; border-radius: 9999px; padding: 0 8px; font-size: 12px; font-weight: 700; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Bordó sobre cielo claro",
+    "overview": "MooPing es una herramienta de trabajo: el estilo actual (salido del Figma \"MooPing\") se mantiene y se afina, no se reemplaza. Fondos claros con un leve tinte azul cielo, tarjetas blancas planas con borde casi invisible, y dos colores con significado: el bordó marca lo que exige acción (alertas urgentes, botones principales, el animal fuera del perímetro) y el verde marca el campo en orden (potreros, alertas en curso, estados OK). El ámbar queda para lo que pide revisión sanitaria.\n\nLa densidad es media: tarjetas apiladas en una columna en el celular, máximo 1024px de contenido en la PC, con métricas cortas en grillas de dos a cuatro. Los títulos usan Plus Jakarta Sans en negrita; todo el resto, Inter. La interfaz habla en español rioplatense y con vocabulario del campo.\n\nMejorar significa más legibilidad al sol, controles más fáciles de tocar, jerarquía más clara y estados honestos (cargando, vacío, error, dato viejo), sin cambiar la paleta ni el carácter.",
+    "keyCharacteristics": [
+      "Fondos azul cielo muy claro, tarjetas blancas planas.",
+      "Bordó = acción o urgencia; verde = campo en orden; ámbar = revisión.",
+      "Títulos en Plus Jakarta Sans 700; texto en Inter.",
+      "Componentes firmes y claros: botones con buen tamaño táctil, tarjetas sin sombras protagonistas.",
+      "Dos disposiciones de primera clase: barra inferior en celular, menú lateral en PC."
+    ],
+    "rules": [
+      { "name": "La Regla del Bordó Ganado", "body": "El bordó aparece solo donde hay algo que hacer o algo urgente. Si una pantalla está en calma, casi no debería verse bordó fuera del menú.", "section": "colors" },
+      { "name": "La Regla del Semáforo de Campo", "body": "Bordó urgente, ámbar revisión, verde en orden. Ningún color cambia de significado entre pantallas, ni en el mapa.", "section": "colors" },
+      { "name": "La Regla del Piso de 11px", "body": "Nada de texto con información por debajo de 11px. Los 9–10px existentes (contador del nav, pasos de estado) son deuda a corregir, no un patrón.", "section": "typography" },
+      { "name": "La Regla de lo que Flota", "body": "Solo lleva sombra visible lo que está por encima del contenido: menús, popovers, marcadores. Las tarjetas no compiten por altura.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do mantener la paleta y las tipografías actuales; mejorar es afinar, no reemplazar.",
+      "Do usar los tokens de `src/index.css` (`bg-brand`, `text-field`, `bg-surface-low`…) en vez de hex sueltos.",
+      "Do respetar el semáforo: bordó urgente, ámbar revisión, verde en orden, también en el mapa.",
+      "Do diseñar cada pantalla en celular y en PC; las dos son de primera clase.",
+      "Do mostrar siempre cuándo fue el último dato (\"hace 5 min\") junto a datos de telemetría."
+    ],
+    "donts": [
+      "Don't usar texto con información por debajo de 11px.",
+      "Don't agregar sombras grandes a tarjetas ni gradientes decorativos.",
+      "Don't usar colores de Tailwind sin token (red-500, gray-400…) ni hex fuera de la paleta; el ámbar del marcador del mapa (#b45309) debería alinearse con Ámbar Revisión.",
+      "Don't usar el bordó como decoración en pantallas sin nada urgente."
+    ]
+  }
+}
