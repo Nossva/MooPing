@@ -72,6 +72,15 @@ function FlyTo({ point }) {
     // solo al cambiar de animal, no en cada refresco de posiciones
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, map])
+  const followed = useRef(id)
+  useEffect(() => {
+    // si el mismo animal se movió fuera de la vista (ej. collar nuevo lejos del potrero), lo seguimos;
+    // al cambiar de animal vuela el efecto de arriba, y si sigue a la vista no tocamos el mapa
+    const same = followed.current === id
+    followed.current = id
+    if (same && point && !map.getBounds().contains([point.lat, point.lng])) map.panTo([point.lat, point.lng])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, point?.lat, point?.lng, map])
   return null
 }
 

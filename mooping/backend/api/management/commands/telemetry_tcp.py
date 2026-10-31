@@ -168,8 +168,10 @@ class TelemetryServer(socketserver.ThreadingTCPServer):
                 return
             for result in ingest_payload(items):
                 if result.ok:
+                    animal = f', animal {result.animal_id}' if result.animal_id else ', sin animal asignado'
+                    position = '' if result.has_position else ', sin posición (GPS sin fix)'
                     alerts = f', alertas nuevas {result.alerts_created}' if result.alerts_created else ''
-                    self.log(f'[{peer}] lectura {result.reading_id} collar {result.device_id}{alerts}')
+                    self.log(f'[{peer}] lectura {result.reading_id} collar {result.device_id}{animal}{position}{alerts}')
                 else:
                     self.log(f'[{peer}] descartada: {result.error} <- {for_log(items)}')
         except json.JSONDecodeError:

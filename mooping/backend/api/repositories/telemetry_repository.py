@@ -37,5 +37,20 @@ def insert(device_id, animal_id, gateway_id, recorded_at, lng, lat, **values):
     )
 
 
+def reset_last_position(animal_id, device_id):
+    """The animal takes the last position of the collar just put on it (if it
+    ever sent one), not the one from its previous collar."""
+    execute('DELETE FROM animal_last_position WHERE animal_id = %s', [animal_id])
+    execute(
+        """INSERT INTO animal_last_position
+             (animal_id, device_id, recorded_at, location, speed_mps, heading_deg, temp_body_c, activity)
+           SELECT %s, device_id, recorded_at, location, speed_mps, heading_deg, temp_body_c, activity
+           FROM telemetry_readings
+           WHERE device_id = %s AND location IS NOT NULL
+           ORDER BY recorded_at DESC LIMIT 1""",
+        [animal_id, device_id],
+    )
+
+
 def last_packet_at(organization_id):
     return fetch_value('SELECT max(last_seen_at) FROM devices WHERE organization_id = %s', [organization_id])

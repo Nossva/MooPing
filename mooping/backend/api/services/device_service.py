@@ -11,7 +11,8 @@ from api.dto.response.device_response import (
     MaintenanceResponse,
 )
 from api.entities import collar_uid, default_collar_label
-from api.repositories import animal_repository, device_repository
+from api.repositories import animal_repository, device_repository, telemetry_repository
+from api.services import alert_service
 from api.services.errors import Conflict, InvalidInput, NotFound
 
 FILTERS = ('alert', 'stock', 'no_signal', 'needs_attention')
@@ -109,6 +110,11 @@ def assign_device(organization_id, device_id, request):
     if device_repository.active_assignment_for_animal(request.animal_id):
         raise Conflict('El animal ya tiene un collar asignado. Desvinculalo primero.')
     device_repository.assign(device_id, request.animal_id)
+    # The position from the previous collar is no longer the animal's: take the new
+    # collar's last one (none -> off the map until its first reading) and re-check
+    # "fuera del perímetro" against it.
+    telemetry_repository.reset_last_position(request.animal_id, device_id)
+    alert_service.recheck_geofence(organization_id, animal_id=request.animal_id)
     return get_device(organization_id, device_id)
 
 

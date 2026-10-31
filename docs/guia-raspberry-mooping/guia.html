@@ -424,7 +424,7 @@ inventada a mano. Si esto funciona, cualquier problema posterior es de la radio,
 
 <h4><span class="tag pc">PC</span> Qué tenés que ver</h4>
 <p>En el log de la telemetría aparece una línea así (la IP entre corchetes y los números cambian):</p>
-<pre class="out"><code>mooping-telemetry  | [192.168.65.1] lectura 1090 collar 33</code></pre>
+<pre class="out"><code>mooping-telemetry  | [192.168.65.1] lectura 1090 collar 33, sin animal asignado</code></pre>
 <p>Y en la web, en <b>Equipos</b>, aparece la tarjeta <b>"Detectados sin vincular"</b> con el collar de
 prueba recibido por "Molino Sur":</p>
 <figure><img class="shot small" src="img/detectados.png" alt="Detectados sin vincular">
@@ -469,7 +469,10 @@ Signal RSSI=-88 dBm SNR=7.25 dB</code></pre>
 <p>Si aparece <code>connect to telemetry backend …</code> después de cada paquete, la lectura no le está
 llegando a MooPing: volvé a la sección 7. El GPS puede tardar varios minutos en conseguir señal al
 aire libre; mientras tanto el collar manda latitud y longitud en 0 y MooPing guarda la lectura sin
-posición.</p>
+posición. En el log de la telemetría (<code>docker compose logs -f telemetry</code>) se ve así:</p>
+<pre class="out"><code>mooping-telemetry  | [192.168.1.60] lectura 1093 collar 41, sin animal asignado, sin posición (GPS sin fix)</code></pre>
+<p>Mientras diga <i>sin posición</i>, el animal no se va a mover en el mapa: llevá el collar a cielo abierto
+(adentro de la casa el GPS no engancha) y esperá.</p>
 
 <h3><span class="tag pc">PC</span> Vincular el collar en MooPing</h3>
 <ol class="steps">
@@ -484,12 +487,16 @@ posición.</p>
   <li>Buscá <code>C-122</code> (o usá el filtro <b>Sin asignar</b>), tocá <b>"Vincular a un animal"</b>,
     elegí <b>Novillo #305</b> y confirmá.
     <img class="shot small" src="img/asignar.png" alt="Asignar a un animal"></li>
-  <li>Volvé a mover el collar para que mande otra lectura. En <b>Monitoreo</b>, el Novillo #305 muestra
-    <b>Collar #C-122</b>, la señal y su posición en el mapa.</li>
+  <li>En <b>Monitoreo</b>, el Novillo #305 muestra <b>Collar #C-122</b>, la señal y la última posición que
+    mandó el collar. Movelo para que mande otra lectura: en el log aparece <code>animal …</code> y el
+    marcador se mueve.</li>
 </ol>
-<div class="box info"><span class="t">¿Por qué hay que esperar otra lectura?</span>
-<p>Las lecturas que llegaron antes de asignar el collar no tenían animal. La posición del animal se
-actualiza con la primera lectura que llega <b>después</b> de asignarlo.</p></div>
+<div class="box info"><span class="t">El animal aparece donde está el collar, no en el potrero</span>
+<p>Al asignar el collar, el animal toma la última posición <b>con GPS</b> de ese collar. Si el collar
+todavía no mandó ninguna, el animal sale del mapa hasta la primera lectura con posición. Como el collar
+está en tu casa y no en el potrero de la demo, el Novillo #305 va a aparecer lejos y marcado
+<b>FUERA</b> (con su alerta de perímetro); eso es lo esperado. Si lo tenés seleccionado, el mapa lo sigue
+cuando se sale de la vista.</p></div>
 <figure><img class="shot" src="img/monitoreo.png" alt="Monitoreo con el collar C-122">
 <div class="caption">Monitoreo: el Novillo #305 con el collar C-122 (señal −88 dBm, recibido hace 25 s)</div></figure>
 <p>Además, en <b>Equipos</b> y en <b>Soporte</b> el gateway <b>Molino Sur</b> pasa a figurar conectado

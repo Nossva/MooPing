@@ -45,5 +45,6 @@ def ingest(request):
         reading_id=reading_id,
         device_id=device.id,
         animal_id=animal.id if animal else None,
+        has_position=request.lat is not None,
         alerts_created=alerts_created,
     )
