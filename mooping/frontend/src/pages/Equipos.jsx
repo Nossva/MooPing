@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Check, ChevronDown, CirclePlus, Link2, Loader2, LocateFixed, MapPinOff, Package, Radar, Radio, RadioTower, Search,
   ShoppingCart, Signal, TriangleAlert, X,
@@ -10,9 +10,8 @@ import { useApi } from '@/api/useApi'
 import { usePagedApi } from '@/api/usePagedApi'
 import DeviceAttentionCard from '@/components/DeviceAttentionCard'
 import {
-  Button, Card, Empty, ErrorBox, FilterChip, Freshness, IconBubble, Loading, Metric, MoreButton, OwnerOnly, Pill,
-  PageTitle,
-  SectionTitle,
+  AccChevron, Button, Card, Empty, ErrorBox, FilterChip, Freshness, IconBubble, Loading, Metric, MoreButton, OwnerOnly,
+  PageTitle, Pill, SectionTitle, Tabs,
 } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { ageShort, num, seconds, timeAgo } from '@/lib/format'
@@ -31,8 +30,12 @@ const STATE = {
   stock: { label: 'En stock', className: 'bg-surface-high text-muted' },
 }
 
+const TABS = ['collares', 'estaciones']
+
 export default function Equipos() {
   const { isOwner } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'collares'
   const infra = useApi('infrastructure/summary/', { refreshMs: 30000 })
   const attention = useApi('devices/', { params: { filter: 'needs_attention' } })
   const gateways = useApi('gateways/', { refreshMs: 30000 })
@@ -48,6 +51,9 @@ export default function Equipos() {
   }, [search])
   const devices = usePagedApi('devices/', { params: { filter, search: query }, pageSize: 10, pick: (d) => d.items })
   const searching = search.trim() !== query || !devices.current
+  // Formularios de alta: null cerrado; al agregar un detectado, pairing trae ese collar.
+  const [pairing, setPairing] = useState(null)
+  const [addingGateway, setAddingGateway] = useState(false)
 
   const reload = () => {
     infra.reload()
@@ -56,6 +62,8 @@ export default function Equipos() {
     devices.reload()
     if (isOwner) detected.reload()
   }
+
+  const selectTab = (next) => setSearchParams(next === 'collares' ? {} : { tab: next }, { replace: true })
 
   // Si un refresco falla pero ya hay datos, se siguen mostrando (con el aviso de Freshness).
   if (!infra.data) return infra.error ? <ErrorBox error={infra.error} onRetry={infra.reload} /> : <Loading />
@@ -81,7 +89,14 @@ export default function Equipos() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatCard icon={Radar} label="Collares" value={s.collars.active} unit="activos">
+        <StatCard
+          icon={Radar}
+          label="Collares"
+          value={s.collars.active}
+          unit="activos"
+          onClick={() => selectTab('collares')}
+          controls="equipos-collares"
+        >
           De {s.collars.total}: {s.collars.no_signal} sin señal y {s.collars.in_stock} en stock
         </StatCard>
         <StatCard
@@ -90,6 +105,8 @@ export default function Equipos() {
           value={`${s.gateways.online} de ${s.gateways.total}`}
           unit="en línea"
           good={s.gateways.online === s.gateways.total}
+          onClick={() => selectTab('estaciones')}
+          controls="equipos-estaciones"
         >
           {num(s.gateways.coverage_ha)} ha cubiertas
         </StatCard>
@@ -102,42 +119,73 @@ export default function Equipos() {
           className="col-span-2 lg:col-span-1"
           detailClassName="truncate"
           title={s.repeaters.names.join(', ') || undefined}
+          onClick={() => selectTab('estaciones')}
+          controls="equipos-estaciones"
         >
           {s.repeaters.names.join(', ') || 'Sin repetidores'}
         </StatCard>
       </div>
 
-      {/* Celular: una columna en orden de importancia. PC: "Collares en campo" ocupa la columna derecha. */}
-      <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto_auto_1fr] lg:items-start">
-        <section className="space-y-4 lg:col-start-1">
+      {/* Lo urgente queda arriba en las dos pestañas. Sin nada para revisar, una sola línea. */}
+      {!attentionItems ? (
+        attention.error && (
+          <ErrorBox title="No se pudieron cargar los collares para revisar." error={attention.error} onRetry={attention.reload} />
+        )
+      ) : attentionItems.length === 0 ? (
+        <p className="flex items-center gap-2 rounded-xl bg-field-soft/60 px-4 py-3 text-sm font-semibold text-field">
+          <Check aria-hidden className="size-4" /> Todo en orden: ningún collar necesita atención.
+        </p>
+      ) : (
+        <section className="space-y-4">
+          <SectionTitle aside={<Pill className="bg-brand-soft text-brand">{attentionItems.length}</Pill>}>Para revisar</SectionTitle>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {attentionItems.map((d) => (
+              <DeviceAttentionCard key={d.id} device={d} onChange={reload} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <Tabs
+        label="Inventario"
+        idPrefix="equipos"
+        value={tab}
+        onChange={selectTab}
+        tabs={[
+          { key: 'collares', label: 'Collares', count: devices.data?.counts.all },
+          { key: 'estaciones', label: 'Estaciones', count: gateways.data?.length },
+        ]}
+      />
+
+      {tab === 'collares' ? (
+        <section id="equipos-collares" role="tabpanel" aria-labelledby="equipos-tab-collares" className="space-y-4">
           <SectionTitle
             aside={
-              attentionItems && (
-                <Pill className={attentionItems.length > 0 ? 'bg-brand-soft text-brand' : 'bg-field-soft text-field'}>
-                  {attentionItems.length}
-                </Pill>
-              )
+              <OwnerOnly>
+                {!pairing && (
+                  <Button variant="soft" icon={CirclePlus} className="px-3" onClick={() => setPairing({})}>
+                    Agregar collar
+                  </Button>
+                )}
+              </OwnerOnly>
             }
           >
-            Para revisar
+            Collares
           </SectionTitle>
-          {!attentionItems ? (
-            attention.error ? (
-              <ErrorBox title="No se pudieron cargar los collares para revisar." error={attention.error} onRetry={attention.reload} />
-            ) : (
-              <Loading compact label="Cargando…" />
-            )
-          ) : attentionItems.length === 0 ? (
-            <Empty>Nada para revisar.</Empty>
-          ) : (
-            attentionItems.map((d) => <DeviceAttentionCard key={d.id} device={d} onChange={reload} />)
-          )}
-        </section>
-
-        <section className="space-y-4 lg:col-start-2 lg:row-span-5 lg:row-start-1">
-          <SectionTitle aside={devices.data && <Pill className="bg-surface-high text-ink">{devices.data.counts.all}</Pill>}>
-            Collares en campo
-          </SectionTitle>
+          <OwnerOnly>
+            {pairing && (
+              <PairCollar
+                key={pairing.device_uid ?? 'nuevo'}
+                device={pairing.device_uid ? pairing : null}
+                onClose={() => setPairing(null)}
+                onDone={() => {
+                  setPairing(null)
+                  reload()
+                }}
+              />
+            )}
+            <DetectedCollars detected={detected} onPick={(d) => setPairing(d)} />
+          </OwnerOnly>
           <div className="flex min-h-12 items-center gap-3 rounded-xl bg-white pl-3 pr-1 shadow-sm ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-brand/30">
             <Search aria-hidden className="size-4 shrink-0 text-muted" />
             <input
@@ -177,20 +225,51 @@ export default function Equipos() {
                 ? `Ningún collar coincide con «${query}».`
                 : filter
                   ? `Ningún collar en «${filterLabel}».`
-                  : 'Todavía no hay collares.'}
+                  : isOwner
+                    ? 'Todavía no agregaste collares. Tocá «Agregar collar» y escribí el número grabado en el collar.'
+                    : 'Todavía no hay collares en este establecimiento.'}
             </Empty>
           ) : (
-            <div aria-busy={!devices.current} className={cx('space-y-4 transition-opacity', !devices.current && 'opacity-60')}>
+            <div
+              aria-busy={!devices.current}
+              className={cx('grid gap-4 transition-opacity lg:grid-cols-2 lg:items-start', !devices.current && 'opacity-60')}
+            >
               {devices.items.map((d) => (
                 <CollarCard key={d.id} device={d} onChange={reload} />
               ))}
             </div>
           )}
           <MoreButton list={devices}>Ver más collares</MoreButton>
+          <OwnerOnly>
+            <StoreCard />
+          </OwnerOnly>
         </section>
-
-        <section className="space-y-4 lg:col-start-1">
-          <SectionTitle>Estaciones AgroBot y repetidores</SectionTitle>
+      ) : (
+        <section id="equipos-estaciones" role="tabpanel" aria-labelledby="equipos-tab-estaciones" className="space-y-4">
+          <SectionTitle
+            aside={
+              <OwnerOnly>
+                {!addingGateway && (
+                  <Button variant="soft" icon={CirclePlus} className="px-3" onClick={() => setAddingGateway(true)}>
+                    Agregar estación
+                  </Button>
+                )}
+              </OwnerOnly>
+            }
+          >
+            Estaciones y repetidores
+          </SectionTitle>
+          <OwnerOnly>
+            {addingGateway && (
+              <AddGateway
+                onClose={() => setAddingGateway(false)}
+                onDone={() => {
+                  setAddingGateway(false)
+                  reload()
+                }}
+              />
+            )}
+          </OwnerOnly>
           {!gateways.data ? (
             gateways.error ? (
               <ErrorBox title="No se pudieron cargar las estaciones." error={gateways.error} onRetry={gateways.reload} />
@@ -198,31 +277,43 @@ export default function Equipos() {
               <Loading compact label="Cargando estaciones…" />
             )
           ) : gateways.data.length === 0 ? (
-            <Empty>Todavía no hay estaciones ni repetidores.</Empty>
+            <Empty>
+              {isOwner
+                ? 'Sin estaciones todavía. Agregá la Pi con su GATEWAY_ID para empezar a recibir datos del campo.'
+                : 'Sin estaciones todavía. El dueño del establecimiento las agrega.'}
+            </Empty>
           ) : (
-            gateways.data.map((g) => <GatewayCard key={g.id} gateway={g} onChange={reload} />)
+            <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+              {gateways.data.map((g) => (
+                <GatewayCard key={g.id} gateway={g} onChange={reload} />
+              ))}
+            </div>
           )}
-          <OwnerOnly>
-            <AddGateway onDone={reload} />
-          </OwnerOnly>
         </section>
-
-        <OwnerOnly>
-          <section className="lg:col-start-1">
-            <PairCollar detected={detected} onDone={reload} />
-          </section>
-          <section className="lg:col-start-1">
-            <StoreCard />
-          </section>
-        </OwnerOnly>
-      </div>
+      )}
     </div>
   )
 }
 
-function StatCard({ icon: Icon, label, value, unit, good, className, detailClassName, title, children }) {
+// Tocarla abre la pestaña de lo que resume (controls = id del panel).
+function StatCard({ icon: Icon, label, value, unit, good, className, detailClassName, title, onClick, controls, children }) {
   return (
-    <Card className={cx('p-3.5', className)}>
+    <Card
+      role="button"
+      tabIndex={0}
+      aria-controls={controls}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
+      className={cx(
+        'cursor-pointer p-3.5 text-left transition-[box-shadow,scale] duration-150 hover:shadow-md active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-brand',
+        className,
+      )}
+    >
       <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
         <Icon aria-hidden className="size-4" /> {label}
       </p>
@@ -333,10 +424,10 @@ function GatewayCard({ gateway: g, onChange }) {
           </p>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setMode(null)}>
-              No, dejarla
+              Cancelar
             </Button>
             <Button busy={busy} onClick={() => run(() => api(`gateways/${g.id}/`, { method: 'DELETE' }))}>
-              Sí, quitar
+              Quitar estación
             </Button>
           </div>
         </div>
@@ -389,7 +480,7 @@ function HeardDevices({ gatewayId }) {
                 ? [d.animal.name, d.animal_tag].filter(Boolean).join(' · ')
                 : d.owned
                   ? 'Sin animal'
-                  : 'Sin dueño: agregalo desde "Detectados sin agregar"'}
+                  : 'Sin dueño: agregalo desde la pestaña Collares'}
             </p>
           </div>
           <span className="shrink-0 text-xs text-muted">{timeAgo(d.last_heard_at)}</span>
@@ -476,21 +567,13 @@ function GatewayFields({ form, setForm, namePlaceholder }) {
 
 // "Agregar estación": registra el GATEWAY_ID con el que arranca el receptor de la Pi. Desde ahí
 // sus lecturas cuentan para el establecimiento (Conectado, Detectados, collares escuchados).
-function AddGateway({ onDone }) {
-  const [open, setOpen] = useState(false)
+function AddGateway({ onClose, onDone }) {
   const [uid, setUid] = useState('')
   const [form, setForm] = useState(() => gatewayForm(null))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
   const normalized = uid.trim().toUpperCase()
-
-  function start() {
-    setUid('')
-    setForm(gatewayForm(null))
-    setError(null)
-    setOpen(true)
-  }
 
   async function submit(e) {
     e.preventDefault()
@@ -499,21 +582,11 @@ function AddGateway({ onDone }) {
     try {
       const { name, ...rest } = gatewayBody(form)
       await api('gateways/', { method: 'POST', body: { gateway_uid: normalized, ...rest, name: name || undefined } })
-      setOpen(false)
       onDone()
     } catch (err) {
       setError(err.message)
-    } finally {
       setBusy(false)
     }
-  }
-
-  if (!open) {
-    return (
-      <Button variant="outline" icon={CirclePlus} className="w-full" onClick={start}>
-        Agregar estación
-      </Button>
-    )
   }
 
   return (
@@ -543,11 +616,11 @@ function AddGateway({ onDone }) {
           </p>
         )}
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancelar
           </Button>
           <Button type="submit" busy={busy} disabled={!normalized}>
-            Agregar
+            Agregar estación
           </Button>
         </div>
       </form>
@@ -664,10 +737,10 @@ function CollarCard({ device: d, onChange }) {
           </p>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setConfirmUnlink(false)}>
-              No, dejarlo
+              Cancelar
             </Button>
             <Button busy={busy} onClick={() => run(() => api(`devices/${d.id}/unassign/`, { method: 'POST', body: {} }))}>
-              Sí, desvincular
+              Desvincular collar
             </Button>
           </div>
         </div>
@@ -797,23 +870,15 @@ function collarUid(raw) {
 
 const defaultLabel = (uid) => `C-${uid.replace('COLLAR-', '').padStart(3, '0')}`
 
-// "Agregar collar": por número (el grabado en el collar) o eligiendo uno de los detectados,
-// que ya transmiten por las estaciones del establecimiento pero no tienen dueño.
-function PairCollar({ detected, onDone }) {
-  const [open, setOpen] = useState(false)
-  const [number, setNumber] = useState('')
+// "Agregar collar": por número (el grabado en el collar) o eligiendo uno de los detectados
+// (device), que ya transmiten por las estaciones del establecimiento pero no tienen dueño.
+function PairCollar({ device, onClose, onDone }) {
+  const [number, setNumber] = useState(device ? device.device_uid.replace('COLLAR-', '') : '')
   const [label, setLabel] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
   const uid = collarUid(number)
-
-  function start(device) {
-    setNumber(device ? device.device_uid.replace('COLLAR-', '') : '')
-    setLabel('')
-    setError(null)
-    setOpen(true)
-  }
 
   async function submit(e) {
     e.preventDefault()
@@ -821,102 +886,121 @@ function PairCollar({ detected, onDone }) {
     setError(null)
     try {
       await api('devices/', { method: 'POST', body: { device_uid: uid, label: label.trim() || undefined } })
-      setOpen(false)
       onDone()
     } catch (err) {
       setError(err.message)
-    } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="space-y-4">
-      {open ? (
-        <Card>
-          <form onSubmit={submit} className="space-y-3">
-            <p className="font-display text-lg font-bold">Agregar collar</p>
-            <p className="-mt-2 text-xs text-muted">Queda en stock. Después se lo ponés a un animal desde su tarjeta en "Collares en campo".</p>
-            <label className="block text-xs text-muted">
-              Número del collar
-              <input
-                required
-                autoFocus
-                inputMode="numeric"
-                value={number}
-                onChange={(e) => setNumber(e.target.value)}
-                placeholder="Ej: 84"
-                className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm text-ink"
-              />
-            </label>
-            <p className={cx('-mt-1 text-xs', uid || !number.trim() ? 'text-muted' : 'text-brand')}>
-              {uid ? (
-                <>
-                  Se vincula como <span className="font-mono font-semibold text-ink">{uid}</span>, el ID que manda el collar.
-                </>
-              ) : number.trim() ? (
-                'Escribí el número grabado en el collar (de 0 a 65535).'
-              ) : (
-                'Es el número grabado en el collar.'
-              )}
-            </p>
-            <label className="block text-xs text-muted">
-              Etiqueta (opcional)
-              <input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder={uid ? defaultLabel(uid) : 'Ej: C-084'}
-                className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm text-ink"
-              />
-            </label>
-            {error && (
-              <p role="alert" className="text-xs text-brand">
-                {error}
-              </p>
-            )}
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" busy={busy} disabled={!uid}>
-                Agregar
-              </Button>
-            </div>
-          </form>
-        </Card>
-      ) : (
-        <Button icon={CirclePlus} className="w-full py-4 text-base" onClick={() => start(null)}>
-          Agregar collar
-        </Button>
-      )}
+    <Card>
+      <form onSubmit={submit} className="space-y-3">
+        <p className="font-display text-lg font-bold">Agregar collar</p>
+        <p className="-mt-2 text-xs text-muted">Queda en stock. Después se lo ponés a un animal desde su tarjeta, abajo.</p>
+        <label className="block text-xs text-muted">
+          Número del collar
+          <input
+            required
+            autoFocus
+            inputMode="numeric"
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="Ej: 84"
+            className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm text-ink"
+          />
+        </label>
+        <p className={cx('-mt-1 text-xs', uid || !number.trim() ? 'text-muted' : 'text-brand')}>
+          {uid ? (
+            <>
+              Se agrega como <span className="font-mono font-semibold text-ink">{uid}</span>, el ID que manda el collar.
+            </>
+          ) : number.trim() ? (
+            'Escribí el número grabado en el collar (de 0 a 65535).'
+          ) : (
+            'Es el número grabado en el collar.'
+          )}
+        </p>
+        <label className="block text-xs text-muted">
+          Etiqueta (opcional)
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={uid ? defaultLabel(uid) : 'Ej: C-084'}
+            className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2.5 text-sm text-ink"
+          />
+        </label>
+        {error && (
+          <p role="alert" className="text-xs text-brand">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" busy={busy} disabled={!uid}>
+            Agregar collar
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
 
-      {detected.error && !detected.data ? (
-        <ErrorBox title="No se pudieron cargar los collares detectados." error={detected.error} onRetry={detected.reload} />
-      ) : (
-        detected.data?.length > 0 && (
-          <Card className="space-y-2">
-            <SectionTitle icon={Radar} aside={<Pill className="bg-warn-soft text-warn-ink">{detected.data.length}</Pill>}>
-              Detectados sin agregar
-            </SectionTitle>
-            <p className="text-xs text-muted">Transmiten por tus estaciones pero todavía no son de ningún establecimiento.</p>
-            <ul className="divide-y divide-black/5">
-              {detected.data.map((d) => (
-                <li key={d.device_uid} className="flex items-center gap-3 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-ink">Collar {d.device_uid.replace('COLLAR-', '')}</p>
-                    <p className="truncate text-xs text-muted">
-                      <span className="font-mono">{d.device_uid}</span> · {d.gateway_name} · {timeAgo(d.last_seen_at)}
-                    </p>
-                  </div>
-                  <Button variant="soft" icon={CirclePlus} className="shrink-0 px-3" onClick={() => start(d)}>
-                    Agregar
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )
-      )}
+// Aviso plegable arriba de la lista: collares que se escuchan por las estaciones propias y
+// todavía no se agregaron. Elegir uno abre "Agregar collar" con su número.
+function DetectedCollars({ detected, onPick }) {
+  const [open, setOpen] = useState(false)
+  if (detected.error && !detected.data) {
+    return <ErrorBox title="No se pudieron cargar los collares detectados." error={detected.error} onRetry={detected.reload} />
+  }
+  const items = detected.data ?? []
+  if (items.length === 0) return null
+  return (
+    <div className="t-acc rounded-xl bg-warn-soft/60" data-open={open}>
+      <button
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls="detectados"
+        className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left"
+      >
+        <Radar aria-hidden className="size-4 shrink-0 text-warn-ink" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-warn-ink">
+            {items.length === 1 ? '1 collar detectado sin agregar' : `${items.length} collares detectados sin agregar`}
+          </span>
+          <span className="block text-xs text-muted">Se escuchan por tus estaciones pero todavía no los agregaste.</span>
+        </span>
+        <AccChevron className="shrink-0 text-warn-ink" />
+      </button>
+      <div id="detectados" className="t-acc-panel">
+        <div className="t-acc-panel-inner" inert={!open}>
+          <ul className="divide-y divide-black/5 px-4 pb-2">
+            {items.map((d) => (
+              <li key={d.device_uid} className="flex items-center gap-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-ink">Collar {d.device_uid.replace('COLLAR-', '')}</p>
+                  <p className="truncate text-xs text-muted">
+                    <span className="font-mono">{d.device_uid}</span> · {d.gateway_name} · {timeAgo(d.last_seen_at)}
+                  </p>
+                </div>
+                <Button
+                  variant="soft"
+                  icon={CirclePlus}
+                  className="shrink-0 bg-white px-3"
+                  onClick={() => {
+                    setOpen(false)
+                    onPick(d)
+                  }}
+                >
+                  Agregar
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   )
 }

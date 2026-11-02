@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import { Loader2, WifiOff } from 'lucide-react'
 import logo from '@/assets/mooping-logo.png'
 import { useAuth } from '@/api/auth'
@@ -232,5 +233,86 @@ export function FilterChip({ active, onClick, count, dot, children, type = 'butt
         <span className={cx('tabular-nums', active ? 'text-white/80' : 'text-muted')}>{count}</span>
       )}
     </button>
+  )
+}
+
+// Pestañas de una pantalla. El fondo bordó se desliza entre pestañas como en la barra
+// inferior (tabs sliding de transitions.dev). tabs: [{ key, label, count }].
+// El panel de cada pestaña lleva id={`${idPrefix}-${key}`}.
+export function Tabs({ tabs, value, onChange, label, idPrefix }) {
+  const listRef = useRef(null)
+  const pillRef = useRef(null)
+  const placed = useRef(false)
+
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const pill = pillRef.current
+    if (!list || !pill) return
+    const moveTo = (animate) => {
+      const tab = list.querySelector('[aria-selected="true"]')
+      if (!tab) return
+      const prev = pill.style.transition
+      if (!animate) pill.style.transition = 'none'
+      pill.style.transform = `translateX(${tab.offsetLeft}px)`
+      pill.style.width = `${tab.offsetWidth}px`
+      if (!animate) {
+        void pill.offsetWidth
+        pill.style.transition = prev
+      }
+    }
+    moveTo(placed.current)
+    placed.current = true
+    const onResize = () => moveTo(false)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [value, tabs])
+
+  // Flechas ←/→: pasan a la pestaña vecina y le dan el foco.
+  function onKeyDown(e) {
+    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
+    if (!step) return
+    e.preventDefault()
+    const i = tabs.findIndex((t) => t.key === value)
+    const next = tabs[(i + step + tabs.length) % tabs.length]
+    onChange(next.key)
+    requestAnimationFrame(() => listRef.current?.querySelector(`[data-key="${next.key}"]`)?.focus())
+  }
+
+  return (
+    <div
+      ref={listRef}
+      role="tablist"
+      aria-label={label}
+      onKeyDown={onKeyDown}
+      className="relative grid rounded-full bg-surface-high p-1"
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+    >
+      <span ref={pillRef} aria-hidden className="t-tabs-pill t-tabs-pill--segment" />
+      {tabs.map((t) => {
+        const active = t.key === value
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            data-key={t.key}
+            id={`${idPrefix}-tab-${t.key}`}
+            aria-selected={active}
+            aria-controls={`${idPrefix}-${t.key}`}
+            tabIndex={active ? 0 : -1}
+            onClick={() => onChange(t.key)}
+            className={cx(
+              't-tab relative z-[1] flex min-h-11 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-colors duration-[var(--tabs-dur)] ease-[var(--tabs-ease)]',
+              active ? 'text-white' : 'text-ink hover:text-brand',
+            )}
+          >
+            {t.label}
+            {t.count != null && (
+              <span className={cx('tabular-nums', active ? 'text-white/80' : 'text-muted')}>{t.count}</span>
+            )}
+          </button>
+        )
+      })}
+    </div>
   )
 }
