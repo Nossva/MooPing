@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CircleAlert, FileText, LocateFixed, Loader2, NotebookPen, UserPlus, CheckCheck } from 'lucide-react'
 import { api } from '@/api/client'
 import { useAuth } from '@/api/auth'
-import { ALERT_TYPES, CATEGORY_BADGE, STATUS_LABEL, STATUS_STEPS, nextStatus } from '@/lib/alerts'
+import { ALERT_TYPES, CATEGORY_BADGE, DEFAULT_ACTIONS, STATUS_LABEL, STATUS_STEPS, nextStatus } from '@/lib/alerts'
 import { num, timeAgo } from '@/lib/format'
 import { Badge, Button, Card, Metric } from './ui'
 import { cx } from '@/lib/cx'
@@ -83,6 +83,7 @@ export default function AlertCard({ alert, onChange, highlight, media, wide = fa
   const badge = CATEGORY_BADGE[alert.category]
   const critical = alert.category === 'critical'
   const Icon = type.icon
+  const actions = type.actions ?? DEFAULT_ACTIONS
 
   async function run(which, fn) {
     setBusy(which)
@@ -298,27 +299,28 @@ export default function AlertCard({ alert, onChange, highlight, media, wide = fa
           </div>
         )}
 
-        <div className={cx('flex gap-3', wide && 'lg:mt-auto')}>
+        {/* Los textos cambian según el problema: si no entran en una línea, se parten centrados. */}
+        <div className={cx('flex gap-3 [&>button]:text-center [&>button]:leading-tight', compact && '[&>button]:px-3', wide && 'lg:mt-auto')}>
           {alert.type === 'geofence_exit' || alert.type === 'no_signal' ? (
             <Button
               icon={LocateFixed}
               className="flex-[1.4]"
               onClick={() => navigate(`/monitoreo?animal=${alert.animal?.id ?? ''}`)}
             >
-              Ubicar en GPS
+              {actions.primary}
             </Button>
           ) : (
             <Button icon={NotebookPen} className="flex-[1.4]" onClick={() => setNoteOpen((v) => !v)}>
-              Anotar
+              {actions.primary}
             </Button>
           )}
           {queued ? null : alert.status === 'pending' ? (
             <Button variant="outline" icon={UserPlus} className="flex-1" busy={busy === 'assign'} onClick={assign}>
-              Me la llevo
+              {actions.assign}
             </Button>
           ) : alert.status !== 'resolved' ? (
             <Button variant="outline" icon={CheckCheck} className="flex-1" busy={busy === 'advance'} onClick={advance}>
-              {alert.status === 'in_progress' ? 'Marcar resuelta' : 'Empezar'}
+              {alert.status === 'in_progress' ? actions.resolve : actions.start}
             </Button>
           ) : (
             <Button
