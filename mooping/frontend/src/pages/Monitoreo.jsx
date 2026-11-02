@@ -43,6 +43,7 @@ export default function Monitoreo() {
   const [track, setTrack] = useState(null)
   // null = cerrado, 'new' = alta, o el potrero que se edita
   const [editingYard, setEditingYard] = useState(null)
+  const [addingAnimal, setAddingAnimal] = useState(false)
   const mapRef = useRef(null)
   const detailRef = useRef(null)
 
@@ -74,6 +75,7 @@ export default function Monitoreo() {
   // En el celular la ficha queda debajo del mapa: la traemos a la vista.
   const select = (id) => {
     setTrack(null)
+    setAddingAnimal(false)
     setParams({ animal: id })
     if (id) reveal(detailRef)
   }
@@ -187,26 +189,43 @@ export default function Monitoreo() {
 
           {/* Buscador y listado */}
           <Card className="order-4 space-y-3">
-            <div className="flex items-center gap-3 rounded-lg bg-surface-low pl-3 focus-within:ring-2 focus-within:ring-brand/30">
-              <Search aria-hidden className="size-4 shrink-0 text-muted" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Caravana, collar o lote"
-                aria-label="Buscar animal por caravana, collar o lote"
-                className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-none"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  aria-label="Borrar búsqueda"
-                  className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:text-ink"
+            <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-surface-low pl-3 focus-within:ring-2 focus-within:ring-brand/30">
+                <Search aria-hidden className="size-4 shrink-0 text-muted" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Caravana, collar o lote"
+                  aria-label="Buscar animal por caravana, collar o lote"
+                  className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-none"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    aria-label="Borrar búsqueda"
+                    className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:text-ink"
+                  >
+                    <X className="size-4" />
+                  </button>
+                )}
+              </div>
+              <OwnerOnly>
+                <Button
+                  variant="soft"
+                  icon={Plus}
+                  aria-label="Agregar animal"
+                  title="Agregar animal"
+                  aria-pressed={addingAnimal}
+                  onClick={() => {
+                    setAddingAnimal((v) => !v)
+                    reveal(detailRef)
+                  }}
                 >
-                  <X className="size-4" />
-                </button>
-              )}
+                  <span className="hidden sm:inline">Agregar animal</span>
+                </Button>
+              </OwnerOnly>
             </div>
             <div className="flex gap-2 overflow-x-auto">
               {FILTERS.map((f) => (
@@ -237,7 +256,23 @@ export default function Monitoreo() {
 
         <div className="contents lg:block lg:space-y-4">
           <div ref={detailRef} className="order-2 scroll-mt-20">
-            {selectedId ? (
+            {addingAnimal ? (
+              <Card className="space-y-3">
+                <h3 className="font-display text-xl font-bold text-ink">Agregar animal</h3>
+                <AnimalForm
+                  yards={yardList}
+                  defaultYardId={yardId}
+                  onCancel={() => setAddingAnimal(false)}
+                  onSaved={(created) => {
+                    positions.reload()
+                    results.reload()
+                    summary.reload()
+                    yards.reload() // cambia el conteo de animales del potrero
+                    select(created.id)
+                  }}
+                />
+              </Card>
+            ) : selectedId ? (
               <AnimalPanel
                 key={selectedId}
                 animalId={selectedId}
@@ -677,26 +712,27 @@ function AnimalPanel({ animalId, yards, onTrack, hasTrack, onChanged }) {
   )
 }
 
-// Datos del animal (PATCH animals/{id}/). Solo el dueño: lo envuelve OwnerOnly.
-function AnimalForm({ animal, yards, onCancel, onSaved }) {
+// Datos del animal: alta (POST animals/) sin `animal`, o edición (PATCH animals/{id}/).
+// Solo el dueño: lo envuelve OwnerOnly.
+function AnimalForm({ animal = null, yards, defaultYardId = '', onCancel, onSaved }) {
   const [form, setForm] = useState({
-    name: animal.name,
-    tag_number: animal.tag_number ?? '',
-    lot: animal.lot ?? '',
-    breed: animal.breed ?? '',
-    sex: animal.sex ?? '',
-    birth_date: animal.birth_date ?? '',
-    yard_id: animal.yard?.id ?? '',
-    status: animal.status,
+    name: animal?.name ?? '',
+    tag_number: animal?.tag_number ?? '',
+    lot: animal?.lot ?? '',
+    breed: animal?.breed ?? '',
+    sex: animal?.sex ?? '',
+    birth_date: animal?.birth_date ?? '',
+    yard_id: animal ? (animal.yard?.id ?? '') : defaultYardId,
+    status: animal?.status ?? 'active',
   })
   // photo: File elegido, null = quitar la actual, undefined = sin cambios
   const [photo, setPhoto] = useState(undefined)
-  const [preview, setPreview] = useState(animal.photo_url)
+  const [preview, setPreview] = useState(animal?.photo_url ?? null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   // Pasar a Vendido/Muerto saca al animal del rodeo: se confirma antes de guardar.
   const [confirming, setConfirming] = useState(false)
-  const leaving = FINAL_STATUS.includes(form.status) && form.status !== animal.status
+  const leaving = !!animal && FINAL_STATUS.includes(form.status) && form.status !== animal.status
   const statusLabel = STATUS_OPTIONS.find((o) => o.key === form.status)?.label
 
   // La vista previa local se libera al cambiarla o al cerrar el formulario.
@@ -725,7 +761,7 @@ function AnimalForm({ animal, yards, onCancel, onSaved }) {
   }
 
   function clearPhoto() {
-    setPhoto(animal.photo_url ? null : undefined)
+    setPhoto(animal?.photo_url ? null : undefined)
     setPreview(null)
   }
 
@@ -735,8 +771,8 @@ function AnimalForm({ animal, yards, onCancel, onSaved }) {
     setBusy(true)
     setError(null)
     try {
-      await api(`animals/${animal.id}/`, {
-        method: 'PATCH',
+      const saved = await api(animal ? `animals/${animal.id}/` : 'animals/', {
+        method: animal ? 'PATCH' : 'POST',
         body: {
           name: form.name.trim(),
           tag_number: orNull(form.tag_number),
@@ -751,11 +787,11 @@ function AnimalForm({ animal, yards, onCancel, onSaved }) {
       if (photo) {
         const data = new FormData()
         data.append('photo', photo)
-        await api(`animals/${animal.id}/photo/`, { method: 'POST', body: data })
+        await api(`animals/${saved.id}/photo/`, { method: 'POST', body: data })
       } else if (photo === null) {
-        await api(`animals/${animal.id}/photo/`, { method: 'DELETE' })
+        await api(`animals/${saved.id}/photo/`, { method: 'DELETE' })
       }
-      onSaved()
+      onSaved(saved)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -794,16 +830,19 @@ function AnimalForm({ animal, yards, onCancel, onSaved }) {
           Fecha de nacimiento
           <input type="date" value={form.birth_date} onChange={set('birth_date')} className={INPUT} />
         </label>
-        <label className="text-xs text-muted">
-          Estado
-          <select value={form.status} onChange={set('status')} className={INPUT}>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* Un alta siempre entra activa: el estado se cambia después, al editar. */}
+        {animal && (
+          <label className="text-xs text-muted">
+            Estado
+            <select value={form.status} onChange={set('status')} className={INPUT}>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="col-span-2 text-xs text-muted">
           Potrero
           <select value={form.yard_id} onChange={set('yard_id')} className={INPUT}>
@@ -854,7 +893,7 @@ function AnimalForm({ animal, yards, onCancel, onSaved }) {
           {confirming ? 'Volver' : 'Cancelar'}
         </Button>
         <Button type="submit" icon={Check} busy={busy}>
-          {confirming ? `Sí, marcar ${statusLabel?.toLowerCase()}` : 'Guardar'}
+          {confirming ? `Sí, marcar ${statusLabel?.toLowerCase()}` : animal ? 'Guardar' : 'Agregar animal'}
         </Button>
       </div>
     </form>
