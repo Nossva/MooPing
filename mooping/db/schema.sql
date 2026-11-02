@@ -234,6 +234,7 @@ CREATE TABLE telemetry_readings (
 
 CREATE INDEX telemetry_animal_time_idx ON telemetry_readings (animal_id, recorded_at DESC);
 CREATE INDEX telemetry_device_time_idx ON telemetry_readings (device_id, recorded_at DESC);
+CREATE INDEX telemetry_gateway_time_idx ON telemetry_readings (gateway_id, recorded_at DESC);
 CREATE INDEX telemetry_time_brin       ON telemetry_readings USING BRIN (recorded_at);
 CREATE INDEX telemetry_location_gix    ON telemetry_readings USING GIST (location);
 

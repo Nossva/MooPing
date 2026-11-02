@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Check, CirclePlus, Link2, Loader2, LocateFixed, MapPinOff, Package, Radar, Radio, RadioTower, Search,
+  Check, ChevronDown, CirclePlus, Link2, Loader2, LocateFixed, MapPinOff, Package, Radar, Radio, RadioTower, Search,
   ShoppingCart, Signal, TriangleAlert, X,
 } from 'lucide-react'
 import { useAuth } from '@/api/auth'
@@ -200,8 +200,11 @@ export default function Equipos() {
           ) : gateways.data.length === 0 ? (
             <Empty>Todavía no hay estaciones ni repetidores.</Empty>
           ) : (
-            gateways.data.map((g) => <GatewayCard key={g.id} gateway={g} />)
+            gateways.data.map((g) => <GatewayCard key={g.id} gateway={g} onChange={reload} />)
           )}
+          <OwnerOnly>
+            <AddGateway onDone={reload} />
+          </OwnerOnly>
         </section>
 
         <OwnerOnly>
@@ -236,9 +239,36 @@ function StatCard({ icon: Icon, label, value, unit, good, className, detailClass
   )
 }
 
-function GatewayCard({ gateway: g }) {
+function GatewayCard({ gateway: g, onChange }) {
   const repeater = g.kind === 'repeater'
   const power = g.power_source === 'solar' ? ' solar' : g.power_source === 'grid' ? ' a red' : ''
+  const [mode, setMode] = useState(null)
+  const [form, setForm] = useState(() => gatewayForm(g))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [showHeard, setShowHeard] = useState(false)
+
+  function toggle(next) {
+    setMode(mode === next ? null : next)
+    setError(null)
+    // Al abrir, el formulario arranca de los datos actuales de la estación.
+    if (next === 'edit') setForm(gatewayForm(g))
+  }
+
+  async function run(fn) {
+    setBusy(true)
+    setError(null)
+    try {
+      await fn()
+      setMode(null)
+      onChange()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Card className="space-y-3">
       <div className="flex items-start gap-3">
@@ -264,6 +294,265 @@ function GatewayCard({ gateway: g }) {
         <Metric value={g.coverage_ha != null ? `${num(g.coverage_ha)} ha` : '—'} label="Cobertura" />
         <Metric value={ageShort(g.last_seen_at)} label="Último dato" />
       </div>
+
+      <button
+        onClick={() => setShowHeard(!showHeard)}
+        aria-expanded={showHeard}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg bg-surface-low px-3 text-left text-xs"
+      >
+        <span>
+          <span className="font-semibold text-ink">
+            {g.heard_devices === 1 ? '1 collar' : `${g.heard_devices} collares`}
+          </span>{' '}
+          <span className="text-muted">escuchados en las últimas 24 h</span>
+        </span>
+        <ChevronDown aria-hidden className={cx('size-4 shrink-0 text-muted transition-transform', showHeard && 'rotate-180')} />
+      </button>
+      {showHeard && <HeardDevices gatewayId={g.id} />}
+
+      {mode === 'edit' && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            run(() => api(`gateways/${g.id}/`, { method: 'PATCH', body: gatewayBody(form) }))
+          }}
+          className="space-y-3"
+        >
+          <GatewayFields form={form} setForm={setForm} />
+          <div className="flex justify-end">
+            <Button type="submit" icon={Check} busy={busy} disabled={!form.name.trim()}>
+              Guardar
+            </Button>
+          </div>
+        </form>
+      )}
+      {mode === 'remove' && (
+        <div className="space-y-3 rounded-lg bg-brand-soft/30 p-3">
+          <p className="text-sm text-ink">
+            ¿Quitar {g.name}? Las lecturas ya guardadas se conservan, pero lo que siga mandando esta Pi deja de asociarse a la
+            estación.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setMode(null)}>
+              No, dejarla
+            </Button>
+            <Button busy={busy} onClick={() => run(() => api(`gateways/${g.id}/`, { method: 'DELETE' }))}>
+              Sí, quitar
+            </Button>
+          </div>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="text-xs text-brand">
+          {error}
+        </p>
+      )}
+
+      <OwnerOnly>
+        <div className="flex justify-end gap-3">
+          {mode !== 'remove' && (
+            <Button variant="outline" onClick={() => toggle('edit')}>
+              {mode === 'edit' ? 'Cancelar' : 'Editar'}
+            </Button>
+          )}
+          {mode !== 'edit' && mode !== 'remove' && (
+            <Button variant="outline" onClick={() => toggle('remove')}>
+              Quitar
+            </Button>
+          )}
+        </div>
+      </OwnerOnly>
+    </Card>
+  )
+}
+
+// El collar no queda atado a una estación: la lista sale de las lecturas que entraron por ella.
+function HeardDevices({ gatewayId }) {
+  const { data, error, reload } = useApi(`gateways/${gatewayId}/devices/`)
+  if (!data) {
+    return error ? (
+      <ErrorBox title="No se pudieron cargar los collares." error={error} onRetry={reload} />
+    ) : (
+      <Loading compact label="Cargando collares…" />
+    )
+  }
+  if (data.length === 0) return <p className="px-3 text-xs text-muted">Ningún collar en las últimas 24 h.</p>
+  return (
+    <ul className="divide-y divide-black/5 px-3">
+      {data.map((d) => (
+        <li key={d.id} className="flex items-center gap-3 py-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">
+              {d.owned ? `Collar #${d.label ?? d.device_uid}` : `Collar ${d.device_uid.replace('COLLAR-', '')}`}
+            </p>
+            <p className="truncate text-xs text-muted">
+              {d.animal
+                ? [d.animal.name, d.animal_tag].filter(Boolean).join(' · ')
+                : d.owned
+                  ? 'Sin animal'
+                  : 'Sin dueño: agregalo desde "Detectados sin agregar"'}
+            </p>
+          </div>
+          <span className="shrink-0 text-xs text-muted">{timeAgo(d.last_heard_at)}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const POWER_OPTIONS = [
+  { value: '', label: 'Sin dato' },
+  { value: 'solar', label: 'Solar' },
+  { value: 'grid', label: 'Red eléctrica' },
+  { value: 'battery', label: 'Batería' },
+]
+
+const gatewayForm = (g) => ({
+  name: g?.name ?? '',
+  kind: g?.kind ?? 'gateway',
+  power_source: g?.power_source ?? '',
+  radio: g?.radio ?? '',
+  coverage_ha: g?.coverage_ha != null ? String(g.coverage_ha) : '',
+})
+
+// Los campos vacíos se mandan como null para borrar el dato.
+function gatewayBody(form) {
+  return {
+    name: form.name.trim(),
+    kind: form.kind,
+    power_source: form.power_source || null,
+    radio: form.radio.trim() || null,
+    coverage_ha: form.coverage_ha === '' ? null : Number(form.coverage_ha),
+  }
+}
+
+const inputClass = 'mt-1 min-h-11 w-full rounded-lg border border-black/10 px-3 py-2 text-sm text-ink'
+
+function GatewayFields({ form, setForm, namePlaceholder }) {
+  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
+  return (
+    <>
+      <label className="block text-xs text-muted">
+        Nombre{namePlaceholder ? ' (opcional)' : ''}
+        <input value={form.name} onChange={set('name')} placeholder={namePlaceholder ?? 'Ej: Base Galpón'} className={inputClass} />
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block text-xs text-muted">
+          Tipo
+          <select value={form.kind} onChange={set('kind')} className={inputClass}>
+            <option value="gateway">Estación AgroBot</option>
+            <option value="repeater">Repetidor</option>
+          </select>
+        </label>
+        <label className="block text-xs text-muted">
+          Alimentación
+          <select value={form.power_source} onChange={set('power_source')} className={inputClass}>
+            {POWER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-xs text-muted">
+          Radio
+          <input value={form.radio} onChange={set('radio')} placeholder="Ej: LoRa 433 MHz" className={inputClass} />
+        </label>
+        <label className="block text-xs text-muted">
+          Cobertura (ha)
+          <input
+            type="number"
+            min={0}
+            step="any"
+            inputMode="decimal"
+            value={form.coverage_ha}
+            onChange={set('coverage_ha')}
+            placeholder="Ej: 120"
+            className={inputClass}
+          />
+        </label>
+      </div>
+    </>
+  )
+}
+
+// "Agregar estación": registra el GATEWAY_ID con el que arranca el receptor de la Pi. Desde ahí
+// sus lecturas cuentan para el establecimiento (Conectado, Detectados, collares escuchados).
+function AddGateway({ onDone }) {
+  const [open, setOpen] = useState(false)
+  const [uid, setUid] = useState('')
+  const [form, setForm] = useState(() => gatewayForm(null))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  const normalized = uid.trim().toUpperCase()
+
+  function start() {
+    setUid('')
+    setForm(gatewayForm(null))
+    setError(null)
+    setOpen(true)
+  }
+
+  async function submit(e) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      const { name, ...rest } = gatewayBody(form)
+      await api('gateways/', { method: 'POST', body: { gateway_uid: normalized, ...rest, name: name || undefined } })
+      setOpen(false)
+      onDone()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <Button variant="outline" icon={CirclePlus} className="w-full" onClick={start}>
+        Agregar estación
+      </Button>
+    )
+  }
+
+  return (
+    <Card>
+      <form onSubmit={submit} className="space-y-3">
+        <p className="font-display text-lg font-bold">Agregar estación</p>
+        <label className="block text-xs text-muted">
+          ID de la estación
+          <input
+            required
+            autoFocus
+            value={uid}
+            onChange={(e) => setUid(e.target.value)}
+            placeholder="Ej: AGROBOT-03"
+            autoCapitalize="characters"
+            className={cx(inputClass, 'font-mono')}
+          />
+        </label>
+        <p className="-mt-1 text-xs text-muted">
+          Es el <span className="font-mono">GATEWAY_ID</span> con el que arranca el receptor en la Pi. Tiene que coincidir
+          exacto para que figure conectada.
+        </p>
+        <GatewayFields form={form} setForm={setForm} namePlaceholder={normalized || 'Ej: Base Galpón'} />
+        {error && (
+          <p role="alert" className="text-xs text-brand">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button type="submit" busy={busy} disabled={!normalized}>
+            Agregar
+          </Button>
+        </div>
+      </form>
     </Card>
   )
 }

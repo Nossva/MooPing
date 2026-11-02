@@ -5,6 +5,7 @@ from api.traffic import (
     animal_views,
     auth_views,
     device_views,
+    gateway_views,
     health_views,
     member_views,
     misc_views,
@@ -63,8 +64,12 @@ urlpatterns = [
     path('devices/<int:device_id>/ping/', device_views.device_ping),
     path('devices/<int:device_id>/maintenance/', device_views.device_maintenance),
 
-    # Gateways, settings, store
-    path('gateways/', misc_views.gateway_list),
+    # Estaciones AgroBot and repeaters
+    path('gateways/', gateway_views.gateway_list),
+    path('gateways/<int:gateway_id>/', gateway_views.gateway_detail),
+    path('gateways/<int:gateway_id>/devices/', gateway_views.gateway_devices),
+
+    # Settings, store
     path('notification-settings/', misc_views.notification_settings),
     path('products/', misc_views.product_list),
 

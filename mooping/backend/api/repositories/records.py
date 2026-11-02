@@ -195,6 +195,25 @@ class GatewayRecord:
 
 
 @dataclass
+class HeardCountRecord:
+    gateway_id: int
+    devices: int
+
+
+@dataclass
+class HeardDeviceRecord:
+    """A collar with readings received through one gateway lately."""
+    id: int
+    device_uid: str
+    label: str | None
+    owned: bool
+    animal_id: int | None
+    animal_name: str | None
+    animal_tag: str | None
+    last_heard_at: datetime
+
+
+@dataclass
 class MotionRecord:
     distance_m: float
     seconds: float

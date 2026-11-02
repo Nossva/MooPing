@@ -139,7 +139,10 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | PATCH | `devices/{id}/` | "Configurar": `label`, `tx_interval_s` (10–3600), `battery_model`, `storage_location`, ... |
 | POST | `devices/{id}/assign/` | "Vincular a un animal": `{animal_id}` |
 | POST | `devices/{id}/unassign/` | Desvincular: `{storage_location?}` |
-| GET | `gateways/` | `[{id, gateway_uid, name, kind: gateway\|repeater, power_source, battery_pct, radio, coverage_ha, last_seen_at, lat, lng, online}]` |
+| GET | `gateways/` | `[{id, gateway_uid, name, kind: gateway\|repeater, power_source, battery_pct, radio, coverage_ha, last_seen_at, lat, lng, online, heard_devices}]`. `heard_devices`: collares con lecturas por esa estación en las últimas 24 h (con alcance limitado, solo los de sus animales) |
+| POST | `gateways/` | "Agregar estación": `{gateway_uid, name?, kind?: gateway\|repeater, power_source?: solar\|grid\|battery, radio?, coverage_ha?}` → 201 con la estación. `gateway_uid` es el `GATEWAY_ID` con el que arranca el receptor de la Pi (campo `GW` del JSON); se guarda en mayúsculas. Sin `name`, queda el uid. Si el uid ya existe (acá o en otro establecimiento) → 409 |
+| GET · PATCH · DELETE | `gateways/{id}/` | La estación / editar `name`, `kind`, `power_source`, `radio`, `coverage_ha` / quitarla (204). Al quitarla, las lecturas guardadas quedan sin estación y lo que siga mandando esa Pi ya no cuenta para el establecimiento |
+| GET | `gateways/{id}/devices/` | "Collares escuchados": `[{id, device_uid, label, owned, animal: {id, name}\|null, animal_tag, last_heard_at}]`, los que mandaron lecturas por esta estación en las últimas 24 h (propios y sin dueño, nunca de otro establecimiento). El collar no queda atado a la estación: la relación sale de cada lectura |
 
 ### Administración (solo dueño para escribir)
 

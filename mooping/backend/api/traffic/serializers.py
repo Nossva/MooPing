@@ -113,6 +113,23 @@ class DeviceUpdateSerializer(serializers.Serializer):
     storage_location = serializers.CharField(max_length=200, required=False, allow_null=True, allow_blank=True)
 
 
+class GatewayCreateSerializer(serializers.Serializer):
+    gateway_uid = serializers.CharField(max_length=100)
+    name = serializers.CharField(max_length=100, required=False)
+    kind = serializers.ChoiceField(['gateway', 'repeater'], default='gateway')
+    power_source = serializers.ChoiceField(['solar', 'grid', 'battery'], required=False, allow_null=True)
+    radio = serializers.CharField(max_length=100, required=False, allow_null=True)
+    coverage_ha = serializers.FloatField(min_value=0, max_value=1_000_000, required=False, allow_null=True)
+
+
+class GatewayUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=100, required=False)
+    kind = serializers.ChoiceField(['gateway', 'repeater'], required=False)
+    power_source = serializers.ChoiceField(['solar', 'grid', 'battery'], required=False, allow_null=True)
+    radio = serializers.CharField(max_length=100, required=False, allow_null=True)
+    coverage_ha = serializers.FloatField(min_value=0, max_value=1_000_000, required=False, allow_null=True)
+
+
 class AssignSerializer(serializers.Serializer):
     animal_id = serializers.IntegerField()
 

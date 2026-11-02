@@ -14,8 +14,10 @@ from rest_framework.test import APIClient
 
 from api.dto.request.base import DtoValidationError
 from api.dto.request.telemetry_request import TelemetryReadingRequest
-from api.entities import Alert, Animal, Device, Organization, collar_uid, default_collar_label, device_state
-from api.repositories import device_repository, user_repository, yard_repository
+from api.entities import (
+    Alert, Animal, Device, Organization, TelemetryReading, collar_uid, default_collar_label, device_state,
+)
+from api.repositories import device_repository, gateway_repository, user_repository, yard_repository
 from api.services import alert_service
 
 PASSWORD = 'pasto-verde-2026'
@@ -494,3 +496,85 @@ class DeviceTests(ApiTestCase):
         response = self.client_for(self.owner).post(f'/api/devices/{self.device.id}/maintenance/',
                                                     {'scheduled_for': yesterday}, format='json')
         self.assertEqual(response.status_code, 400)
+
+
+class GatewayTests(ApiTestCase):
+    def test_owner_adds_a_station(self):
+        client = self.client_for(self.owner)
+        response = client.post('/api/gateways/', {'gateway_uid': ' agrobot-03 ', 'kind': 'repeater'}, format='json')
+        self.assertEqual(response.status_code, 201, response.content)
+        body = response.json()
+        self.assertEqual((body['gateway_uid'], body['name'], body['kind'], body['online']),
+                         ('AGROBOT-03', 'AGROBOT-03', 'repeater', False))
+        self.assertEqual([g['gateway_uid'] for g in client.get('/api/gateways/').json()], ['AGROBOT-03'])
+
+    def test_duplicate_uid(self):
+        client = self.client_for(self.owner)
+        gateway_repository.create(self.org.id, 'AGROBOT-01')
+        other_org = Organization.objects.create(name='El Ombú')
+        gateway_repository.create(other_org.id, 'AGROBOT-02')
+        for uid in ('agrobot-01', 'AGROBOT-02'):
+            self.assertEqual(client.post('/api/gateways/', {'gateway_uid': uid}, format='json').status_code, 409, uid)
+        self.assertEqual(client.post('/api/gateways/', {'gateway_uid': '   '}, format='json').status_code, 400)
+
+    def test_user_cannot_write(self):
+        gateway = gateway_repository.create(self.org.id, 'AGROBOT-01')
+        client = self.client_for(self.make_member('Beto Peón', 'beto@example.com'))
+        url = f'/api/gateways/{gateway.id}/'
+        self.assertEqual(client.get('/api/gateways/').status_code, 200)
+        self.assertEqual(client.post('/api/gateways/', {'gateway_uid': 'X'}, format='json').status_code, 403)
+        self.assertEqual(client.patch(url, {'name': 'Mía'}, format='json').status_code, 403)
+        self.assertEqual(client.delete(url).status_code, 403)
+
+    def test_edit_and_remove(self):
+        client = self.client_for(self.owner)
+        gateway_id = client.post('/api/gateways/', {'gateway_uid': 'AGROBOT-03'}, format='json').json()['id']
+        url = f'/api/gateways/{gateway_id}/'
+        body = client.patch(url, {'name': 'Base Galpón', 'power_source': 'solar'}, format='json').json()
+        self.assertEqual((body['name'], body['power_source'], body['kind']), ('Base Galpón', 'solar', 'gateway'))
+        self.assertEqual(client.patch(url, {'name': ' '}, format='json').status_code, 400)
+        self.reading(GW='AGROBOT-03')
+        self.assertEqual(client.delete(url).status_code, 204)
+        self.assertEqual(client.get(url).status_code, 404)
+        self.assertEqual(TelemetryReading.objects.filter(device_id=self.device.id).count(), 1)
+        self.assertIsNone(TelemetryReading.objects.get(device_id=self.device.id).gateway_id)
+
+    def test_readings_after_adding_it(self):
+        client = self.client_for(self.owner)
+        gateway_id = client.post('/api/gateways/', {'gateway_uid': 'AGROBOT-03'}, format='json').json()['id']
+        self.reading(GW='AGROBOT-03')
+        self.reading(uid='COLLAR-500', GW='AGROBOT-03')
+        gateway = client.get(f'/api/gateways/{gateway_id}/').json()
+        self.assertEqual((gateway['online'], gateway['heard_devices']), (True, 2))
+        self.assertIn('COLLAR-500', [d['device_uid'] for d in client.get('/api/devices/detected/').json()])
+
+    def test_heard_devices(self):
+        client = self.client_for(self.owner)
+        mine = gateway_repository.create(self.org.id, 'AGROBOT-01')
+        other = gateway_repository.create(self.org.id, 'AGROBOT-02')
+        other_org = Organization.objects.create(name='El Ombú')
+        device_repository.create('COLLAR-9', organization_id=other_org.id)
+        self.reading(GW='AGROBOT-01')
+        self.reading(uid='COLLAR-7', GW='AGROBOT-01')        # sin dueño
+        self.reading(uid='COLLAR-9', GW='AGROBOT-01')        # de otro establecimiento
+        self.reading(uid='COLLAR-8', GW='AGROBOT-02')        # por la otra estación
+        old = (timezone.now() - timedelta(days=2)).isoformat()
+        self.reading(uid='COLLAR-6', GW='AGROBOT-01', TS=old)  # hace más de 24 h
+        heard = client.get(f'/api/gateways/{mine.id}/devices/').json()
+        self.assertEqual(sorted((d['device_uid'], d['owned']) for d in heard),
+                         [('COLLAR-1', True), ('COLLAR-7', False)])
+        self.assertEqual(next(d for d in heard if d['owned'])['animal']['name'], 'Vaca #084')
+        counts = {g['id']: g['heard_devices'] for g in client.get('/api/gateways/').json()}
+        self.assertEqual(counts, {mine.id: 2, other.id: 1})
+        foreign = gateway_repository.create(other_org.id, 'AGROBOT-09')
+        self.assertEqual(client.get(f'/api/gateways/{foreign.id}/devices/').status_code, 404)
+
+    def test_heard_devices_respect_the_scope(self):
+        gateway = gateway_repository.create(self.org.id, 'AGROBOT-01')
+        self.reading(GW='AGROBOT-01')
+        self.reading(uid='COLLAR-7', GW='AGROBOT-01')
+        user = self.make_member('Beto Peón', 'beto@example.com')
+        user_repository.set_access(self.org.id, user.id, ['equipos'], False, [], [])
+        client = self.client_for(user)
+        self.assertEqual(client.get(f'/api/gateways/{gateway.id}/devices/').json(), [])
+        self.assertEqual(client.get('/api/gateways/').json()[0]['heard_devices'], 0)
