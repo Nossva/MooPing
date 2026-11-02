@@ -104,7 +104,7 @@ export default function Layout() {
             </div>
           </div>
         )}
-        <Outlet context={{ status }} />
+        <Outlet context={{ status, alarms }} />
       </main>
 
       <MobileNav items={mobileNav} openAlerts={openAlerts} />

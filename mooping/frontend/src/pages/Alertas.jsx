@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useOutletContext, useSearchParams } from 'react-router-dom'
 import { BellRing, ChevronRight, Router, Siren, Tractor, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
@@ -44,6 +44,8 @@ export default function Alertas() {
   const saver = useSaveSetting(settings)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const avisosRef = useRef(null)
+  // Estado de las alarmas en ESTE navegador (permiso y sonido), lo maneja Layout.
+  const { alarms } = useOutletContext() ?? {}
 
   const reload = () => {
     summary.reload()
@@ -71,7 +73,7 @@ export default function Alertas() {
         </div>
         {settings.data && (
           <div className="flex items-center gap-2">
-            <AlarmToggle saver={saver} />
+            <AlarmToggle saver={saver} alarms={alarms} />
             <button
               ref={avisosRef}
               onClick={() => setSettingsOpen((v) => !v)}
@@ -275,13 +277,37 @@ function useSaveSetting(settings) {
   return { values, pending, error, save }
 }
 
-function AlarmToggle({ saver }) {
+// La preferencia (alarm_sound) es de la cuenta; además cada navegador tiene que habilitar el
+// sonido y el permiso de notificaciones con un clic. Si falta eso, se ofrece activarlo acá.
+function AlarmToggle({ saver, alarms }) {
   const { values, pending, error, save } = saver
   const on = values.alarm_sound
+  if (on && alarms && !alarms.browserReady) {
+    const blocked = alarms.permission === 'denied'
+    return (
+      <div className="relative">
+        <button
+          onClick={alarms.activate}
+          className="flex min-h-11 items-center gap-2 rounded-xl bg-brand px-3 text-sm font-semibold text-white transition-[scale] duration-150 active:scale-[0.96]"
+        >
+          <BellRing className="size-4" /> Activar alarmas en este navegador
+        </button>
+        {blocked && (
+          <p role="alert" className="absolute right-0 top-full z-10 mt-1 w-64 text-right text-xs font-medium text-brand">
+            Chrome tiene bloqueadas las notificaciones de MooPing: permitilas desde el candado al lado de la dirección y
+            recargá la página.
+          </p>
+        )}
+      </div>
+    )
+  }
   return (
     <div className="relative">
       <button
-        onClick={() => save('alarm_sound', !on)}
+        onClick={() => {
+          save('alarm_sound', !on)
+          if (!on) alarms?.activate() // al prenderla, también se habilita en este navegador
+        }}
         disabled={'alarm_sound' in pending}
         aria-pressed={on}
         className={cx(

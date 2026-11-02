@@ -137,6 +137,8 @@ export function useAlertWatcher({ enabled = true } = {}) {
   }, [])
 
   const needsActivation = choice === null || (choice === '1' && permission === 'default')
+  // Este navegador ya quedó listo para sonar y mostrar notificaciones (o no las soporta).
+  const browserReady = choice === '1' && (permission === 'granted' || permission === 'unsupported')
 
-  return { needsActivation, activate, dismiss, permission }
+  return { needsActivation, browserReady, activate, dismiss, permission }
 }
