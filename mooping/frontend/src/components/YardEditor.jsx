@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { GeoJSON, MapContainer, Marker, Polygon, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { GeoJSON, MapContainer, Marker, Polygon, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
+import BaseLayers from '@/components/BaseLayers'
 import { Check, Eraser, Trash2, Undo2 } from 'lucide-react'
 import { api } from '@/api/client'
 import { Button, Card } from '@/components/ui'
@@ -118,10 +119,7 @@ export default function YardEditor({ yard, yards, onCancel, onSaved }) {
 
       <div className="overflow-hidden rounded-xl border border-black/5">
         <MapContainer center={[-34.24, -59.47]} zoom={12} className="h-[360px] w-full cursor-crosshair lg:h-[460px]" scrollWheelZoom doubleClickZoom={false}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          <BaseLayers />
           {others.map((y) => y.boundary && <GeoJSON key={y.id} data={y.boundary} style={otherYardStyle()} />)}
           {points.length >= 3 ? (
             <Polygon positions={points} pathOptions={crossed ? { ...shapeStyle(), dashArray: '6 6' } : shapeStyle()} interactive={false} />

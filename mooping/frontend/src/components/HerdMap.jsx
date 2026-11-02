@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import BaseLayers from '@/components/BaseLayers'
 import { shortTag } from '@/lib/format'
 import { token } from '@/lib/tokens'
 
@@ -102,10 +103,7 @@ export default function HerdMap({ yards, positions, selectedId, onSelect, track,
       doubleClickZoom={interactive}
       keyboard={interactive}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <BaseLayers switcher={interactive} />
       {/* GeoJSON ignora cambios de `data`: la key con el perímetro lo vuelve a montar al editarlo */}
       {yards.map((y) => y.boundary && <GeoJSON key={`${y.id}:${JSON.stringify(y.boundary)}`} data={y.boundary} style={yardStyle} />)}
       {track?.length > 1 && (
