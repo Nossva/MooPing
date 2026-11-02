@@ -22,7 +22,7 @@ from api.repositories import (
     yard_repository,
 )
 from api.services import alert_service, animal_service, auth_service, device_service, telemetry_service
-from api.services.errors import Conflict
+from api.services.errors import Conflict, InvalidInput
 
 ORG_NAME = 'El Ombú'
 DEMO_PASSWORD = 'mooping123'
@@ -201,3 +201,18 @@ def seed(reset=False):
         'open_alerts': alert_repository.count_open(org.id),
         'timezone': settings.TIME_ZONE,
     }
+
+
+@transaction.atomic
+def seed_admin(org_name, name, email, password):
+    """Empty establecimiento with a single owner (start3.py). The database is
+    expected to be empty: an existing email is a Conflict, not overwritten."""
+    email = email.strip().lower()
+    if not email or not password:
+        raise InvalidInput('Faltan el email o la contraseña del administrador.')
+    if user_repository.get_by_email(email):
+        raise Conflict(f'Ya existe un usuario {email}.')
+    org = organization_repository.create(org_name)
+    user = user_repository.create(name, email, auth_service.hash_password(password))
+    user_repository.add_membership(org.id, user.id, 'owner')
+    return {'organization': org.name, 'login': {'email': email, 'password': password}}
