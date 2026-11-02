@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Check, ChevronDown, CirclePlus, Link2, Loader2, LocateFixed, MapPinOff, Package, Radar, Radio, RadioTower, Search,
+  Check, ChevronDown, ChevronRight, CirclePlus, Link2, Loader2, LocateFixed, MapPinOff, Package, PawPrint, Radar, Radio, RadioTower, Search,
   ShoppingCart, Signal, TriangleAlert, X,
 } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { api } from '@/api/client'
 import { useApi } from '@/api/useApi'
 import { usePagedApi } from '@/api/usePagedApi'
+import AnimalForm from '@/components/AnimalForm'
 import DeviceAttentionCard from '@/components/DeviceAttentionCard'
 import {
   AccChevron, Button, Card, Empty, ErrorBox, FilterChip, Freshness, IconBubble, Loading, Metric, MoreButton, OwnerOnly,
@@ -30,7 +31,27 @@ const STATE = {
   stock: { label: 'En stock', className: 'bg-surface-high text-muted' },
 }
 
-const TABS = ['collares', 'estaciones']
+const TABS = ['collares', 'animales', 'estaciones']
+
+// Fila del listado de animales: abre su ficha en Monitoreo.
+function AnimalItem({ animal: a, onOpen }) {
+  const details = [a.tag_number, a.device ? `#${a.device.label}` : 'sin collar', a.lot, a.yard?.name ?? 'sin potrero']
+    .filter(Boolean)
+    .join(' · ')
+  return (
+    <li>
+      <button onClick={onOpen} className="flex min-h-11 w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm hover:bg-surface-low">
+        <IconBubble icon={PawPrint} className="bg-surface-low text-muted" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold text-ink">{a.name}</span>
+          <span className="block truncate text-xs text-muted">{details}</span>
+        </span>
+        {!a.device && <Pill className="bg-surface-high text-muted">Sin collar</Pill>}
+        <ChevronRight aria-hidden className="size-4 shrink-0 text-muted" />
+      </button>
+    </li>
+  )
+}
 
 export default function Equipos() {
   const { isOwner } = useAuth()
@@ -54,6 +75,19 @@ export default function Equipos() {
   // Formularios de alta: null cerrado; al agregar un detectado, pairing trae ese collar.
   const [pairing, setPairing] = useState(null)
   const [addingGateway, setAddingGateway] = useState(false)
+  // Alta de animal desde acá, para después asignarle un collar. addedAnimal: el recién creado (aviso).
+  const [addingAnimal, setAddingAnimal] = useState(false)
+  const [addedAnimal, setAddedAnimal] = useState(null)
+  const yards = useApi(isOwner && tab === 'animales' ? 'yards/' : null)
+  const [animalSearch, setAnimalSearch] = useState('')
+  const [animalQuery, setAnimalQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setAnimalQuery(animalSearch.trim()), 300)
+    return () => clearTimeout(t)
+  }, [animalSearch])
+  // Solo se pide al abrir la pestaña.
+  const animals = usePagedApi(tab === 'animales' ? 'animals/' : null, { params: { search: animalQuery }, pageSize: 20 })
+  const navigate = useNavigate()
 
   const reload = () => {
     infra.reload()
@@ -153,6 +187,7 @@ export default function Equipos() {
         onChange={selectTab}
         tabs={[
           { key: 'collares', label: 'Collares', count: devices.data?.counts.all },
+          { key: 'animales', label: 'Animales' },
           { key: 'estaciones', label: 'Estaciones', count: gateways.data?.length },
         ]}
       />
@@ -243,6 +278,105 @@ export default function Equipos() {
           <OwnerOnly>
             <StoreCard />
           </OwnerOnly>
+        </section>
+      ) : tab === 'animales' ? (
+        <section id="equipos-animales" role="tabpanel" aria-labelledby="equipos-tab-animales" className="space-y-4">
+          <SectionTitle
+            aside={
+              <OwnerOnly>
+                {!addingAnimal && (
+                  <Button
+                    variant="soft"
+                    icon={CirclePlus}
+                    className="px-3"
+                    onClick={() => {
+                      setAddedAnimal(null)
+                      setAddingAnimal(true)
+                    }}
+                  >
+                    Agregar animal
+                  </Button>
+                )}
+              </OwnerOnly>
+            }
+          >
+            Animales
+          </SectionTitle>
+          <OwnerOnly>
+            {addingAnimal && (
+              <Card className="space-y-3">
+                <p className="font-display text-lg font-bold">Agregar animal</p>
+                <AnimalForm
+                  yards={yards.data ?? []}
+                  onCancel={() => setAddingAnimal(false)}
+                  onSaved={(created) => {
+                    setAddingAnimal(false)
+                    setAddedAnimal(created)
+                    animals.reload()
+                    yards.reload() // cambia el conteo de animales del potrero
+                  }}
+                />
+              </Card>
+            )}
+            {addedAnimal && (
+              <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-field-soft/60 px-4 py-2 text-sm font-semibold text-field">
+                <span className="flex items-center gap-2">
+                  <Check aria-hidden className="size-4" /> Agregaste a {addedAnimal.name}. Ya le podés asignar un collar.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAddedAnimal(null)}
+                  aria-label="Cerrar aviso"
+                  className="ml-auto flex size-11 items-center justify-center rounded-lg hover:bg-white/60"
+                >
+                  <X className="size-4" />
+                </button>
+              </p>
+            )}
+          </OwnerOnly>
+          <div className="flex min-h-12 items-center gap-3 rounded-xl bg-white pl-3 pr-1 shadow-sm ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-brand/30">
+            <Search aria-hidden className="size-4 shrink-0 text-muted" />
+            <input
+              value={animalSearch}
+              onChange={(e) => setAnimalSearch(e.target.value)}
+              aria-label="Buscar animales"
+              placeholder="Buscar nombre, caravana, collar o lote"
+              className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none"
+            />
+            {animalSearch && (
+              <button
+                onClick={() => setAnimalSearch('')}
+                aria-label="Borrar búsqueda"
+                className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-low"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+          {!animals.data ? (
+            animals.error ? (
+              <ErrorBox title="No se pudieron cargar los animales." error={animals.error} onRetry={animals.reload} />
+            ) : (
+              <Loading compact label="Cargando animales…" />
+            )
+          ) : animals.items.length === 0 ? (
+            <Empty>
+              {animalQuery
+                ? `Ningún animal coincide con «${animalQuery}».`
+                : isOwner
+                  ? 'Todavía no agregaste animales. Tocá «Agregar animal» para cargar el primero.'
+                  : 'Todavía no hay animales en este establecimiento.'}
+            </Empty>
+          ) : (
+            <Card className={cx('p-2 transition-opacity', !animals.current && 'opacity-60')}>
+              <ul aria-busy={!animals.current} className="divide-y divide-black/5">
+                {animals.items.map((a) => (
+                  <AnimalItem key={a.id} animal={a} onOpen={() => navigate(`/monitoreo?animal=${a.id}`)} />
+                ))}
+              </ul>
+            </Card>
+          )}
+          <MoreButton list={animals}>Ver más animales</MoreButton>
         </section>
       ) : (
         <section id="equipos-estaciones" role="tabpanel" aria-labelledby="equipos-tab-estaciones" className="space-y-4">
