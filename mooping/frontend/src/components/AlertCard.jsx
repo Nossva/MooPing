@@ -68,7 +68,11 @@ export function StatusSteps({ status, assignee }) {
 }
 
 // media: contenido a sangre arriba de la tarjeta (ej. el minimapa de Alertas).
-export default function AlertCard({ alert, onChange, highlight, media }) {
+// wide: en escritorio (lg) la tarjeta es una fila: media a la izquierda, datos al centro y
+// estado + acciones a la derecha. En el celular sigue siendo vertical.
+// compact: más chica (para grillas de 2 o 3 por fila cuando hay muchas alertas).
+export default function AlertCard({ alert, onChange, highlight, media, wide = false, compact = false }) {
+  const gap = compact ? 'space-y-3' : 'space-y-4'
   const navigate = useNavigate()
   const { me } = useAuth()
   const [busy, setBusy] = useState(null)
@@ -176,135 +180,157 @@ export default function AlertCard({ alert, onChange, highlight, media }) {
     })
 
   return (
-    <Card className={cx('space-y-4', highlight && (critical ? 'border-brand/30 ring-1 ring-brand/20' : alert.category === 'sanitary' && 'border-warn/40 ring-1 ring-warn/25'))}>
+    <Card
+      className={cx(
+        gap,
+        compact && 'p-3',
+        wide && 'lg:grid lg:gap-x-6 lg:space-y-0',
+        wide && (media ? 'lg:grid-cols-[260px_minmax(0,1fr)_320px]' : 'lg:grid-cols-[minmax(0,1fr)_320px]'),
+        highlight && (critical ? 'border-brand/30 ring-1 ring-brand/20' : alert.category === 'sanitary' && 'border-warn/40 ring-1 ring-warn/25'),
+      )}
+    >
       {media && (
         // Card: radio 12px y borde 1px, así que la media va con 11px para ser concéntrica.
-        <div className="-mx-4 -mt-4 overflow-hidden rounded-t-[11px]">{media}</div>
-      )}
-      <div className="flex items-start gap-3">
+        // En fila ocupa todo el alto del lado izquierdo.
         <div
           className={cx(
-            'flex size-11 shrink-0 items-center justify-center rounded-full',
-            critical ? 'bg-brand-soft/60 text-brand' : alert.category === 'sanitary' ? 'bg-warn-soft text-warn-ink' : 'bg-surface-high text-ink',
+            compact ? '-mx-3 -mt-3' : '-mx-4 -mt-4',
+            'overflow-hidden rounded-t-[11px]',
+            wide && 'lg:mr-0 lg:-mb-4 lg:rounded-none lg:rounded-l-[11px] lg:border-r lg:border-black/5',
           )}
         >
-          <Icon className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="break-words font-display text-lg font-bold text-ink">{alert.animal?.name ?? `Collar ${alert.device?.label}`}</h3>
-            {badge && <Badge className={badge.className}>{badge.label}</Badge>}
-          </div>
-          <p className={cx('text-xs font-semibold', critical ? 'text-brand' : alert.category === 'sanitary' ? 'text-warn-ink' : 'text-ink')}>{type.title}</p>
-        </div>
-      </div>
-
-      <p className="text-sm leading-relaxed text-pretty text-muted">
-        {alert.message}
-        {alert.animal && alert.type !== 'geofence_exit' && (
-          <> {[alert.animal.breed, alert.animal.age_months && `${alert.animal.age_months} meses`, alert.animal.lot].filter(Boolean).join(', ')}.</>
-        )}
-      </p>
-
-      <div className="flex gap-2">
-        {metricsFor(alert).map((m) => (
-          <Metric key={m.label} {...m} />
-        ))}
-      </div>
-
-      <div>
-        <div className="mb-1 flex justify-end text-xs text-muted">{timeAgo(alert.triggered_at)}</div>
-        <StatusSteps status={shownStatus} assignee={shownAssignee} />
-      </div>
-
-      {noteOpen && (
-        <div className="space-y-2">
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            placeholder="Ej: la encontré en el bajo, la llevé al corral."
-            className="w-full rounded-lg border border-black/10 bg-surface-low p-3 text-sm outline-none focus:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/30"
-          />
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" className="py-2" onClick={() => setNoteOpen(false)}>
-              Cancelar
-            </Button>
-            <Button className="py-2" busy={busy === 'note'} disabled={!note.trim()} onClick={saveNote}>
-              Guardar nota
-            </Button>
-          </div>
+          {media}
         </div>
       )}
+      <div className={cx('min-w-0', gap)}>
+        <div className="flex items-start gap-3">
+          <div
+            className={cx(
+              'flex shrink-0 items-center justify-center rounded-full',
+              compact ? 'size-9' : 'size-11',
+              critical ? 'bg-brand-soft/60 text-brand' : alert.category === 'sanitary' ? 'bg-warn-soft text-warn-ink' : 'bg-surface-high text-ink',
+            )}
+          >
+            <Icon className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className={cx('break-words font-display font-bold text-ink', compact ? 'text-base' : 'text-lg')}>{alert.animal?.name ?? `Collar ${alert.device?.label}`}</h3>
+              {badge && <Badge className={badge.className}>{badge.label}</Badge>}
+            </div>
+            <p className={cx('text-xs font-semibold', critical ? 'text-brand' : alert.category === 'sanitary' ? 'text-warn-ink' : 'text-ink')}>{type.title}</p>
+          </div>
+        </div>
 
-      {error && (
-        <p role="alert" className="text-xs font-medium text-brand">
-          {error}
+        <p className={cx('text-sm leading-relaxed text-pretty text-muted', compact && 'line-clamp-2')} title={compact ? alert.message : undefined}>
+          {alert.message}
+          {alert.animal && alert.type !== 'geofence_exit' && (
+            <> {[alert.animal.breed, alert.animal.age_months && `${alert.animal.age_months} meses`, alert.animal.lot].filter(Boolean).join(', ')}.</>
+          )}
         </p>
-      )}
 
-      {queued && !queued.done && (
-        <div
-          role="status"
-          // Entra suave (mismos tiempos que el acordeón); al irse, el estado nuevo ya se ve arriba.
-          className="relative overflow-hidden rounded-lg bg-surface-low transition-[opacity,translate,filter] duration-[var(--acc-expand)] ease-[var(--acc-ease)] starting:-translate-y-1 starting:opacity-0 starting:blur-[2px] motion-reduce:transition-none"
-        >
-          <div className="flex items-center gap-3 py-1 pl-3 pr-1">
-            <p className="flex-1 text-sm font-medium text-ink">{queued.label}</p>
-            {busy === 'commit' ? (
-              <span className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted">
-                <Loader2 className="size-4 animate-spin" /> Guardando…
-              </span>
-            ) : (
-              <button
-                onClick={undo}
-                className="rounded px-4 py-2.5 text-sm font-semibold text-brand transition-[background-color,scale] duration-150 hover:bg-surface-mid active:scale-[0.96]"
-              >
-                Deshacer
-              </button>
+        <div className="flex gap-2">
+          {metricsFor(alert).map((m) => (
+            <Metric key={m.label} {...m} />
+          ))}
+        </div>
+      </div>
+
+      <div className={cx(gap, wide && 'lg:flex lg:flex-col lg:border-l lg:border-black/5 lg:pl-6')}>
+        <div>
+          <div className="mb-1 flex justify-end text-xs text-muted">{timeAgo(alert.triggered_at)}</div>
+          <StatusSteps status={shownStatus} assignee={shownAssignee} />
+        </div>
+
+        {noteOpen && (
+          <div className="space-y-2">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="Ej: la encontré en el bajo, la llevé al corral."
+              className="w-full rounded-lg border border-black/10 bg-surface-low p-3 text-sm outline-none focus:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/30"
+            />
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" className="py-2" onClick={() => setNoteOpen(false)}>
+                Cancelar
+              </Button>
+              <Button className="py-2" busy={busy === 'note'} disabled={!note.trim()} onClick={saveNote}>
+                Guardar nota
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" className="text-xs font-medium text-brand">
+            {error}
+          </p>
+        )}
+
+        {queued && !queued.done && (
+          <div
+            role="status"
+            // Entra suave (mismos tiempos que el acordeón); al irse, el estado nuevo ya se ve arriba.
+            className="relative overflow-hidden rounded-lg bg-surface-low transition-[opacity,translate,filter] duration-[var(--acc-expand)] ease-[var(--acc-ease)] starting:-translate-y-1 starting:opacity-0 starting:blur-[2px] motion-reduce:transition-none"
+          >
+            <div className="flex items-center gap-3 py-1 pl-3 pr-1">
+              <p className="flex-1 text-sm font-medium text-ink">{queued.label}</p>
+              {busy === 'commit' ? (
+                <span className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted">
+                  <Loader2 className="size-4 animate-spin" /> Guardando…
+                </span>
+              ) : (
+                <button
+                  onClick={undo}
+                  className="rounded px-4 py-2.5 text-sm font-semibold text-brand transition-[background-color,scale] duration-150 hover:bg-surface-mid active:scale-[0.96]"
+                >
+                  Deshacer
+                </button>
+              )}
+            </div>
+            {busy !== 'commit' && (
+              <div
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-brand/30 motion-safe:animate-[undo-countdown_5s_linear_forwards]"
+              />
             )}
           </div>
-          {busy !== 'commit' && (
-            <div
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-brand/30 motion-safe:animate-[undo-countdown_5s_linear_forwards]"
-            />
+        )}
+
+        <div className={cx('flex gap-3', wide && 'lg:mt-auto')}>
+          {alert.type === 'geofence_exit' || alert.type === 'no_signal' ? (
+            <Button
+              icon={LocateFixed}
+              className="flex-[1.4]"
+              onClick={() => navigate(`/monitoreo?animal=${alert.animal?.id ?? ''}`)}
+            >
+              Ubicar en GPS
+            </Button>
+          ) : (
+            <Button icon={NotebookPen} className="flex-[1.4]" onClick={() => setNoteOpen((v) => !v)}>
+              Anotar
+            </Button>
+          )}
+          {queued ? null : alert.status === 'pending' ? (
+            <Button variant="outline" icon={UserPlus} className="flex-1" busy={busy === 'assign'} onClick={assign}>
+              Me la llevo
+            </Button>
+          ) : alert.status !== 'resolved' ? (
+            <Button variant="outline" icon={CheckCheck} className="flex-1" busy={busy === 'advance'} onClick={advance}>
+              {alert.status === 'in_progress' ? 'Marcar resuelta' : 'Empezar'}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              icon={FileText}
+              className="flex-1"
+              onClick={() => navigate(`/monitoreo?animal=${alert.animal?.id ?? ''}`)}
+            >
+              Ver ficha
+            </Button>
           )}
         </div>
-      )}
-
-      <div className="flex gap-3">
-        {alert.type === 'geofence_exit' || alert.type === 'no_signal' ? (
-          <Button
-            icon={LocateFixed}
-            className="flex-[1.4]"
-            onClick={() => navigate(`/monitoreo?animal=${alert.animal?.id ?? ''}`)}
-          >
-            Ubicar en GPS
-          </Button>
-        ) : (
-          <Button icon={NotebookPen} className="flex-[1.4]" onClick={() => setNoteOpen((v) => !v)}>
-            Anotar
-          </Button>
-        )}
-        {queued ? null : alert.status === 'pending' ? (
-          <Button variant="outline" icon={UserPlus} className="flex-1" busy={busy === 'assign'} onClick={assign}>
-            Me la llevo
-          </Button>
-        ) : alert.status !== 'resolved' ? (
-          <Button variant="outline" icon={CheckCheck} className="flex-1" busy={busy === 'advance'} onClick={advance}>
-            {alert.status === 'in_progress' ? 'Marcar resuelta' : 'Empezar'}
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            icon={FileText}
-            className="flex-1"
-            onClick={() => navigate(`/monitoreo?animal=${alert.animal?.id ?? ''}`)}
-          >
-            Ver ficha
-          </Button>
-        )}
       </div>
     </Card>
   )

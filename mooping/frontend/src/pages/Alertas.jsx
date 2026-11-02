@@ -18,6 +18,11 @@ const CHIPS = [
   { key: 'equipment', label: 'Equipos', dot: 'bg-outline' },
 ]
 
+// Con más de estas alertas en una sección, en escritorio pasan de filas anchas a una grilla
+// de tarjetas chicas (2 o 3 por fila).
+const MANY = 3
+const sectionGrid = (many) => (many ? 'grid gap-3 lg:grid-cols-2 xl:grid-cols-3 lg:items-start' : 'space-y-4')
+
 const EMPTY_IMMEDIATE = {
   '': 'Sin alertas urgentes ni sanitarias abiertas.',
   critical: 'Sin alertas urgentes abiertas.',
@@ -141,21 +146,29 @@ export default function Alertas() {
       ) : (
         <div
           aria-busy={!list.current}
-          className={cx('grid gap-4 transition-opacity lg:grid-cols-2 lg:items-start', !list.current && 'opacity-60')}
+          // En escritorio cada alerta es una fila a todo el ancho; las secciones van una debajo de la otra.
+          className={cx('space-y-6 transition-opacity', !list.current && 'opacity-60')}
         >
           {category !== 'equipment' && (
             <section className="space-y-4">
               <SectionTitle icon={Siren}>Atención inmediata</SectionTitle>
               {immediate.length === 0 && <Empty>{EMPTY_IMMEDIATE[category]}</Empty>}
-              {immediate.map((a) => (
-                <AlertCard
-                  key={a.id}
-                  alert={a}
-                  highlight={a.category === 'critical' && a.status === 'pending'}
-                  onChange={reload}
-                  media={a.type === 'geofence_exit' && a.position && <MiniMap alert={a} yards={yards.data ?? []} />}
-                />
-              ))}
+              <div className={sectionGrid(immediate.length > MANY)}>
+                {immediate.map((a) => (
+                  <AlertCard
+                    key={a.id}
+                    alert={a}
+                    wide={immediate.length <= MANY}
+                    compact={immediate.length > MANY}
+                    highlight={a.category === 'critical' && a.status === 'pending'}
+                    onChange={reload}
+                    media={
+                      a.type === 'geofence_exit' &&
+                      a.position && <MiniMap alert={a} yards={yards.data ?? []} small={immediate.length > MANY} />
+                    }
+                  />
+                ))}
+              </div>
             </section>
           )}
           {(category === '' || category === 'equipment') && (
@@ -163,9 +176,11 @@ export default function Alertas() {
               <SectionTitle icon={Router} aside={`${equipmentTotal} ${equipmentTotal === 1 ? 'novedad' : 'novedades'}`}>
                 Equipos
               </SectionTitle>
-              {equipment.map((a) => (
-                <AlertCard key={a.id} alert={a} onChange={reload} />
-              ))}
+              <div className={sectionGrid(equipment.length > MANY)}>
+                {equipment.map((a) => (
+                  <AlertCard key={a.id} alert={a} wide={equipment.length <= MANY} compact={equipment.length > MANY} onChange={reload} />
+                ))}
+              </div>
               {equipment.length === 0 &&
                 (equipmentTotal > 0 ? (
                   // La lista viene por urgencia: las de equipo pueden haber quedado en la página siguiente.
@@ -181,9 +196,7 @@ export default function Alertas() {
                 ))}
             </section>
           )}
-          <div className="lg:col-span-2">
-            <MoreButton list={list}>Ver más alertas</MoreButton>
-          </div>
+          <MoreButton list={list}>Ver más alertas</MoreButton>
         </div>
       )}
     </div>
@@ -204,7 +217,8 @@ function RadioPill({ status }) {
 }
 
 // Mapa de referencia, fijo: no atrapa el scroll. Para moverse está "Ubicar en GPS" en la tarjeta.
-function MiniMap({ alert, yards }) {
+// small: versión baja para las tarjetas chicas de la grilla.
+function MiniMap({ alert, yards, small = false }) {
   const point = {
     id: alert.animal?.id ?? 0,
     name: alert.animal?.name ?? '',
@@ -217,13 +231,16 @@ function MiniMap({ alert, yards }) {
     <div
       role="img"
       aria-label={`Mapa: ${point.name} fuera del perímetro${alert.yard?.name ? ` de ${alert.yard.name}` : ''}`}
-      className="relative border-b border-black/5"
+      className={cx(
+        'relative border-b border-black/5',
+        small ? 'h-32' : 'h-48 lg:h-full lg:min-h-56 lg:border-b-0',
+      )}
     >
       <HerdMap
         yards={yards.filter((y) => y.id === alert.yard?.id)}
         positions={[point]}
         selectedId={point.id}
-        className="h-48 w-full"
+        className="h-full w-full"
         interactive={false}
       />
       <span className="absolute bottom-3 left-3 z-[500] rounded-full bg-black/60 px-2 py-0.5 font-mono text-[11px] tabular-nums text-white">
