@@ -28,6 +28,10 @@
   --color-warn: #f59e0b;
   --color-warn-soft: #fef3c7;
   --color-warn-ink: #92400e;
+
+  /* Recorrido en el mapa: vértices azules y tramos celestes punteados */
+  --color-track-node: #1d4ed8;
+  --color-track-line: #7dd3fc;
 }
 
 html, body, #root {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { shortTag } from '@/lib/format'
 import { token } from '@/lib/tokens'
@@ -109,7 +109,22 @@ export default function HerdMap({ yards, positions, selectedId, onSelect, track,
       {/* GeoJSON ignora cambios de `data`: la key con el perímetro lo vuelve a montar al editarlo */}
       {yards.map((y) => y.boundary && <GeoJSON key={`${y.id}:${JSON.stringify(y.boundary)}`} data={y.boundary} style={yardStyle} />)}
       {track?.length > 1 && (
-        <Polyline positions={track.map((p) => [p.lat, p.lng])} pathOptions={{ color: token('brand'), weight: 3, opacity: 0.8 }} />
+        <>
+          <Polyline
+            positions={track.map((p) => [p.lat, p.lng])}
+            pathOptions={{ color: token('track-line'), weight: 3, dashArray: '4 6', lineCap: 'round' }}
+            interactive={false}
+          />
+          {track.map((p) => (
+            <CircleMarker
+              key={p.recorded_at}
+              center={[p.lat, p.lng]}
+              radius={4}
+              pathOptions={{ color: '#fff', weight: 1.5, fillColor: token('track-node'), fillOpacity: 1 }}
+              interactive={false}
+            />
+          ))}
+        </>
       )}
       {positions.map((p) => (
         <Marker
