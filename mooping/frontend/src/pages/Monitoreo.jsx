@@ -32,6 +32,9 @@ export default function Monitoreo() {
   const [track, setTrack] = useState(null)
   // null = cerrado, 'new' = alta, o el potrero que se edita
   const [editingYard, setEditingYard] = useState(null)
+  // Dónde quedó el mapa (centro y zoom): al abrir o cerrar el editor de potreros se arranca ahí,
+  // sin encuadrar de nuevo.
+  const [mapView, setMapView] = useState(null)
   const mapRef = useRef(null)
   const detailRef = useRef(null)
 
@@ -85,6 +88,7 @@ export default function Monitoreo() {
           current={currentYard}
           onChange={(id) => {
             setEditingYard(null) // el editor quedaría apuntando al potrero anterior
+            setMapView(null) // otro potrero: el mapa encuadra el elegido
             setTrack(null)
             setParams({ yard: id, animal: null })
           }}
@@ -148,6 +152,8 @@ export default function Monitoreo() {
                 key={editingYard === 'new' ? 'new' : editingYard.id}
                 yard={editingYard === 'new' ? null : editingYard}
                 yards={yardList}
+                view={mapView}
+                onViewChange={setMapView}
                 onCancel={() => setEditingYard(null)}
                 onSaved={(saved) => {
                   setEditingYard(null)
@@ -167,6 +173,10 @@ export default function Monitoreo() {
                   selectedId={selectedId}
                   onSelect={select}
                   track={track}
+                  initialView={mapView}
+                  onViewChange={setMapView}
+                  fitKey={`${yardId}|${geofence}`}
+                  ready={!!yards.data && !!positions.data}
                   className="h-[380px] w-full lg:h-[520px]"
                 />
                 <MapLegend safePct={s?.herd.safe_pct} />

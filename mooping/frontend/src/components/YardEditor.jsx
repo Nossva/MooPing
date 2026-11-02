@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { GeoJSON, MapContainer, Marker, Polygon, Polyline, useMap, useMapEvents } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, Marker, Polygon, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import BaseLayers from '@/components/BaseLayers'
 import { Check, Eraser, Trash2, Undo2 } from 'lucide-react'
 import { api } from '@/api/client'
+import { useApi } from '@/api/useApi'
 import { Button, Card } from '@/components/ui'
 import { token } from '@/lib/tokens'
 
@@ -48,6 +49,13 @@ function ClickToAdd({ onAdd }) {
   return null
 }
 
+function TrackView({ onViewChange }) {
+  const map = useMapEvents({
+    moveend: () => onViewChange({ center: map.getCenter(), zoom: map.getZoom() }),
+  })
+  return null
+}
+
 function FitOnce({ yards }) {
   const map = useMap()
   useEffect(() => {
@@ -60,7 +68,10 @@ function FitOnce({ yards }) {
 }
 
 // Alta / edición de un potrero dibujando su perímetro sobre el mapa. Solo el dueño.
-export default function YardEditor({ yard, yards, onCancel, onSaved }) {
+// view {center, zoom}: arranca donde estaba el mapa del rodeo, sin moverse ni hacer zoom.
+// Muestra dónde están los animales (de todos los potreros) para guiarse al dibujar.
+export default function YardEditor({ yard, yards, view, onViewChange, onCancel, onSaved }) {
+  const herd = useApi('animals/positions/', { refreshMs: 30000 })
   const [name, setName] = useState(yard?.name ?? '')
   const [points, setPoints] = useState(() => toPoints(yard?.boundary))
   const [busy, setBusy] = useState(null)
@@ -114,13 +125,30 @@ export default function YardEditor({ yard, yards, onCancel, onSaved }) {
         <h3 className="font-display text-lg font-bold text-ink">{yard ? `Editar ${yard.name}` : 'Nuevo potrero'}</h3>
         <p className="text-sm text-muted">
           Tocá el mapa para marcar las esquinas del perímetro, en orden. Arrastrá un punto para corregirlo.
+          Los puntos verdes son los animales.
         </p>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-black/5">
-        <MapContainer center={[-34.24, -59.47]} zoom={12} className="h-[360px] w-full cursor-crosshair lg:h-[460px]" scrollWheelZoom doubleClickZoom={false}>
+        <MapContainer
+          center={view?.center ?? [-34.24, -59.47]}
+          zoom={view?.zoom ?? 12}
+          className="h-[360px] w-full cursor-crosshair lg:h-[460px]"
+          scrollWheelZoom
+          doubleClickZoom={false}
+        >
           <BaseLayers />
           {others.map((y) => y.boundary && <GeoJSON key={y.id} data={y.boundary} style={otherYardStyle()} />)}
+          {/* No interactivos: tocar encima de una vaca igual agrega un punto del perímetro. */}
+          {(herd.data ?? []).map((p) => (
+            <CircleMarker
+              key={p.id}
+              center={[p.lat, p.lng]}
+              radius={6}
+              pathOptions={{ color: '#fff', weight: 2, fillColor: p.geofence_status === 'outside' ? token('brand') : token('field'), fillOpacity: 1 }}
+              interactive={false}
+            />
+          ))}
           {points.length >= 3 ? (
             <Polygon positions={points} pathOptions={crossed ? { ...shapeStyle(), dashArray: '6 6' } : shapeStyle()} interactive={false} />
           ) : (
@@ -130,7 +158,8 @@ export default function YardEditor({ yard, yards, onCancel, onSaved }) {
             <Marker key={i} position={p} icon={vertexIcon()} draggable eventHandlers={{ dragend: move(i) }} />
           ))}
           <ClickToAdd onAdd={(p) => setPoints((ps) => [...ps, p])} />
-          <FitOnce yards={yard ? [yard] : others} />
+          {!view && <FitOnce yards={yard ? [yard] : others} />}
+          {onViewChange && <TrackView onViewChange={onViewChange} />}
         </MapContainer>
       </div>
 
