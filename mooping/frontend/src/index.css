@@ -28,8 +28,11 @@
   --color-warn: #f59e0b;
   --color-warn-soft: #fef3c7;
   --color-warn-ink: #92400e;
+}
 
-  /* Recorrido en el mapa: vértices azules y tramos celestes punteados */
+/* Recorrido en el mapa: vértices azules y tramos celestes punteados. Fuera de @theme
+   porque solo los lee Leaflet (token()): Tailwind no publica los que ninguna clase usa. */
+:root {
   --color-track-node: #1d4ed8;
   --color-track-line: #7dd3fc;
 }
