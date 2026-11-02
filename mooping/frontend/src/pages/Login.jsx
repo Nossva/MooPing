@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Eye, EyeOff, Lock, MapPin, Radar, Radio, SunMedium, Thermometer, User } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff, Lock, MapPin, Radar, Radio, Thermometer, User } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { useApi } from '@/api/useApi'
 import { LogoMark } from '@/components/ui'
@@ -47,7 +47,6 @@ export default function Login() {
           </p>
           <div className="flex flex-wrap gap-3 text-sm font-medium">
             <Chip icon={Radar}>Alcance LoRa 15 km</Chip>
-            <Chip icon={SunMedium}>Batería solar integrada</Chip>
             <Chip icon={Thermometer}>Alerta térmica biológica</Chip>
           </div>
           <div className="h-1 w-16 rounded-full bg-field-soft" />

@@ -9,7 +9,7 @@ from api.repositories.scope import animal_sql
 # One row per collar with the animal it is on and its open alerts.
 _DEVICE_ROWS = """
     SELECT d.id, d.device_uid, d.label, d.hardware_version, d.firmware_version,
-           d.battery_model, d.tx_interval_s, d.storage_location,
+           d.tx_interval_s, d.storage_location,
            d.last_seen_at, d.created_at,
            a.id AS animal_id, a.name AS animal_name, a.breed AS animal_breed,
            a.lot AS animal_lot, y.name AS yard_name,

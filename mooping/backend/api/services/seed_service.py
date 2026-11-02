@@ -44,9 +44,9 @@ SUR_BOX = (-59.495, -59.455, -34.268, -34.242)
 NORTE_BOX = (-59.505, -59.478, -34.230, -34.212)
 
 GATEWAYS = [
-    ('AGROBOT-01', 'Molino Sur', 'gateway', 'solar', 94, 'LoRa 433 MHz', 2000),
-    ('AGROBOT-02', 'Casco', 'gateway', 'grid', None, 'LoRa 433 MHz', 1500),
-    ('REP-01', 'Nodo Cerro Vigía', 'repeater', 'solar', 81, 'LoRa 433 MHz', None),
+    ('AGROBOT-01', 'Molino Sur', 'gateway', 'solar', 'LoRa 433 MHz', 2000),
+    ('AGROBOT-02', 'Casco', 'gateway', 'grid', 'LoRa 433 MHz', 1500),
+    ('REP-01', 'Nodo Cerro Vigía', 'repeater', 'solar', 'LoRa 433 MHz', None),
 ]
 
 # name, tag, breed, sex, age_months, lot, yard, collar uid, label, scenario
@@ -148,9 +148,9 @@ def seed(reset=False):
         users[email] = user
     juan = users['demo@mooping.app']
 
-    for uid, name, kind, power, battery, radio, coverage in GATEWAYS:
+    for uid, name, kind, power, radio, coverage in GATEWAYS:
         gateway = gateway_repository.create(org.id, uid, name=name, kind=kind, power_source=power,
-                                            battery_pct=battery, radio=radio, coverage_ha=coverage)
+                                            radio=radio, coverage_ha=coverage)
         gateway_repository.touch(gateway.id)
 
     yards = {
@@ -164,8 +164,7 @@ def seed(reset=False):
             name=name, tag_number=tag, breed=breed, sex=sex, birth_date=_birth_date(months), lot=lot,
             yard_id=yards[yard]))
         device = device_service.pair_device(org.id, DevicePairRequest(
-            uid, label=label, firmware_version='v2.4.1', hardware_version='AgroNeck r2',
-            battery_model='ER34615 (3.6V D)'))
+            uid, label=label, firmware_version='v2.4.1', hardware_version='AgroNeck r2'))
         device_service.assign_device(org.id, device.id, AssignRequest(animal.id))
         animal_ids[name] = animal.id
     for uid, label in STOCK_COLLARS:

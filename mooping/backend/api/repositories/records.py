@@ -139,7 +139,6 @@ class DeviceRecord:
     label: str | None
     hardware_version: str | None
     firmware_version: str | None
-    battery_model: str | None
     tx_interval_s: int
     storage_location: str | None
     last_seen_at: datetime | None
@@ -185,7 +184,6 @@ class GatewayRecord:
     name: str | None
     kind: str
     power_source: str | None
-    battery_pct: float | None
     radio: str | None
     coverage_ha: float | None
     last_seen_at: datetime | None

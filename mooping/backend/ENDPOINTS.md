@@ -96,7 +96,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | GET | `devices/?filter=needs_attention` | "Equipos: N para revisar" |
 | PATCH | `alerts/{id}/` | Botón "Asignar" / cambiar estado |
 | POST | `alerts/{id}/notes/` | Botón "Anotar" |
-| POST | `devices/{id}/maintenance/` | "Agendar cambio de pila" |
+| POST | `devices/{id}/maintenance/` | "Agendar mantenimiento": `{scheduled_for, kind?: repair\|inspection (default repair), notes?}` |
 | POST | `devices/{id}/ping/` | "Enviar ping forzado" |
 | GET | `products/` | "Comprar equipamiento" (sin login) |
 
@@ -105,7 +105,7 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | Método | Ruta | Devuelve |
 |---|---|---|
 | GET | `yards/` | Potreros: `[{id, name, area_ha, boundary (GeoJSON), animal_count}]` |
-| GET | `monitoring/summary/?yard_id=` | `{yard, herd: {total, with_position, inside_geofence, outside_geofence, safe_pct}, alerts: {active, geofence, health}, gateway: {name, battery_pct, power_source, radio, online}}` |
+| GET | `monitoring/summary/?yard_id=` | `{yard, herd: {total, with_position, inside_geofence, outside_geofence, safe_pct}, alerts: {active, geofence, health}, gateway: {name, power_source, radio, online}}` |
 | GET | `animals/positions/?yard_id=&geofence=inside\|outside` | Marcadores del mapa: `[{id, name, lat, lng, recorded_at, geofence_status, has_alert}]` |
 | GET | `animals/?search=&yard_id=&geofence=` | Buscador "caravana, collar #C o lote" (formato animal) |
 | GET | `animals/{id}/` | Ficha (formato animal + `temp_range_c`, `temp_in_range`, `activity_today_km`, `rumination_4h_min`, `notes`, `open_alerts`) |
@@ -136,11 +136,11 @@ Demo: `demo@mooping.app` es dueño y `maria@mooping.app` es usuario (los dos con
 | GET | `devices/{id}/` | Collar + `maintenance` + `pending_commands` |
 | GET | `devices/detected/` | "Detectados sin vincular": collares sin establecimiento cuya última lectura entró por un gateway propio (campo `GW` del JSON), vistos en los últimos 7 días: `[{device_uid, suggested_label, last_seen_at, gateway_name}]` |
 | POST | `devices/` | "Vincular collar": `{device_uid, label?, ...}`. `device_uid` es el número del collar en cualquier formato (`84`, `084`, `C-084`, `COLLAR-84`) y se guarda como lo manda la Pi: `COLLAR-84`. Sin `label`, queda `C-084`. Si el collar ya transmitía sin dueño, se lo adopta con sus lecturas |
-| PATCH | `devices/{id}/` | "Configurar": `label`, `tx_interval_s` (10–3600), `battery_model`, `storage_location`, ... |
+| PATCH | `devices/{id}/` | "Configurar": `label`, `tx_interval_s` (10–3600), `storage_location`, ... |
 | POST | `devices/{id}/assign/` | "Vincular a un animal": `{animal_id}` |
 | POST | `devices/{id}/unassign/` | Desvincular: `{storage_location?}` |
-| GET | `gateways/` | `[{id, gateway_uid, name, kind: gateway\|repeater, power_source, battery_pct, radio, coverage_ha, last_seen_at, lat, lng, online, heard_devices}]`. `heard_devices`: collares con lecturas por esa estación en las últimas 24 h (con alcance limitado, solo los de sus animales) |
-| POST | `gateways/` | "Agregar estación": `{gateway_uid, name?, kind?: gateway\|repeater, power_source?: solar\|grid\|battery, radio?, coverage_ha?}` → 201 con la estación. `gateway_uid` es el `GATEWAY_ID` con el que arranca el receptor de la Pi (campo `GW` del JSON); se guarda en mayúsculas. Sin `name`, queda el uid. Si el uid ya existe (acá o en otro establecimiento) → 409 |
+| GET | `gateways/` | `[{id, gateway_uid, name, kind: gateway\|repeater, power_source, radio, coverage_ha, last_seen_at, lat, lng, online, heard_devices}]`. `heard_devices`: collares con lecturas por esa estación en las últimas 24 h (con alcance limitado, solo los de sus animales) |
+| POST | `gateways/` | "Agregar estación": `{gateway_uid, name?, kind?: gateway\|repeater, power_source?: solar\|grid, radio?, coverage_ha?}` → 201 con la estación. `gateway_uid` es el `GATEWAY_ID` con el que arranca el receptor de la Pi (campo `GW` del JSON); se guarda en mayúsculas. Sin `name`, queda el uid. Si el uid ya existe (acá o en otro establecimiento) → 409 |
 | GET · PATCH · DELETE | `gateways/{id}/` | La estación / editar `name`, `kind`, `power_source`, `radio`, `coverage_ha` / quitarla (204). Al quitarla, las lecturas guardadas quedan sin estación y lo que siga mandando esa Pi ya no cuenta para el establecimiento |
 | GET | `gateways/{id}/devices/` | "Collares escuchados": `[{id, device_uid, label, owned, animal: {id, name}\|null, animal_tag, last_heard_at}]`, los que mandaron lecturas por esta estación en las últimas 24 h (propios y sin dueño, nunca de otro establecimiento). El collar no queda atado a la estación: la relación sale de cada lectura |
 
@@ -206,10 +206,10 @@ Reglas automáticas al llegar una lectura:
 
 ### Collar
 
-`{id, device_uid, label, state: optimal|alert|no_signal|stock, hardware_version, firmware_version, battery_model, tx_interval_s, last_seen_at, storage_location, geofence_alert_since, animal: {id, name, breed, lot, yard_name, geofence_status}}`
+`{id, device_uid, label, state: optimal|alert|no_signal|stock, hardware_version, firmware_version, tx_interval_s, last_seen_at, storage_location, geofence_alert_since, animal: {id, name, breed, lot, yard_name, geofence_status}}`
 
 ## Limitaciones actuales
 
 - **Rumia y actividad:** el collar hoy no las manda. Los campos quedan en `null` hasta que el firmware las envíe (`RUM`, `ACT`).
-- **Batería del collar y señal LoRa:** no se guardan (no hay columnas). Si el firmware empieza a mandar batería, hay que volver a agregarla en `db/schema.sql`, el trigger y el backend.
+- **Batería y señal LoRa:** no se guardan en ningún lado (ni collares ni estaciones). Si el firmware empieza a mandar batería, hay que volver a agregarla en `db/schema.sql`, el trigger y el backend.
 - **Ping forzado, alarma sonora y cambio de intervalo:** se guardan en `device_commands` con estado `queued`. Falta que la Pi pueda enviar mensajes al collar.

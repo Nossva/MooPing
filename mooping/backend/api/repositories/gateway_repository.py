@@ -8,7 +8,7 @@ from api.repositories.scope import animal_sql
 ONLINE_MINUTES = 10
 
 _SELECT = """
-    SELECT g.id, g.gateway_uid, g.name, g.kind, g.power_source, g.battery_pct, g.radio,
+    SELECT g.id, g.gateway_uid, g.name, g.kind, g.power_source, g.radio,
            g.coverage_ha, g.last_seen_at,
            ST_Y(g.location::geometry) AS lat, ST_X(g.location::geometry) AS lng,
            (g.last_seen_at IS NOT NULL AND g.last_seen_at >= now() - make_interval(mins => %s)) AS online

@@ -141,7 +141,7 @@ export default function Monitoreo() {
               </>
             ) : (
               <>
-                {gw.battery_pct != null ? `${num(gw.battery_pct)}%` : <span className="text-field">En línea</span>}{' '}
+                <span className="text-field">En línea</span>{' '}
                 <span className="text-sm font-normal text-field">
                   {gw.power_source === 'solar' ? 'Solar' : gw.power_source === 'grid' ? 'Red' : ''}
                 </span>

@@ -9,7 +9,6 @@ class Gateway(models.Model):
     name = models.TextField(null=True)
     kind = models.TextField(default='gateway')
     power_source = models.TextField(null=True)
-    battery_pct = models.FloatField(null=True)
     radio = models.TextField(null=True)
     coverage_ha = models.FloatField(null=True)
     api_key_hash = models.TextField(null=True)

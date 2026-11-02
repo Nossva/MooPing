@@ -38,6 +38,7 @@ puede romper nada.
 | [upgrade-telemetry-nan.sql](upgrade-telemetry-nan.sql) | Pasa a NULL los NaN / Infinity de telemetría guardados antes de validarlos |
 | [upgrade-sin-bateria-ni-rssi.sql](upgrade-sin-bateria-ni-rssi.sql) | Saca la batería del collar, RSSI/SNR, la alerta `low_battery` y `low_battery_pct` (borra esas alertas) |
 | [upgrade-telemetry-future.sql](upgrade-telemetry-future.sql) | Recalcula `last_seen_at` y la última posición que quedaron congelados por lecturas con fecha futura |
+| [upgrade-sin-bateria.sql](upgrade-sin-bateria.sql) | Saca toda la batería que quedaba: `gateways.battery_pct`, `devices.battery_model`, la alimentación `battery` y el mantenimiento `battery_replacement` (pasa a `repair`) |
 | [upgrade-telemetry-gateway-idx.sql](upgrade-telemetry-gateway-idx.sql) | Índice de lecturas por estación (`gateway_id, recorded_at`) para "Collares escuchados" en Equipos |
 
 Si levantás con `docker compose up` directo, aplicalos a mano (desde `mooping/`):

@@ -16,7 +16,7 @@ from api.services import alert_service
 from api.services.errors import Conflict, InvalidInput, NotFound
 
 FILTERS = ('alert', 'stock', 'no_signal', 'needs_attention')
-MAINTENANCE_KINDS = ('battery_replacement', 'repair', 'inspection')
+MAINTENANCE_KINDS = ('repair', 'inspection')
 # "Detectados sin vincular": collars heard in the last DETECTED_DAYS days.
 DETECTED_DAYS = 7
 DETECTED_LIMIT = 50
@@ -141,7 +141,7 @@ def ping_device(organization_id, device_id, user):
 
 
 def schedule_maintenance(organization_id, device_id, user, request):
-    """request: MaintenanceRequest. 'Agendar cambio de pila'."""
+    """request: MaintenanceRequest. 'Agendar mantenimiento' (repair / inspection)."""
     if device_repository.get(organization_id, device_id) is None:
         raise NotFound('Collar no encontrado.')
     if request.kind not in MAINTENANCE_KINDS:

@@ -23,8 +23,8 @@ def summary(organization_id, request, scope=None):
     inside = sum(1 for a in located if a.inside_geofence)
     alerts = alert_service.summary(organization_id, scope)
     gateways = [g for g in gateway_repository.list_by_org(organization_id) if g.kind == 'gateway']
-    # Battery-powered gateways first: their charge is what the card is for.
-    gateways.sort(key=lambda g: g.battery_pct is None)
+    # Connected gateways first.
+    gateways.sort(key=lambda g: not g.online)
     main = gateways[0] if gateways else None
 
     return MonitoringResponse(
@@ -41,6 +41,6 @@ def summary(organization_id, request, scope=None):
             geofence=alerts.by_type.get('geofence_exit', 0),
             health=alerts.by_category['sanitary'],
         ),
-        gateway=GatewayCardResponse(main.name, main.battery_pct, main.power_source, main.radio, main.online)
+        gateway=GatewayCardResponse(main.name, main.power_source, main.radio, main.online)
         if main else None,
     )

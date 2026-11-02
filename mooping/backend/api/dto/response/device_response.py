@@ -23,7 +23,6 @@ class DeviceResponse:
     state: str
     hardware_version: str | None
     firmware_version: str | None
-    battery_model: str | None
     tx_interval_s: int
     last_seen_at: datetime | None
     storage_location: str | None
@@ -36,7 +35,7 @@ class DeviceResponse:
             id=r.id, device_uid=r.device_uid, label=r.label,
             state=device_state(r.animal_id is not None, r.no_signal, r.geofence_alert_since is not None),
             hardware_version=r.hardware_version, firmware_version=r.firmware_version,
-            battery_model=r.battery_model, tx_interval_s=r.tx_interval_s,
+            tx_interval_s=r.tx_interval_s,
             last_seen_at=r.last_seen_at, storage_location=r.storage_location,
             geofence_alert_since=r.geofence_alert_since,
             animal=DeviceAnimalResponse(r.animal_id, r.animal_name, r.animal_breed, r.animal_lot,

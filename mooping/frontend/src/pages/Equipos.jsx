@@ -290,7 +290,6 @@ function GatewayCard({ gateway: g, onChange }) {
         </Pill>
       </div>
       <div className="flex gap-2">
-        <Metric value={g.battery_pct != null ? `${num(g.battery_pct)}%` : '—'} label="Batería" />
         <Metric value={g.coverage_ha != null ? `${num(g.coverage_ha)} ha` : '—'} label="Cobertura" />
         <Metric value={ageShort(g.last_seen_at)} label="Último dato" />
       </div>
@@ -404,7 +403,6 @@ const POWER_OPTIONS = [
   { value: '', label: 'Sin dato' },
   { value: 'solar', label: 'Solar' },
   { value: 'grid', label: 'Red eléctrica' },
-  { value: 'battery', label: 'Batería' },
 ]
 
 const gatewayForm = (g) => ({

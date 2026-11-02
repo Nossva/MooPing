@@ -67,7 +67,6 @@ class MonitoringAlertsResponse:
 @dataclass
 class GatewayCardResponse:
     name: str | None
-    battery_pct: float | None
     power_source: str | None
     radio: str | None
     online: bool

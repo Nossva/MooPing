@@ -10,7 +10,7 @@ PRODUCTS = (
         badge='Recomendado para iniciar',
         items=(
             '1x Gateway LoRa Solar autónomo (3 km radio)',
-            '10x Collares IoT Rugged IP68 con batería 3 años',
+            '10x Collares IoT Rugged IP68',
             '1x Antena de fibra de vidrio 5.8 dBi',
             'Acceso ilimitado a plataforma MooPing de por vida',
         ),
@@ -24,7 +24,7 @@ PRODUCTS = (
         subtitle='Pack de Expansión (Unidad o Lote x5)',
         badge=None,
         items=(
-            'Collar IoT Rugged IP68 con batería 3 años',
+            'Collar IoT Rugged IP68',
             'Emparejamiento por NFC / QR',
         ),
         price=89,

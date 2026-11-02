@@ -100,7 +100,6 @@ class DevicePairSerializer(serializers.Serializer):
     label = serializers.CharField(max_length=100, required=False)
     hardware_version = serializers.CharField(max_length=50, required=False)
     firmware_version = serializers.CharField(max_length=50, required=False)
-    battery_model = serializers.CharField(max_length=100, required=False)
     storage_location = serializers.CharField(max_length=200, required=False)
 
 
@@ -108,7 +107,6 @@ class DeviceUpdateSerializer(serializers.Serializer):
     label = serializers.CharField(max_length=100, required=False)
     hardware_version = serializers.CharField(max_length=50, required=False)
     firmware_version = serializers.CharField(max_length=50, required=False)
-    battery_model = serializers.CharField(max_length=100, required=False)
     tx_interval_s = serializers.IntegerField(required=False)
     storage_location = serializers.CharField(max_length=200, required=False, allow_null=True, allow_blank=True)
 
@@ -117,7 +115,7 @@ class GatewayCreateSerializer(serializers.Serializer):
     gateway_uid = serializers.CharField(max_length=100)
     name = serializers.CharField(max_length=100, required=False)
     kind = serializers.ChoiceField(['gateway', 'repeater'], default='gateway')
-    power_source = serializers.ChoiceField(['solar', 'grid', 'battery'], required=False, allow_null=True)
+    power_source = serializers.ChoiceField(['solar', 'grid'], required=False, allow_null=True)
     radio = serializers.CharField(max_length=100, required=False, allow_null=True)
     coverage_ha = serializers.FloatField(min_value=0, max_value=1_000_000, required=False, allow_null=True)
 
@@ -125,7 +123,7 @@ class GatewayCreateSerializer(serializers.Serializer):
 class GatewayUpdateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100, required=False)
     kind = serializers.ChoiceField(['gateway', 'repeater'], required=False)
-    power_source = serializers.ChoiceField(['solar', 'grid', 'battery'], required=False, allow_null=True)
+    power_source = serializers.ChoiceField(['solar', 'grid'], required=False, allow_null=True)
     radio = serializers.CharField(max_length=100, required=False, allow_null=True)
     coverage_ha = serializers.FloatField(min_value=0, max_value=1_000_000, required=False, allow_null=True)
 
@@ -140,7 +138,7 @@ class UnassignSerializer(serializers.Serializer):
 
 class MaintenanceSerializer(serializers.Serializer):
     scheduled_for = serializers.DateField()
-    kind = serializers.ChoiceField(['battery_replacement', 'repair', 'inspection'], default='battery_replacement')
+    kind = serializers.ChoiceField(['repair', 'inspection'], default='repair')
     notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
