@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MooPing · Servidor</title>
+<style>
+  :root {
+    --brand: #670626; --brand-dark: #420014; --brand-soft: #ffd9dd;
+    --ink: #111c2d; --muted: #564244; --line: rgba(0,0,0,.1);
+    --surface: #f9f9ff; --surface-high: #dee8ff; --parchment: #fff8f6;
+    --field: #4d6631; --field-soft: #cce9a8; --warn-soft: #fef3c7; --warn-ink: #92400e;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--parchment); color: var(--ink); }
+  body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 28px 16px 40px; }
+  main { max-width: 440px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .card, header > div { min-width: 0; }
+  header { display: flex; align-items: center; gap: 14px; }
+  header img { width: 64px; height: 64px; border-radius: 16px; background: #fff; box-shadow: 0 4px 14px rgba(103,6,38,.14); padding: 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.1; font-weight: 800; letter-spacing: -.01em; }
+  h1 + p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .card { background: #fff; border: 1px solid rgba(0,0,0,.05); border-radius: 14px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); display: grid; gap: 12px; }
+  h2 { margin: 0; font-size: 17px; font-weight: 700; }
+  .hint { margin: -6px 0 0; color: var(--muted); font-size: 13px; }
+  label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  input { width: 100%; font: inherit; font-size: 16px; color: var(--ink); padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  button { font: inherit; font-weight: 650; border: 0; border-radius: 10px; min-height: 48px; padding: 0 16px; cursor: pointer; transition: transform .12s, background-color .15s; }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .6; }
+  .primary { background: var(--brand); color: #fff; }
+  .soft { background: var(--surface-high); color: var(--brand); }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .alert { border-radius: 12px; padding: 12px 14px; font-size: 14px; background: var(--brand-soft); color: var(--brand-dark); }
+  .alert.ok { background: var(--field-soft); color: #22350f; }
+  .alert.warn { background: var(--warn-soft); color: var(--warn-ink); }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  li { display: flex; align-items: center; gap: 8px; }
+  li .pick { flex: 1; min-width: 0; text-align: left; background: var(--surface); color: var(--ink); border: 1px solid var(--line); font-family: ui-monospace, Consolas, monospace; font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  li .pick.found { border-color: var(--field); background: #f3faea; }
+  li .x { flex: 0 0 48px; background: transparent; color: var(--muted); font-size: 20px; padding: 0; }
+  .bar { height: 6px; background: var(--surface-high); border-radius: 99px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .2s; }
+  .muted { color: var(--muted); font-size: 13px; margin: 0; }
+  details { font-size: 13px; color: var(--muted); }
+  details summary { cursor: pointer; font-weight: 600; color: var(--ink); min-height: 32px; }
+  details ol { padding-left: 18px; margin: 6px 0 0; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; background: var(--surface-high); padding: 1px 5px; border-radius: 5px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="logo.png" alt="">
+    <div>
+      <h1>MooPing</h1>
+      <p>Elegí el servidor de MooPing al que te querés conectar.</p>
+    </div>
+  </header>
+
+  <div id="error" class="alert" role="alert" hidden></div>
+  <div id="retryRow" class="row" hidden><button id="retry" class="primary">Reintentar</button></div>
+
+  <section class="card">
+    <h2>Buscar en mi Wi‑Fi</h2>
+    <p class="hint">Encuentra MooPing si está corriendo en una PC de la misma red.</p>
+    <button id="scan" class="soft">Buscar automáticamente</button>
+    <div id="scanBox" hidden>
+      <div class="bar"><i id="scanBar"></i></div>
+      <p id="scanMsg" class="muted" aria-live="polite"></p>
+    </div>
+    <ul id="found"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Escribir la dirección</h2>
+    <form id="form" class="row" style="flex-direction:column" novalidate>
+      <label>Dirección del servidor
+        <input id="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="192.168.1.50:5173  o  https://mooping.tucampo.com">
+      </label>
+      <button id="go" class="primary" type="submit">Conectar</button>
+    </form>
+    <p id="testMsg" class="muted" aria-live="polite"></p>
+  </section>
+
+  <section class="card" id="recentCard" hidden>
+    <h2>Usados antes</h2>
+    <ul id="recent"></ul>
+  </section>
+
+  <details>
+    <summary>¿No lo encuentra?</summary>
+    <ol>
+      <li>En la PC: abrí Docker Desktop y corré <code>python start.py</code> en la carpeta <code>mooping</code>.</li>
+      <li>El celular y la PC tienen que estar en la misma Wi‑Fi.</li>
+      <li>El Firewall de Windows tiene que dejar entrar al puerto <code>5173</code>.</li>
+      <li>La dirección es la IP de la PC con <code>:5173</code> (en la PC: <code>ipconfig</code> → "Dirección IPv4").</li>
+    </ol>
+  </details>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const app = window.MooPingApp;
+  const state = app ? JSON.parse(app.getState() || '{}') : { recent: [], error: '' };
+
+  if (state.error) {
+    $('error').textContent = state.error; $('error').hidden = false;
+    if (state.server) $('retryRow').hidden = false;
+  }
+  $('retry').onclick = () => { $('retry').disabled = true; $('retry').textContent = 'Conectando…'; app.retry(); };
+  if (state.server) $('url').value = state.server.replace(/^http:\/\//, '');
+
+  function item(list, url, opts = {}) {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.className = 'pick' + (opts.found ? ' found' : '');
+    b.textContent = url.replace(/^http:\/\//, '');
+    b.onclick = () => connect(url);
+    li.appendChild(b);
+    if (opts.removable) {
+      const x = document.createElement('button');
+      x.className = 'x'; x.textContent = '×'; x.setAttribute('aria-label', 'Olvidar ' + url);
+      x.onclick = () => { app.forget(url); li.remove(); if (!$('recent').children.length) $('recentCard').hidden = true; };
+      li.appendChild(x);
+    }
+    list.appendChild(li);
+  }
+  (state.recent || []).forEach((u) => item($('recent'), u, { removable: true }));
+  $('recentCard').hidden = !(state.recent || []).length;
+
+  function connect(url) {
+    $('testMsg').textContent = 'Conectando a ' + url + '…';
+    app.connect(url);
+  }
+
+  // Escribir a mano: se prueba /api/health/ antes de guardar.
+  $('form').onsubmit = (e) => {
+    e.preventDefault();
+    const v = $('url').value.trim();
+    if (!v) { $('testMsg').textContent = 'Escribí la dirección del servidor.'; $('url').focus(); return; }
+    $('go').disabled = true; $('go').textContent = 'Probando…';
+    $('testMsg').textContent = '';
+    app.test(v);
+  };
+  window.onTestResult = (ok, url) => {
+    $('go').disabled = false; $('go').textContent = 'Conectar';
+    if (ok) connect(url);
+    else $('testMsg').textContent = 'No responde MooPing en "' + url + '". Revisá la dirección y que estés en la misma red.';
+  };
+
+  // Búsqueda automática
+  let seen = new Set();
+  $('scan').onclick = () => {
+    seen = new Set(); $('found').innerHTML = '';
+    $('scan').disabled = true; $('scan').textContent = 'Buscando…';
+    $('scanBox').hidden = false; $('scanBar').style.width = '0';
+    const ip = (state.ips || [])[0];
+    $('scanMsg').textContent = ip ? 'Revisando la red de ' + ip + '…' : 'Revisando la red…';
+    app.scan();
+  };
+  window.onScanProgress = (d, t) => { $('scanBar').style.width = Math.round(100 * d / t) + '%'; };
+  window.onScanFound = (url) => { if (!seen.has(url)) { seen.add(url); item($('found'), url, { found: true }); } };
+  window.onScanDone = (n, net) => {
+    $('scan').disabled = false; $('scan').textContent = 'Buscar de nuevo';
+    $('scanBar').style.width = '100%';
+    if (!net) $('scanMsg').textContent = 'El celular no está conectado a una Wi‑Fi.';
+    else if (n === 0) $('scanMsg').textContent = 'No se encontró MooPing en esta red. Probá escribiendo la dirección.';
+    else $('scanMsg').textContent = n === 1 ? 'Se encontró 1 servidor. Tocalo para entrar.' : 'Se encontraron ' + n + ' servidores. Tocá uno para entrar.';
+    if (n === 1 && !(state.recent || []).length) connect([...seen][0]);
+  };
+</script>
+</body>
+</html>
