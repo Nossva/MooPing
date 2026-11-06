@@ -16,14 +16,14 @@ from .notification_settings import NotificationSettings
 from .organization import Organization
 from .rules import CATEGORY_BY_TYPE, collar_uid, default_collar_label, device_state
 from .support import SupportRequest
-from .telemetry import AnimalDailyStatistics, AnimalLastPosition, TelemetryReading
+from .telemetry import AnimalLastPosition, TelemetryReading
 from .user import ApiToken, Membership, User
 from .yard import Yard
 
 __all__ = [
     'CATEGORY_BY_TYPE', 'Alert', 'AlertNote', 'Animal', 'AnimalDevice', 'Device',
     'DeviceCommand', 'MaintenanceTask', 'Gateway', 'NotificationSettings',
-    'Organization', 'SupportRequest', 'AnimalDailyStatistics', 'AnimalLastPosition',
+    'Organization', 'SupportRequest', 'AnimalLastPosition',
     'TelemetryReading', 'ApiToken', 'Membership', 'User', 'Yard',
     'collar_uid', 'default_collar_label', 'device_state',
 ]

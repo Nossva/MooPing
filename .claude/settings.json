@@ -13,7 +13,10 @@
       "PowerShell($s=\"C:\\\\Users\\\\THOMAS\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-THOMAS-Desktop-moo-ping-MooPing\\\\337e026d-a924-4f95-a3c7-7072665cf1ff\\\\scratchpad\"; $f=\"$s\\\\flujo.tpl.html\"; $t=[IO.File]::ReadAllText\\($f\\); $n=\\([regex]::Matches\\($t,'left:128px;top:262px;width:500px;height:680px'\\)\\).Count; $t=$t.Replace\\('left:128px;top:262px;width:500px;height:680px','left:128px;top:252px;width:500px;height:700px'\\).Replace\\('box-shadow:0 22px 46px rgba\\(60,30,30,.32\\)','box-shadow:0 8px 16px rgba\\(60,30,30,.28\\)'\\).Replace\\('<div class=\"mk\" style=\"left:150px;top:190px\"></div>','<div class=\"mk\" style=\"left:240px;top:168px\"></div>'\\).Replace\\('left:688px;top:262px','left:688px;top:252px'\\); [IO.File]::WriteAllText\\($f,$t,\\(New-Object Text.UTF8Encoding $false\\)\\); \"replaced $n\"; python -I \"$s\\\\build_flujo.py\" $s \"$s\\\\artifact-files\\\\8aec4012-97ec-4756-8625-250de6893ecd\\\\project\\\\slides\\\\flujo.html\")",
       "PowerShell($s=\"C:\\\\Users\\\\THOMAS\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-THOMAS-Desktop-moo-ping-MooPing\\\\337e026d-a924-4f95-a3c7-7072665cf1ff\\\\scratchpad\"; python -I \"$s\\\\add_presenters.py\" \"$s\\\\artifact-files\\\\8aec4012-97ec-4756-8625-250de6893ecd\")",
       "PowerShell(docker compose up -d --build)",
-      "PowerShell($i=0; while \\($i -lt 40\\) { try { $r = Invoke-WebRequest http://localhost:8000/api/health/ -UseBasicParsing -TimeoutSec 3; $r.Content; break } catch { Start-Sleep 3; $i++ } }; try { \\(Invoke-WebRequest http://localhost:5173 -UseBasicParsing -TimeoutSec 5\\).StatusCode } catch { \"frontend: $_\" }; docker compose ps --format \"table {{.Name}}\\\\t{{.Status}}\")"
+      "PowerShell($i=0; while \\($i -lt 40\\) { try { $r = Invoke-WebRequest http://localhost:8000/api/health/ -UseBasicParsing -TimeoutSec 3; $r.Content; break } catch { Start-Sleep 3; $i++ } }; try { \\(Invoke-WebRequest http://localhost:5173 -UseBasicParsing -TimeoutSec 5\\).StatusCode } catch { \"frontend: $_\" }; docker compose ps --format \"table {{.Name}}\\\\t{{.Status}}\")",
+      "Bash(python -)",
+      "Bash(python manage.py check)",
+      "Bash(python manage.py makemigrations --check --dry-run)"
     ]
   }
 }

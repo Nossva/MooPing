@@ -388,21 +388,3 @@ CREATE TABLE device_commands (
 
 CREATE INDEX device_commands_queue_idx ON device_commands (device_id, created_at)
   WHERE status = 'queued';
-
--- =====================================================================
--- DERIVED DATA
--- =====================================================================
-
--- Filled by a scheduled job from telemetry_readings (recomputable).
-CREATE TABLE animal_daily_statistics (
-  animal_id         BIGINT NOT NULL REFERENCES animals(id) ON DELETE CASCADE,
-  date              DATE NOT NULL,
-  distance_m        DOUBLE PRECISION NOT NULL DEFAULT 0,
-  movement_minutes  INTEGER NOT NULL DEFAULT 0,
-  rest_minutes      INTEGER NOT NULL DEFAULT 0,
-  temp_body_avg_c   REAL,
-  temp_body_max_c   REAL,
-  readings_count    INTEGER NOT NULL DEFAULT 0,
-  computed_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (animal_id, date)
-);

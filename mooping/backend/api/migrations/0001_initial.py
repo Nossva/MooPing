@@ -66,24 +66,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='AnimalDailyStatistics',
-            fields=[
-                ('pk', models.CompositePrimaryKey('animal_id', 'date', blank=True, editable=False, primary_key=True, serialize=False)),
-                ('date', models.DateField()),
-                ('distance_m', models.FloatField(default=0)),
-                ('movement_minutes', models.IntegerField(default=0)),
-                ('rest_minutes', models.IntegerField(default=0)),
-                ('temp_body_avg_c', models.FloatField(null=True)),
-                ('temp_body_max_c', models.FloatField(null=True)),
-                ('readings_count', models.IntegerField(default=0)),
-                ('computed_at', models.DateTimeField(auto_now=True)),
-            ],
-            options={
-                'db_table': 'animal_daily_statistics',
-                'managed': False,
-            },
-        ),
-        migrations.CreateModel(
             name='AnimalDevice',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),

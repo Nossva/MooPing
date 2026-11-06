@@ -63,7 +63,6 @@ docker compose exec -T db psql -U mooping -d mooping < db/upgrade-telemetry-futu
 | `animals`, `animal_devices` | Animales e historial de qué collar tuvo cada uno |
 | `telemetry_readings` | Cada lectura recibida (posición, temperatura, etc.) |
 | `animal_last_position` | Última posición de cada animal; la actualiza un trigger |
-| `animal_daily_statistics` | Resumen diario por animal (lo calcula un job) |
 | `alerts` | Salida de potrero, fiebre, sin señal |
 
 ## Insertar una lectura

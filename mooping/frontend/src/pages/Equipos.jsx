@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Check, ChevronDown, CirclePlus, Link2, Loader2, LocateFixed, MapPinOff, Package, Radar, Radio, RadioTower, Search,
-  ShoppingCart, Signal, TriangleAlert, X,
+  Signal, TriangleAlert, X,
 } from 'lucide-react'
 import { useAuth } from '@/api/auth'
 import { api } from '@/api/client'
@@ -240,9 +240,6 @@ export default function Equipos() {
             </div>
           )}
           <MoreButton list={devices}>Ver más collares</MoreButton>
-          <OwnerOnly>
-            <StoreCard />
-          </OwnerOnly>
         </section>
       ) : (
         <section id="equipos-estaciones" role="tabpanel" aria-labelledby="equipos-tab-estaciones" className="space-y-4">
@@ -829,33 +826,6 @@ function CollarCard({ device: d, onChange }) {
           )}
         </div>
       </div>
-    </Card>
-  )
-}
-
-// Solo el dueño compra: el personal de campo no lo ve.
-function StoreCard() {
-  const { data, error, reload } = useApi('products/')
-  if (error && !data) return <ErrorBox title="No se pudo cargar la tienda." error={error} onRetry={reload} />
-  const collar = data?.find((p) => p.id === 'collar-adicional') ?? data?.[0]
-  if (!collar) return null
-  return (
-    <Card className="space-y-3 bg-surface-low">
-      <div className="flex gap-3">
-        <IconBubble icon={ShoppingCart} className="rounded-lg bg-surface-high text-brand" />
-        <div>
-          <p className="font-display text-lg font-bold">¿Necesitás más collares?</p>
-          <p className="text-xs text-muted">
-            {collar.currency} {num(collar.price)} por unidad. Pago único, sin suscripción
-            {collar.free_shipping ? ' y envío gratis al campo' : ''}.
-          </p>
-        </div>
-      </div>
-      <ul className="space-y-1 text-xs text-muted">
-        {collar.items.map((item) => (
-          <li key={item}>· {item}</li>
-        ))}
-      </ul>
     </Card>
   )
 }

@@ -37,19 +37,3 @@ class AnimalLastPosition(models.Model):
         managed = False
         db_table = 'animal_last_position'
 
-
-class AnimalDailyStatistics(models.Model):
-    pk = models.CompositePrimaryKey('animal_id', 'date')
-    animal = models.ForeignKey('api.Animal', on_delete=models.CASCADE)
-    date = models.DateField()
-    distance_m = models.FloatField(default=0)
-    movement_minutes = models.IntegerField(default=0)
-    rest_minutes = models.IntegerField(default=0)
-    temp_body_avg_c = models.FloatField(null=True)
-    temp_body_max_c = models.FloatField(null=True)
-    readings_count = models.IntegerField(default=0)
-    computed_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        managed = False
-        db_table = 'animal_daily_statistics'
