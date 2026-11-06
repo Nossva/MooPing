@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
+import BaseLayers from '@/components/BaseLayers'
 import { shortTag } from '@/lib/format'
 import { token } from '@/lib/tokens'
 
@@ -42,19 +43,32 @@ function markerIcon(p, selected, now) {
   })
 }
 
-function FitBounds({ yards, positions }) {
+// Encuadra potreros y animales una vez por cada fitKey (por defecto: potreros, perímetros y cantidad
+// de animales). Con initialView el mapa arranca donde estaba y no encuadra hasta que cambie fitKey.
+function FitBounds({ yards, positions, fitKey, ready, skipFirst }) {
   const map = useMap()
-  const key = `${yards.map((y) => `${y.id}:${JSON.stringify(y.boundary)}`).join(',')}|${positions.length}`
+  const key = fitKey ?? `${yards.map((y) => `${y.id}:${JSON.stringify(y.boundary)}`).join(',')}|${positions.length}`
+  const fitted = useRef(skipFirst ? key : null)
   useEffect(() => {
+    if (!ready || fitted.current === key) return
     const layers = yards.filter((y) => y.boundary).map((y) => L.geoJSON(y.boundary))
     let bounds = layers.length ? L.featureGroup(layers).getBounds() : null
     for (const p of positions) {
       bounds = bounds ? bounds.extend([p.lat, p.lng]) : L.latLngBounds([[p.lat, p.lng]])
     }
-    if (bounds?.isValid()) map.fitBounds(bounds, { padding: [24, 24] })
-    // solo cuando cambian potreros (o sus perímetros) o cantidad de animales
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, map])
+    if (bounds?.isValid()) {
+      map.fitBounds(bounds, { padding: [24, 24] })
+      fitted.current = key
+    }
+  })
+  return null
+}
+
+// Avisa dónde quedó el mapa (centro y zoom) cada vez que el usuario lo mueve.
+function TrackView({ onViewChange }) {
+  const map = useMapEvents({
+    moveend: () => onViewChange({ center: map.getCenter(), zoom: map.getZoom() }),
+  })
   return null
 }
 
@@ -85,15 +99,20 @@ function FlyTo({ point }) {
 }
 
 // interactive=false: mapa de referencia que no atrapa el scroll de la página (minimapas).
-export default function HerdMap({ yards, positions, selectedId, onSelect, track, className, interactive = true }) {
+// initialView {center, zoom}: arranca ahí sin encuadrar (ej. al volver del editor de potreros).
+// fitKey: encuadra de nuevo solo cuando cambia (ej. el filtro); ready: esperar a tener los datos.
+export default function HerdMap({
+  yards, positions, selectedId, onSelect, track, className, interactive = true,
+  initialView, onViewChange, fitKey, ready = true,
+}) {
   const selected = useMemo(() => positions.find((p) => p.id === selectedId), [positions, selectedId])
   // eslint-disable-next-line react-hooks/purity -- la antigüedad se recalcula en cada refresco de posiciones
   const now = Date.now()
   const yardStyle = { color: token('field'), weight: 2, dashArray: '6 6', fillColor: token('field-soft'), fillOpacity: 0.25 }
   return (
     <MapContainer
-      center={[-34.24, -59.47]}
-      zoom={12}
+      center={initialView?.center ?? [-34.24, -59.47]}
+      zoom={initialView?.zoom ?? 12}
       className={className}
       zoomControl={interactive}
       scrollWheelZoom={interactive}
@@ -102,10 +121,7 @@ export default function HerdMap({ yards, positions, selectedId, onSelect, track,
       doubleClickZoom={interactive}
       keyboard={interactive}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <BaseLayers switcher={interactive} />
       {/* GeoJSON ignora cambios de `data`: la key con el perímetro lo vuelve a montar al editarlo */}
       {yards.map((y) => y.boundary && <GeoJSON key={`${y.id}:${JSON.stringify(y.boundary)}`} data={y.boundary} style={yardStyle} />)}
       {track?.length > 1 && (
@@ -137,8 +153,9 @@ export default function HerdMap({ yards, positions, selectedId, onSelect, track,
           eventHandlers={{ click: () => onSelect?.(p.id) }}
         />
       ))}
-      <FitBounds yards={yards} positions={positions} />
+      <FitBounds yards={yards} positions={positions} fitKey={fitKey} ready={ready} skipFirst={!!initialView} />
       <FlyTo point={selected} />
+      {onViewChange && <TrackView onViewChange={onViewChange} />}
     </MapContainer>
   )
 }
