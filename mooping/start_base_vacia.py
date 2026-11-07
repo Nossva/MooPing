@@ -1,9 +1,9 @@
 """Como start.py, pero deja la base en cero: borra la base anterior (y las fotos
 de animales) y crea un establecimiento vacío con un solo usuario dueño.
 
-    python start3.py                    # pide confirmación antes de borrar
-    python start3.py --yes              # sin preguntar
-    python start3.py --email yo@campo.com --password otra-clave --org "La Estancia"
+    python start_base_vacia.py                    # pide confirmación antes de borrar
+    python start_base_vacia.py --yes              # sin preguntar
+    python start_base_vacia.py --email yo@campo.com --password otra-clave --org "La Estancia"
 
 Por defecto el login es admin@mooping.app / mooping123.
 """

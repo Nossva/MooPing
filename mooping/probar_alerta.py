@@ -9,7 +9,7 @@ Elige un animal con collar que todavía no tenga esa alerta abierta.
 
 Para ver el aviso: tené la app abierta (con las alarmas activadas) y esperá hasta 15 s.
 Después resolvé la alerta desde el Centro de Alertas, o volvé a cargar la demo
-con `python start2.py --reset`.
+con `python start_con_demo.py --reset`.
 """
 import subprocess
 import sys
@@ -60,7 +60,7 @@ def main():
     output = [line for line in result.stdout.splitlines() if 'objects imported' not in line]
     if result.returncode != 0:
         print('\n'.join(output), result.stderr, sep='\n', file=sys.stderr)
-        sys.exit('No se pudo crear la alerta de prueba. ¿Está levantado MooPing (python start2.py)?')
+        sys.exit('No se pudo crear la alerta de prueba. ¿Está levantado MooPing (python start_con_demo.py)?')
     print('\n'.join(output))
     print('Si tenés la app abierta con las alarmas activadas, en menos de 15 s suena y aparece el aviso.')
 

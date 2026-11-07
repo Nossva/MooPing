@@ -111,7 +111,7 @@ export default function HerdMap({
   const yardStyle = { color: token('field'), weight: 2, dashArray: '6 6', fillColor: token('field-soft'), fillOpacity: 0.25 }
   return (
     <MapContainer
-      center={initialView?.center ?? [-34.24, -59.47]}
+      center={initialView?.center ?? [-34.30, -59.62]}
       zoom={initialView?.zoom ?? 12}
       className={className}
       zoomControl={interactive}

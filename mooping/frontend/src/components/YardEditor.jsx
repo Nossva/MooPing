@@ -131,7 +131,7 @@ export default function YardEditor({ yard, yards, view, onViewChange, onCancel, 
 
       <div className="overflow-hidden rounded-xl border border-black/5">
         <MapContainer
-          center={view?.center ?? [-34.24, -59.47]}
+          center={view?.center ?? [-34.30, -59.62]}
           zoom={view?.zoom ?? 12}
           className="h-[360px] w-full cursor-crosshair lg:h-[460px]"
           scrollWheelZoom

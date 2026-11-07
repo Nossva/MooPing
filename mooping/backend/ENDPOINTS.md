@@ -178,13 +178,13 @@ Cualquier otro campo se ignora: `RSSI`/`SNR` (los agrega la Pi) y `BAT` no se gu
 {
   "id": 12, "type": "geofence_exit", "category": "critical", "severity": "critical",
   "status": "pending", "message": "Vaca #084 fuera del perímetro, a 297 m del límite.",
-  "metadata": {"distance_m": 297, "lat": -34.25, "lng": -59.43},
+  "metadata": {"distance_m": 297, "lat": -34.31, "lng": -59.58},
   "triggered_at": "...", "resolved_at": null,
   "animal": {"id": 1, "name": "Vaca #084", "tag_number": "AR-039-994", "breed": "...", "lot": "...", "age_months": 40},
   "device": {"id": 1, "label": "C-084", "device_uid": "COLLAR-84", "last_seen_at": "..."},
   "yard": {"id": 1, "name": "Potrero 4 (Sur)"},
   "assigned_to": null, "resolved_by": null,
-  "position": {"lat": -34.25, "lng": -59.43}, "speed_kmh": 1.0, "heading_label": "Este 90°"
+  "position": {"lat": -34.31, "lng": -59.58}, "speed_kmh": 1.0, "heading_label": "Este 90°"
 }
 ```
 

@@ -1,7 +1,7 @@
 """Igual que start.py, pero además carga los datos de demo para poder trabajar.
 
-    python start2.py            # si la demo ya está cargada, la deja como está
-    python start2.py --reset    # borra la demo y la vuelve a crear como nueva
+    python start_con_demo.py            # si la demo ya está cargada, la deja como está
+    python start_con_demo.py --reset    # borra la demo y la vuelve a crear como nueva
 
 Crea el establecimiento "El Ombú" (seed_demo) con los logins
 demo@mooping.app (dueño) y maria@mooping.app (usuario), contraseña mooping123.

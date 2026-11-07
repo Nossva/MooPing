@@ -32,16 +32,16 @@ USERS = [
 ]
 
 POTRERO_SUR = {'type': 'Polygon', 'coordinates': [[
-    [-59.505, -34.275], [-59.445, -34.275], [-59.440, -34.240],
-    [-59.470, -34.225], [-59.510, -34.240], [-59.505, -34.275],
+    [-59.655, -34.335], [-59.595, -34.335], [-59.590, -34.300],
+    [-59.620, -34.285], [-59.660, -34.300], [-59.655, -34.335],
 ]]}
 POTRERO_NORTE = {'type': 'Polygon', 'coordinates': [[
-    [-59.510, -34.240], [-59.470, -34.225], [-59.470, -34.200],
-    [-59.515, -34.205], [-59.510, -34.240],
+    [-59.660, -34.300], [-59.620, -34.285], [-59.620, -34.260],
+    [-59.665, -34.265], [-59.660, -34.300],
 ]]}
 # Inner boxes (lng_min, lng_max, lat_min, lat_max) where normal walks stay.
-SUR_BOX = (-59.495, -59.455, -34.268, -34.242)
-NORTE_BOX = (-59.505, -59.478, -34.230, -34.212)
+SUR_BOX = (-59.645, -59.605, -34.328, -34.302)
+NORTE_BOX = (-59.655, -59.628, -34.290, -34.272)
 
 GATEWAYS = [
     ('AGROBOT-01', 'Molino Sur', 'gateway', 'solar', 'LoRa 433 MHz', 2000),
@@ -116,7 +116,7 @@ def _readings_for(rng, animal, now):
             temp = round(39.3 + (240 - minutes_ago) / 240 * 0.6, 1)
             rumination = 0
         if scenario == 'returned' and 160 <= minutes_ago <= 180:
-            point = (-59.437, -34.262)       # east of the boundary for 20 min
+            point = (-59.587, -34.322)       # east of the boundary for 20 min
         readings.append(_reading(uid, when, *point, temp, rumination, gateway))
         if not (scenario == 'returned' and 160 <= minutes_ago <= 180):
             pos = point
@@ -124,8 +124,8 @@ def _readings_for(rng, animal, now):
 
     if scenario == 'outside':
         # Last 8 minutes: walking east out of the potrero towards the road.
-        for minutes_ago, lng in ((12, -59.4425), (8, -59.4385), (4, -59.4378)):
-            readings.append(_reading(uid, now - timedelta(minutes=minutes_ago), lng, -34.2522,
+        for minutes_ago, lng in ((12, -59.5925), (8, -59.5885), (4, -59.5878)):
+            readings.append(_reading(uid, now - timedelta(minutes=minutes_ago), lng, -34.3122,
                                      38.6, 4, gateway))
     return readings
 
@@ -205,7 +205,7 @@ def seed(reset=False):
 
 @transaction.atomic
 def seed_admin(org_name, name, email, password):
-    """Empty establecimiento with a single owner (start3.py). The database is
+    """Empty establecimiento with a single owner (start_base_vacia.py). The database is
     expected to be empty: an existing email is a Conflict, not overwritten."""
     email = email.strip().lower()
     if not email or not password:

@@ -5,7 +5,7 @@ from api.services.errors import ServiceError
 
 
 class Command(BaseCommand):
-    help = 'Crea un establecimiento vacío con un único usuario dueño (lo usa start3.py).'
+    help = 'Crea un establecimiento vacío con un único usuario dueño (lo usa start_base_vacia.py).'
 
     def add_arguments(self, parser):
         parser.add_argument('--email', default='admin@mooping.app')

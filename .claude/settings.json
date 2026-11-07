@@ -16,7 +16,23 @@
       "PowerShell($i=0; while \\($i -lt 40\\) { try { $r = Invoke-WebRequest http://localhost:8000/api/health/ -UseBasicParsing -TimeoutSec 3; $r.Content; break } catch { Start-Sleep 3; $i++ } }; try { \\(Invoke-WebRequest http://localhost:5173 -UseBasicParsing -TimeoutSec 5\\).StatusCode } catch { \"frontend: $_\" }; docker compose ps --format \"table {{.Name}}\\\\t{{.Status}}\")",
       "Bash(python -)",
       "Bash(python manage.py check)",
-      "Bash(python manage.py makemigrations --check --dry-run)"
+      "Bash(python manage.py makemigrations --check --dry-run)",
+      "Read(//c/Users/THOMAS/Desktop/moo-ping/deploy/**)",
+      "Read(//c/Users/THOMAS/Desktop/moo-ping/**)",
+      "Read(//c/Program Files \\\\\\(x86\\\\\\)/Microsoft/Edge/Application/**)",
+      "Bash(curl -sI https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js)",
+      "Read(//c/Users/THOMAS/AppData/Local/Temp/claude/f959c8716c9efd2d/3a2e0352-1e10-4efb-a659-6f5274ad09b8/scratchpad/**)",
+      "Bash(python -c ' *)",
+      "Bash(cp \"/c/Users/THOMAS/AppData/Local/Temp/claude/f959c8716c9efd2d/3a2e0352-1e10-4efb-a659-6f5274ad09b8/scratchpad/backend-mooping.pdf\" /c/Users/THOMAS/Desktop/moo-ping/MooPing/mooping/docs/informe-backend.pdf && ls -la /c/Users/THOMAS/Desktop/moo-ping/MooPing/mooping/docs/)",
+      "Bash(python -c \"import pypdfium2 as p; print\\(len\\(p.PdfDocument\\(r'C:\\\\Users\\\\THOMAS\\\\Desktop\\\\moo-ping\\\\MooPing\\\\mooping\\\\docs\\\\informe-backend.pdf'\\)\\)\\)\")",
+      "Bash(cp \"/c/Users/THOMAS/AppData/Local/Temp/claude/f959c8716c9efd2d/3a2e0352-1e10-4efb-a659-6f5274ad09b8/scratchpad/backend-mooping.pdf\" /c/Users/THOMAS/Desktop/moo-ping/MooPing/mooping/docs/informe-backend-v2.pdf)",
+      "Bash(python -c \"import pypdfium2 as p; print\\(len\\(p.PdfDocument\\(r'C:\\\\Users\\\\THOMAS\\\\Desktop\\\\moo-ping\\\\MooPing\\\\mooping\\\\docs\\\\informe-backend-v2.pdf'\\)\\)\\)\")",
+      "Bash(mv -f informe-backend-v2.pdf informe-backend.pdf)",
+      "Bash(python -c \"import pypdfium2 as p; print\\(len\\(p.PdfDocument\\('informe-backend.pdf'\\)\\)\\)\")",
+      "Bash(cp \"/c/Users/THOMAS/AppData/Local/Temp/claude/f959c8716c9efd2d/3a2e0352-1e10-4efb-a659-6f5274ad09b8/scratchpad/backend-mooping.pdf\" /c/Users/THOMAS/Desktop/moo-ping/MooPing/mooping/docs/informe-backend.pdf && echo copiado)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\THOMAS\\AppData\\Local\\Temp\\claude\\f959c8716c9efd2d\\3a2e0352-1e10-4efb-a659-6f5274ad09b8\\scratchpad"
     ]
   }
 }

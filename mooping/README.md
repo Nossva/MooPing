@@ -26,8 +26,8 @@ docker compose up -d --build
 ```
 
 O, si tenés Python: `python start.py` hace lo mismo, actualiza la base existente con los `db/upgrade-*.sql`, espera a que respondan la API y el frontend y abre la app (http://localhost:5173).
-`python start2.py` hace lo mismo y además carga los datos de demo si no están (`--reset` los deja como nuevos).
-`python start3.py` **borra la base** (y las fotos de animales) y la deja vacía, con un solo dueño: `admin@mooping.app` / `mooping123` (cambialo con `--email`, `--password`, `--org`). Pide confirmación; `--yes` la saltea.
+`python start_con_demo.py` hace lo mismo y además carga los datos de demo si no están (`--reset` los deja como nuevos).
+`python start_base_vacia.py` **borra la base** (y las fotos de animales) y la deja vacía, con un solo dueño: `admin@mooping.app` / `mooping123` (cambialo con `--email`, `--password`, `--org`). Pide confirmación; `--yes` la saltea.
 
 La primera vez:
 1. Descarga las imágenes y construye el backend (tarda unos minutos).
