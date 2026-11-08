@@ -1,0 +1,321 @@
+@startuml MooPing_DER
+title MooPing — Diagrama Entidad-Relación (PostgreSQL + PostGIS)
+
+hide circle
+skinparam linetype ortho
+skinparam roundcorner 6
+skinparam shadowing false
+skinparam entity {
+  BackgroundColor #FAFAFA
+  BorderColor #4A5568
+  HeaderBackgroundColor #EDF2F7
+}
+
+' =====================================================================
+' 1. ORGANIZATIONS & USERS
+' =====================================================================
+package "Organizaciones, Usuarios y Permisos" #F7FAFC {
+
+  entity "organizations" as organizations {
+    * id : bigint <<PK>>
+    --
+    * name : text
+      vet_phone : text
+    * fever_threshold_c : real
+    * no_signal_minutes : integer
+    * created_at : timestamptz
+  }
+
+  entity "users" as users {
+    * id : bigint <<PK>>
+    --
+    * name : text
+    * email : text <<UK>>
+      phone : text
+    * password_hash : text
+    * created_at : timestamptz
+  }
+
+  entity "memberships" as memberships {
+    * organization_id : bigint <<PK, FK>>
+    * user_id : bigint <<PK, FK>>
+    --
+    * role : text
+    * active : boolean
+      sections : jsonb
+    * all_yards : boolean
+    * created_at : timestamptz
+  }
+
+  entity "api_tokens" as api_tokens {
+    * token_hash : text <<PK>>
+    --
+    * user_id : bigint <<FK>>
+    * created_at : timestamptz
+      last_used_at : timestamptz
+  }
+
+  entity "notification_settings" as notification_settings {
+    * organization_id : bigint <<PK, FK>>
+    * user_id : bigint <<PK, FK>>
+    --
+    * alarm_sound : boolean
+    * notify_geofence : boolean
+    * notify_health : boolean
+    * notify_equipment : boolean
+    * channel_push : boolean
+    * channel_email : boolean
+    * channel_sms : boolean
+    * updated_at : timestamptz
+  }
+
+  entity "member_yards" as member_yards {
+    * organization_id : bigint <<PK, FK>>
+    * user_id : bigint <<PK, FK>>
+    * yard_id : bigint <<PK, FK>>
+  }
+
+  entity "member_animals" as member_animals {
+    * organization_id : bigint <<PK, FK>>
+    * user_id : bigint <<PK, FK>>
+    * animal_id : bigint <<PK, FK>>
+  }
+}
+
+' =====================================================================
+' 2. FIELD INFRASTRUCTURE & ANIMALS
+' =====================================================================
+package "Infraestructura de Campo y Animales" #F0FFF4 {
+
+  entity "gateways" as gateways {
+    * id : bigint <<PK>>
+    --
+    * organization_id : bigint <<FK>>
+    * gateway_uid : text <<UK>>
+      name : text
+    * kind : text
+      power_source : text
+      radio : text
+      coverage_ha : real
+      api_key_hash : text
+      location : geography(Point, 4326)
+      last_seen_at : timestamptz
+    * created_at : timestamptz
+  }
+
+  entity "yards" as yards {
+    * id : bigint <<PK>>
+    --
+    * organization_id : bigint <<FK, UK>>
+    * name : text <<UK>>
+    * boundary : geography(Polygon, 4326)
+    * created_at : timestamptz
+  }
+
+  entity "devices" as devices {
+    * id : bigint <<PK>>
+    --
+      organization_id : bigint <<FK>>
+    * device_uid : text <<UK>>
+      label : text
+      hardware_version : text
+      firmware_version : text
+    * tx_interval_s : integer
+      storage_location : text
+      last_seen_at : timestamptz
+    * created_at : timestamptz
+  }
+
+  entity "animals" as animals {
+    * id : bigint <<PK>>
+    --
+    * organization_id : bigint <<FK, UK>>
+      yard_id : bigint <<FK>>
+    * name : text
+      tag_number : text <<UK>>
+      lot : text
+    * species : text
+      sex : text
+      breed : text
+      birth_date : date
+      photo_url : text
+      notes : text
+    * status : text
+    * created_at : timestamptz
+    * updated_at : timestamptz
+  }
+
+  entity "animal_devices" as animal_devices {
+    * id : bigint <<PK>>
+    --
+    * animal_id : bigint <<FK>>
+    * device_id : bigint <<FK>>
+    * assigned_at : timestamptz
+      unassigned_at : timestamptz
+  }
+}
+
+' =====================================================================
+' 3. TELEMETRY
+' =====================================================================
+package "Telemetría" #EBF8FF {
+
+  entity "telemetry_readings" as telemetry_readings {
+    * id : bigint <<PK>>
+    --
+    * device_id : bigint <<FK>>
+      animal_id : bigint <<FK>>
+      gateway_id : bigint <<FK>>
+    * recorded_at : timestamptz
+      location : geography(Point, 4326)
+      altitude_m : real
+      speed_mps : real
+      heading_deg : real
+      hdop : real
+      satellites : smallint
+      temp_body_c : real
+      temp_ambient_c : real
+      activity : real
+      rumination_min : real
+  }
+
+  entity "animal_last_position" as animal_last_position {
+    * animal_id : bigint <<PK, FK>>
+    --
+      device_id : bigint <<FK>>
+    * recorded_at : timestamptz
+    * location : geography(Point, 4326)
+      speed_mps : real
+      heading_deg : real
+      temp_body_c : real
+      activity : real
+  }
+}
+
+' =====================================================================
+' 4. ALERTS & OPERATIONS
+' =====================================================================
+package "Alertas y Operaciones" #FFF5F5 {
+
+  entity "alerts" as alerts {
+    * id : bigint <<PK>>
+    --
+    * organization_id : bigint <<FK>>
+      animal_id : bigint <<FK>>
+      device_id : bigint <<FK>>
+      yard_id : bigint <<FK>>
+    * type : text
+    * severity : text
+    * status : text
+      message : text
+    * metadata : jsonb
+    * triggered_at : timestamptz
+      assigned_to : bigint <<FK>>
+      resolved_by : bigint <<FK>>
+      resolved_at : timestamptz
+    * updated_at : timestamptz
+  }
+
+  entity "alert_notes" as alert_notes {
+    * id : bigint <<PK>>
+    --
+    * alert_id : bigint <<FK>>
+      user_id : bigint <<FK>>
+    * body : text
+    * created_at : timestamptz
+  }
+
+  entity "maintenance_tasks" as maintenance_tasks {
+    * id : bigint <<PK>>
+    --
+    * organization_id : bigint <<FK>>
+      device_id : bigint <<FK>>
+      gateway_id : bigint <<FK>>
+    * kind : text
+    * scheduled_for : date
+      notes : text
+    * status : text
+      created_by : bigint <<FK>>
+    * created_at : timestamptz
+  }
+
+  entity "support_requests" as support_requests {
+    * id : bigint <<PK>>
+    --
+    * organization_id : bigint <<FK>>
+      user_id : bigint <<FK>>
+    * category : text
+    * message : text
+    * diagnostic : jsonb
+      user_agent : text
+      email_sent_at : timestamptz
+      email_error : text
+    * created_at : timestamptz
+  }
+
+  entity "device_commands" as device_commands {
+    * id : bigint <<PK>>
+    --
+    * device_id : bigint <<FK>>
+    * command : text
+    * payload : jsonb
+    * status : text
+      created_by : bigint <<FK>>
+    * created_at : timestamptz
+      sent_at : timestamptz
+  }
+}
+
+' =====================================================================
+' RELATIONSHIPS
+' =====================================================================
+
+' Organizaciones, Usuarios y Permisos
+organizations ||--o{ memberships : "organization_id"
+users         ||--o{ memberships : "user_id"
+users         ||--o{ api_tokens : "user_id"
+organizations ||--o{ notification_settings : "organization_id"
+users         ||--o{ notification_settings : "user_id"
+memberships   ||--o{ member_yards : "(organization_id, user_id)"
+yards         ||--o{ member_yards : "yard_id"
+memberships   ||--o{ member_animals : "(organization_id, user_id)"
+animals       ||--o{ member_animals : "animal_id"
+
+' Infraestructura y Animales
+organizations ||--o{ gateways : "organization_id"
+organizations ||--o{ yards : "organization_id"
+organizations |o--o{ devices : "organization_id"
+organizations ||--o{ animals : "organization_id"
+yards         |o--o{ animals : "yard_id"
+animals       ||--o{ animal_devices : "animal_id"
+devices       ||--o{ animal_devices : "device_id"
+
+' Telemetría
+devices       ||--o{ telemetry_readings : "device_id"
+animals       |o--o{ telemetry_readings : "animal_id"
+gateways      |o--o{ telemetry_readings : "gateway_id"
+animals       ||--o| animal_last_position : "animal_id (1:1)"
+devices       |o--o{ animal_last_position : "device_id"
+
+' Alertas y Operaciones
+organizations ||--o{ alerts : "organization_id"
+animals       |o--o{ alerts : "animal_id"
+devices       |o--o{ alerts : "device_id"
+yards         |o--o{ alerts : "yard_id"
+users         |o--o{ alerts : "assigned_to"
+users         |o--o{ alerts : "resolved_by"
+alerts        ||--o{ alert_notes : "alert_id"
+users         |o--o{ alert_notes : "user_id"
+
+organizations ||--o{ maintenance_tasks : "organization_id"
+devices       |o--o{ maintenance_tasks : "device_id"
+gateways      |o--o{ maintenance_tasks : "gateway_id"
+users         |o--o{ maintenance_tasks : "created_by"
+
+organizations ||--o{ support_requests : "organization_id"
+users         |o--o{ support_requests : "user_id"
+
+devices       ||--o{ device_commands : "device_id"
+users         |o--o{ device_commands : "created_by"
+
+@enduml
